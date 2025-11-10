@@ -3,6 +3,7 @@ import Login from './Pages/login'
 import ForgotPassword from './Pages/forgot-password'
 import ResetPassword from './Pages/reset-password'
 import Dashboard from './Pages/dashboard'
+import ComposeMemoPage from './Pages/ComposeMemoPage'
 
 function App() {
   return (
@@ -12,8 +13,9 @@ function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
-        <Route path="*" element={<Navigate to="/" replace />} />
         <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/compose-memo" element={<ComposeMemoPage />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Router>
   )

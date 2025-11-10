@@ -1,17 +1,25 @@
 "use client"
 
-import { FiGrid, FiMail, FiGitBranch, FiBarChart2, FiSettings, FiEdit3, FiUsers } from "react-icons/fi"
+import { FiGrid, FiMail, FiGitBranch, FiBarChart2, FiSettings, FiEdit3, FiUsers, FiX } from "react-icons/fi"
 import { useState } from "react"
+import { useNavigate, useLocation } from "react-router-dom"
 
 export default function Sidebar({ isOpen, onToggle }) {
+  const navigate = useNavigate()
+  const location = useLocation()
   const [activeItem, setActiveItem] = useState("dashboard")
 
   const mainMenuItems = [
-    { id: "dashboard", label: "Dashboard", icon: FiGrid },
-    { id: "compose", label: "Compose Memo", icon: FiEdit3 },
-    { id: "mailbox", label: "Mailbox", icon: FiMail, count: 12 },
-    { id: "workflows", label: "Workflows", icon: FiGitBranch, count: 5 },
+    { id: "dashboard", label: "Dashboard", icon: FiGrid, path: "/dashboard" },
+    { id: "compose", label: "Compose Memo", icon: FiEdit3, path: "/compose-memo" },
+    { id: "mailbox", label: "Mailbox", icon: FiMail, count: 12, path: "/mailbox" },
+    { id: "workflows", label: "Workflows", icon: FiGitBranch, count: 5, path: "/workflows" },
   ]
+
+  const handleNavigation = (item) => {
+    setActiveItem(item.id)
+    navigate(item.path)
+  }
 
   const systemMenuItems = [
     { id: "reports", label: "Reports", icon: FiBarChart2 },
@@ -24,8 +32,10 @@ export default function Sidebar({ isOpen, onToggle }) {
       {/* Sidebar */}
       <aside
         className={`${
-          isOpen ? "w-64" : "w-20"
-        } bg-white border-r border-gray-200 transition-all duration-300 flex flex-col overflow-hidden`}
+          isOpen ? "w-60" : "w-18"
+        } bg-white border-r border-gray-200 transition-all duration-300 flex flex-col overflow-hidden lg:relative fixed lg:translate-x-0 ${
+          isOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
+        } h-full z-30`}
       >
         {/* Logo Section */}
         <div className="p-4 border-b border-gray-200 flex items-center justify-between">
@@ -35,6 +45,15 @@ export default function Sidebar({ isOpen, onToggle }) {
             </div>
             {isOpen && <span className="font-bold text-gray-900 text-sm">SmartMailTrack</span>}
           </div>
+          {isOpen && (
+            <button 
+              onClick={onToggle}
+              className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors lg:hidden"
+              aria-label="Close sidebar"
+            >
+              <FiX className="w-4 h-4 text-gray-600" />
+            </button>
+          )}
         </div>
 
         {/* User Profile Section */}
@@ -85,8 +104,8 @@ export default function Sidebar({ isOpen, onToggle }) {
             return (
               <button
                 key={item.id}
-                onClick={() => setActiveItem(item.id)}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors text-sm font-medium ${
+                onClick={() => handleNavigation(item)}
+                className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors text-sm font-medium ${
                   isActive ? "bg-blue-50 text-blue-600" : "text-gray-700 hover:bg-gray-100"
                 }`}
                 title={!isOpen ? item.label : ""}
@@ -120,7 +139,7 @@ export default function Sidebar({ isOpen, onToggle }) {
                   <button
                     key={item.id}
                     onClick={() => setActiveItem(item.id)}
-                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors text-sm font-medium ${
+                    className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors text-sm font-medium ${
                       isActive ? "bg-blue-50 text-blue-600" : "text-gray-700 hover:bg-gray-100"
                     }`}
                     title={!isOpen ? item.label : ""}
@@ -160,7 +179,7 @@ export default function Sidebar({ isOpen, onToggle }) {
       </aside>
 
       {/* Mobile Overlay */}
-      {isOpen && <div className="fixed inset-0 bg-black bg-opacity-50 lg:hidden z-40" onClick={onToggle}></div>}
+      {isOpen && <div className="fixed inset-0 bg-black bg-opacity-50 lg:hidden z-20 animate-in fade-in duration-300" onClick={onToggle}></div>}
     </>
   )
 }

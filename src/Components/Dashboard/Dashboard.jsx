@@ -1,45 +1,76 @@
 "use client"
 
 import {
-  FiCheckCircle,
-  FiClock,
   FiUsers,
-  FiPlus,
-  FiArrowRight,
-  FiCalendar,
-  FiTag,
   FiGitBranch,
-  FiFileText,
+  FiClock,
+  FiCheckCircle,
+  FiEdit3,
+  FiMail,
+  FiSettings,
+  FiBarChart2,
+  FiCalendar,
+  FiArrowRight,
+  FiUser
 } from "react-icons/fi"
 
-export default function DashboardContent() {
+export default function Dashboard() {
   return (
-    <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto">
-      {/* Welcome Section */}
-      <div className="mb-8">
-        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Welcome back, Dr!</h1>
-        <p className="text-gray-600 text-sm mt-1">Here's what's happening in your organization today.</p>
+    <div className="p-4 sm:p-4 lg:p-5 w-full mx-auto">
+      {/* Header Section */}
+      <div className="mb-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Welcome back, Dr.!</h1>
+            <p className="text-gray-600 text-sm mt-1">Here's your system overview and administrative insights.</p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <button className="flex items-center gap-2 bg-gray-900 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-800 transition-colors">
+              <FiEdit3 className="w-4 h-4" />
+              Compose Memo
+            </button>
+            <button className="flex items-center gap-2 bg-gray-100 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors">
+              <FiUser className="w-4 h-4" />
+              Manage Users
+            </button>
+            <button className="flex items-center gap-2 bg-gray-100 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors">
+              <FiCalendar className="w-4 h-4" />
+              Schedule
+            </button>
+          </div>
+        </div>
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        <StatCard icon={FiClock} label="Pending Approvals" value="12" subtext="3 due yesterday" color="yellow" />
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <StatCard
-          icon={FiCheckCircle}
-          label="Completed This Week"
-          value="28"
-          subtext="14% from last week"
-          color="green"
+          icon={FiUsers}
+          label="Total Users"
+          value="247"
+          subtext="+12 this month"
+          color="purple"
         />
         <StatCard
           icon={FiGitBranch}
           label="Active Workflows"
-          value="7"
-          subtext="2 new this week"
+          value="18"
+          subtext="3 new this week"
           color="blue"
-          iconName="FiGitBranch"
         />
-        <StatCard icon={FiUsers} label="Team Members" value="47" subtext="2 new members" color="purple" />
+        <StatCard
+          icon={FiClock}
+          label="Pending Approvals"
+          value="34"
+          subtext="Across all departments"
+          color="yellow"
+        />
+        <StatCard
+          icon={FiCheckCircle}
+          label="Active Departments"
+          value="8"
+          subtext="100% operational"
+          color="green"
+        />
       </div>
 
       {/* Main Content Grid */}
@@ -47,11 +78,14 @@ export default function DashboardContent() {
         {/* Quick Actions */}
         <div className="lg:col-span-1 bg-white rounded-lg border border-gray-200 p-5">
           <h2 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h2>
+          <p className="text-sm text-gray-600 mb-4">Administrative shortcuts</p>
           <div className="space-y-3">
-            <ActionButton icon={FiPlus} label="New Memo" />
-            <ActionButton icon={FiCheckCircle} label="Check Status (12)" />
-            <ActionButton icon={FiFileText} label="Review Memos" />
-            <ActionButton icon={FiUsers} label="User Templates" />
+            <ActionButton icon={FiEdit3} label="New Memo" />
+            <ActionButton icon={FiMail} label="Check Inbox (8)" />
+            <ActionButton icon={FiUser} label="Manage Users" />
+            <ActionButton icon={FiGitBranch} label="Configure Workflows" />
+            <ActionButton icon={FiBarChart2} label="View Reports" />
+            <ActionButton icon={FiSettings} label="System Settings" />
           </div>
         </div>
 
@@ -62,27 +96,20 @@ export default function DashboardContent() {
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold text-gray-900">Pending Approvals</h2>
               <button className="text-blue-600 hover:text-blue-700 text-sm font-medium flex items-center gap-1">
-                View all <FiArrowRight className="w-4 h-4" />
+                View all pending <FiArrowRight className="w-4 h-4" />
               </button>
             </div>
+            <p className="text-sm text-gray-600 mb-4">Items requiring your attention</p>
             <div className="space-y-3">
               <ApprovalItem
                 title="Q4 Budget Allocation Review"
                 department="Finance Department"
-                status="pending"
-                dueDate="Tomorrow"
+                priority="high"
               />
               <ApprovalItem
-                title="Policy Update Response"
-                department="HR Department"
-                status="pending"
-                dueDate="Dec 28"
-              />
-              <ApprovalItem
-                title="Course Approval Process"
-                department="Academic Affairs"
-                status="pending"
-                dueDate="Dec 30"
+                title="System-Wide User Access Audit"
+                department="Security Team"
+                priority="critical"
               />
             </div>
           </div>
@@ -95,56 +122,107 @@ export default function DashboardContent() {
                 View calendar <FiArrowRight className="w-4 h-4" />
               </button>
             </div>
+            <p className="text-sm text-gray-600 mb-4">Don't miss these important dates</p>
             <div className="space-y-3">
-              <DeadlineItem title="Budget Release Memo" date="Tomorrow" priority="high" />
-              <DeadlineItem title="Policy Update Response" date="Dec 28" priority="medium" />
-              <DeadlineItem title="Course Approval Process" date="Dec 30" priority="medium" />
+              <DeadlineItem
+                title="Q4 System Audit Report"
+                department="Security"
+                date="Tomorrow"
+                priority="critical"
+              />
+              <DeadlineItem
+                title="Annual Budget Approval"
+                department="Finance"
+                date="Dec 28"
+                priority="critical"
+              />
+              <DeadlineItem
+                title="User Access Review"
+                department="Administration"
+                date="Dec 30"
+                priority="high"
+              />
             </div>
           </div>
         </div>
       </div>
 
-      {/* Recent Memos */}
-      <div className="mt-6 bg-white rounded-lg border border-gray-200 p-5">
+      {/* System-Wide Activity */}
+      <div className="mb-6 bg-white rounded-lg border border-gray-200 p-5 mt-6">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-gray-900">Recent Memos</h2>
+          <h2 className="text-lg font-semibold text-gray-900">System-Wide Activity</h2>
           <button className="text-blue-600 hover:text-blue-700 text-sm font-medium flex items-center gap-1">
             View all memos <FiArrowRight className="w-4 h-4" />
           </button>
         </div>
-        <p className="text-sm text-gray-600 mb-4">Latest memo activity in your organization</p>
+        <p className="text-sm text-gray-600 mb-4">Latest activity across all departments</p>
         <div className="space-y-3">
-          <MemoItem
+          <ActivityItem
             title="Q4 Budget Allocation Review"
             department="Finance Department"
-            status="pending-approval"
-            time="3 hours ago"
+            status="pending approval"
+            priority="high"
+            time="2 hours ago"
           />
-          <MemoItem
+          <ActivityItem
             title="New Academic Calendar Updates"
-            department="Academic Affairs"
+            department="Dr. Emily Johnson"
             status="approved"
+            priority="medium"
             time="4 hours ago"
           />
-          <MemoItem title="IT Security Policy Changes" department="IT Department" status="in-review" time="1 day ago" />
-          <MemoItem
-            title="Student Registration Guidelines"
-            department="Registrar's Office"
-            status="draft"
-            time="2 days ago"
+          <ActivityItem
+            title="IT Security Policy Changes"
+            department="IT Department"
+            status="in review"
+            priority="high"
+            time="1 day ago"
           />
+          <ActivityItem
+            title="System-Wide User Access Audit"
+            department="Security Team"
+            status="pending approval"
+            priority="critical"
+            time="1 day ago"
+          />
+        </div>
+      </div>
+
+      {/* Department Health & System Health */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+        {/* Department Health */}
+        <div className="bg-white rounded-lg border border-gray-200 p-5">
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">Department Health</h2>
+          <p className="text-sm text-gray-600 mb-4">System-wide departmental metrics</p>
+          <div className="space-y-4">
+            <DepartmentMetric department="Computer Science" percentage={92} />
+            <DepartmentMetric department="Mathematics" percentage={88} />
+            <DepartmentMetric department="Physics" percentage={94} />
+            <DepartmentMetric department="Chemistry" percentage={85} />
+          </div>
+        </div>
+
+        {/* System Health */}
+        <div className="bg-white rounded-lg border border-gray-200 p-5">
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">System Health</h2>
+          <p className="text-sm text-gray-600 mb-4">Platform performance metrics</p>
+          <div className="space-y-4">
+            <SystemMetric label="System Uptime" value="99.97%" color="green" />
+            <SystemMetric label="Active Users" value="247 online" color="blue" />
+            <SystemMetric label="Pending Tasks" value="34 items" color="yellow" />
+          </div>
         </div>
       </div>
     </div>
   )
 }
 
-function StatCard({ icon: Icon, label, value, subtext, color, iconName }) {
+function StatCard({ icon: Icon, label, value, subtext, color }) {
   const colorClasses = {
+    purple: "bg-purple-50 text-purple-600",
+    blue: "bg-blue-50 text-blue-600",
     yellow: "bg-yellow-50 text-yellow-600",
     green: "bg-green-50 text-green-600",
-    blue: "bg-blue-50 text-blue-600",
-    purple: "bg-purple-50 text-purple-600",
   }
 
   return (
@@ -170,7 +248,12 @@ function ActionButton({ icon: Icon, label }) {
   )
 }
 
-function ApprovalItem({ title, department, status, dueDate }) {
+function ApprovalItem({ title, department, priority }) {
+  const priorityColors = {
+    high: "bg-orange-100 text-orange-800",
+    critical: "bg-red-100 text-red-800",
+  }
+
   return (
     <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
       <div className="w-10 h-10 bg-gray-300 rounded-full flex-shrink-0"></div>
@@ -179,17 +262,19 @@ function ApprovalItem({ title, department, status, dueDate }) {
         <p className="text-xs text-gray-600">{department}</p>
       </div>
       <div className="text-right flex-shrink-0">
-        <span className="inline-block px-2 py-1 bg-yellow-100 text-yellow-800 text-xs font-medium rounded">
-          {status}
+        <span className={`inline-block px-2 py-1 ${priorityColors[priority]} text-xs font-medium rounded`}>
+          {priority}
         </span>
-        <p className="text-xs text-gray-600 mt-1">{dueDate}</p>
       </div>
     </div>
   )
 }
 
-function DeadlineItem({ title, date, priority }) {
-  const priorityColor = priority === "high" ? "text-red-600" : "text-gray-600"
+function DeadlineItem({ title, department, date, priority }) {
+  const priorityColors = {
+    high: "text-orange-600",
+    critical: "text-red-600",
+  }
 
   return (
     <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
@@ -197,37 +282,78 @@ function DeadlineItem({ title, date, priority }) {
         <FiCalendar className="w-4 h-4 text-gray-400 flex-shrink-0" />
         <div>
           <p className="text-sm font-medium text-gray-900">{title}</p>
-          <p className={`text-xs font-medium ${priorityColor}`}>{date}</p>
+          <p className="text-xs text-gray-600">{department}</p>
         </div>
       </div>
-      <FiTag className={`w-4 h-4 flex-shrink-0 ${priorityColor}`} />
+      <div className="text-right flex-shrink-0">
+        <p className={`text-sm font-medium ${priorityColors[priority]}`}>{date}</p>
+        <p className={`text-xs ${priorityColors[priority]}`}>{priority}</p>
+      </div>
     </div>
   )
 }
 
-function MemoItem({ title, department, status, time }) {
-  const statusConfig = {
-    "pending-approval": { bg: "bg-yellow-100", text: "text-yellow-800", label: "pending-approval" },
-    approved: { bg: "bg-green-100", text: "text-green-800", label: "approved" },
-    "in-review": { bg: "bg-blue-100", text: "text-blue-800", label: "in-review" },
-    draft: { bg: "bg-gray-100", text: "text-gray-800", label: "draft" },
+function ActivityItem({ title, department, status, priority, time }) {
+  const statusColors = {
+    "pending approval": "bg-yellow-100 text-yellow-800",
+    "approved": "bg-green-100 text-green-800",
+    "in review": "bg-blue-100 text-blue-800",
   }
 
-  const config = statusConfig[status]
+  const priorityColors = {
+    high: "text-orange-600",
+    medium: "text-gray-600",
+    critical: "text-red-600",
+  }
 
   return (
-    <div className="flex items-start gap-3 p-3 border-b border-gray-200 last:border-b-0">
+    <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
       <div className="w-10 h-10 bg-gray-300 rounded-full flex-shrink-0"></div>
       <div className="flex-1 min-w-0">
         <p className="text-sm font-medium text-gray-900">{title}</p>
         <p className="text-xs text-gray-600">From {department}</p>
       </div>
       <div className="text-right flex-shrink-0">
-        <span className={`inline-block px-2 py-1 ${config.bg} ${config.text} text-xs font-medium rounded`}>
-          {config.label}
-        </span>
+        <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
+          <span className={`inline-block px-2 py-1 ${statusColors[status]} text-xs font-medium rounded`}>
+            {status}
+          </span>
+          <span className={`text-xs ${priorityColors[priority]}`}>{priority}</span>
+        </div>
         <p className="text-xs text-gray-600 mt-1">{time}</p>
       </div>
+    </div>
+  )
+}
+
+function DepartmentMetric({ department, percentage }) {
+  return (
+    <div className="space-y-2">
+      <div className="flex justify-between items-center">
+        <span className="text-sm font-medium text-gray-900">{department}</span>
+        <span className="text-sm text-gray-600">{percentage}% Active</span>
+      </div>
+      <div className="w-full bg-gray-200 rounded-full h-2">
+        <div 
+          className="bg-gray-900 h-2 rounded-full transition-all duration-300" 
+          style={{ width: `${percentage}%` }}
+        ></div>
+      </div>
+    </div>
+  )
+}
+
+function SystemMetric({ label, value, color }) {
+  const colorClasses = {
+    green: "text-green-600",
+    blue: "text-blue-600",
+    yellow: "text-yellow-600",
+  }
+
+  return (
+    <div className="flex items-center justify-between py-2">
+      <span className="text-sm text-gray-600">{label}</span>
+      <span className={`text-sm font-medium ${colorClasses[color]}`}>{value}</span>
     </div>
   )
 }
