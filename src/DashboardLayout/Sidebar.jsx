@@ -22,9 +22,9 @@ export default function Sidebar({ isOpen, onToggle }) {
   }
 
   const systemMenuItems = [
-    { id: "reports", label: "Reports", icon: FiBarChart2 },
-    { id: "administration", label: "Administration", icon: FiUsers },
-    { id: "settings", label: "Settings", icon: FiSettings },
+    { id: "reports", label: "Reports", icon: FiBarChart2, path: "/reports" },
+    { id: "administration", label: "Administration", icon: FiUsers, path: "/administration" },
+    { id: "settings", label: "Settings", icon: FiSettings, path: "/settings" },
   ]
 
   return (
@@ -33,14 +33,14 @@ export default function Sidebar({ isOpen, onToggle }) {
       <aside
         className={`${
           isOpen ? "w-60" : "w-18"
-        } bg-white border-r border-gray-200 transition-all duration-300 flex flex-col overflow-hidden lg:relative fixed lg:translate-x-0 ${
+        } bg-gray-50 border-r border-gray-200 transition-all duration-300 flex flex-col overflow-hidden lg:relative fixed lg:translate-x-0 ${
           isOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
         } h-full z-30`}
       >
         {/* Logo Section */}
         <div className="p-4 border-b border-gray-200 flex items-center justify-between">
           <div className={`flex items-center gap-3 ${!isOpen && "justify-center w-full"}`}>
-            <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-blue-700 rounded-lg flex items-center justify-center flex-shrink-0">
+            <div className="w-8 h-8 bg-black rounded-lg flex items-center justify-center flex-shrink-0">
               <FiMail className="w-5 h-5 text-white" />
             </div>
             {isOpen && <span className="font-bold text-gray-900 text-sm">SmartMailTrack</span>}
@@ -60,8 +60,8 @@ export default function Sidebar({ isOpen, onToggle }) {
         {isOpen && (
           <div className="p-4 border-b border-gray-200">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex-shrink-0 flex items-center justify-center">
-                <span className="text-white text-sm font-semibold">DSJ</span>
+              <div className="w-10 h-10 bg-gray-300 rounded-full flex-shrink-0 flex items-center justify-center">
+                <span className="text-black text-sm font-semibold">DSJ</span>
               </div>
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-semibold text-gray-900 truncate">Dr. Sarah Johnson</p>
@@ -78,7 +78,7 @@ export default function Sidebar({ isOpen, onToggle }) {
             <div className="mt-4 bg-blue-50 rounded-lg p-3">
               <p className="text-xs font-semibold text-gray-700 mb-2">Completion Rate</p>
               <div className="w-full bg-gray-200 rounded-full h-2">
-                <div className="bg-blue-600 h-2 rounded-full" style={{ width: "94%" }}></div>
+                <div className="bg-black h-2 rounded-full" style={{ width: "74%" }}></div>
               </div>
               <div className="flex items-center justify-between mt-2">
                 <div className="flex items-center gap-2">
@@ -138,7 +138,7 @@ export default function Sidebar({ isOpen, onToggle }) {
                 return (
                   <button
                     key={item.id}
-                    onClick={() => setActiveItem(item.id)}
+                    onClick={() => handleNavigation(item)}
                     className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors text-sm font-medium ${
                       isActive ? "bg-blue-50 text-blue-600" : "text-gray-700 hover:bg-gray-100"
                     }`}

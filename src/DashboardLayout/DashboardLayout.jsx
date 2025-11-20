@@ -5,7 +5,7 @@ import Header from "./Header"
 import Sidebar from "./Sidebar"
 
 export default function DashboardLayout({ children }) {
-  const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [sidebarOpen, setSidebarOpen] = useState(true)
 
   return (
     <div className="flex h-screen">

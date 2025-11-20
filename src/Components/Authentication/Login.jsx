@@ -2,6 +2,9 @@
 
 import { useState } from "react"
 import { useNavigate } from "react-router-dom"
+import axios from "axios"
+import { useAuth } from "../../context/AuthContext"
+import { useNotification } from "../../context/NotificationContext"
 import { FiMail, FiLock, FiEye, FiEyeOff, FiAlertCircle } from "react-icons/fi"
 import { FcGoogle } from "react-icons/fc"
 import { SiApple } from "react-icons/si"
@@ -9,25 +12,46 @@ import authImage from "../../assets/Authentication/Auth.jpg"
 
 export default function LoginPage() {
   const navigate = useNavigate()
+  const { login } = useAuth()
+  const { showNotification } = useNotification()
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState(false)
+  const [loading, setLoading] = useState(false)
 
-  const handleSignIn = (e) => {
+  const handleSignIn = async (e) => {
     e.preventDefault()
     
-    // Basic validation - show error if fields are empty
     if (!email || !password) {
       setError(true)
       return
     }
     
-    // Clear error if validation passes
     setError(false)
+    setLoading(true)
     
-    // Handle sign in logic here
-    console.log('Login attempt:', { email, password })
+    try {
+      const response = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/login`, {
+        email,
+        password
+      }, {
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      })
+
+      if (response.data.status) {
+        login(response.data.data.token, response.data.data.user)
+        showNotification(response.data.message, 'success')
+        navigate('/dashboard')
+      }
+    } catch (error) {
+      const message = error.response?.data?.message || 'Login failed. Please try again.'
+      showNotification(message, 'error')
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -122,9 +146,10 @@ export default function LoginPage() {
             {/* Sign In Button */}
             <button
               type="submit"
-              className="w-full bg-gray-900 hover:bg-gray-800 text-white font-semibold py-2 rounded-lg transition-colors duration-200 mt-4 text-sm"
+              disabled={loading}
+              className="w-full bg-gray-900 hover:bg-gray-800 disabled:bg-gray-400 text-white font-semibold py-2 rounded-lg transition-colors duration-200 mt-4 text-sm"
             >
-              Sign in
+              {loading ? 'Signing in...' : 'Sign in'}
             </button>
           </form>
 
