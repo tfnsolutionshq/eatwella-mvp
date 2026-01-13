@@ -1,20 +1,44 @@
 import React, { useState } from 'react'
 import { createPortal } from 'react-dom'
+import axios from 'axios'
+import { useAuth } from '../../context/AuthContext'
+import { useNotification } from '../../context/NotificationContext'
 import { FiX, FiAlertTriangle } from 'react-icons/fi'
 
-function EditCategory({ category, onClose }) {
+function EditCategory({ category, onClose, onSuccess }) {
+  const { token } = useAuth()
+  const { showNotification } = useNotification()
+  const [loading, setLoading] = useState(false)
   const [formData, setFormData] = useState({
-    categoryLabel: category?.name || '',
-    internalValue: category?.value || '',
+    name: category?.name || '',
+    internal_value: category?.internal_value || '',
     description: category?.description || '',
-    colorTheme: category?.color || 'Green',
-    status: category?.status || 'Active'
+    is_active: category?.is_active ?? true
   })
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
-    console.log('Updating category:', formData)
-    onClose()
+    setLoading(true)
+
+    try {
+      const response = await axios.put(`/memo-api/categories/${category.id}`, formData, {
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      })
+
+      if (response.data.success || response.status === 200) {
+        showNotification('Category updated successfully', 'success')
+        onSuccess && onSuccess()
+        onClose()
+      }
+    } catch (error) {
+      console.error('Error updating category:', error)
+      showNotification('Failed to update category', 'error')
+    } finally {
+      setLoading(false)
+    }
   }
 
   return createPortal(
@@ -34,12 +58,12 @@ function EditCategory({ category, onClose }) {
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-medium text-gray-700 mb-1">
-                Category Label <span className="text-red-500">*</span>
+                Category Name <span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
-                value={formData.categoryLabel}
-                onChange={(e) => setFormData({...formData, categoryLabel: e.target.value})}
+                value={formData.name}
+                onChange={(e) => setFormData({...formData, name: e.target.value})}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-gray-50"
                 required
               />
@@ -50,8 +74,8 @@ function EditCategory({ category, onClose }) {
               </label>
               <input
                 type="text"
-                value={formData.internalValue}
-                onChange={(e) => setFormData({...formData, internalValue: e.target.value})}
+                value={formData.internal_value}
+                onChange={(e) => setFormData({...formData, internal_value: e.target.value})}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-gray-50"
                 required
               />
@@ -68,33 +92,16 @@ function EditCategory({ category, onClose }) {
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Color Theme</label>
-              <select
-                value={formData.colorTheme}
-                onChange={(e) => setFormData({...formData, colorTheme: e.target.value})}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-gray-50"
-              >
-                <option value="Blue">Blue</option>
-                <option value="Green">Green</option>
-                <option value="Purple">Purple</option>
-                <option value="Orange">Orange</option>
-                <option value="Red">Red</option>
-                <option value="Yellow">Yellow</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Status</label>
-              <select
-                value={formData.status}
-                onChange={(e) => setFormData({...formData, status: e.target.value})}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-gray-50"
-              >
-                <option value="Active">Active</option>
-                <option value="Inactive">Inactive</option>
-              </select>
-            </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1">Status</label>
+            <select
+              value={formData.is_active ? 'Active' : 'Inactive'}
+              onChange={(e) => setFormData({...formData, is_active: e.target.value === 'Active'})}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-gray-50"
+            >
+              <option value="Active">Active</option>
+              <option value="Inactive">Inactive</option>
+            </select>
           </div>
 
           {/* Usage Warning */}
@@ -103,7 +110,7 @@ function EditCategory({ category, onClose }) {
               <FiAlertTriangle className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
               <div>
                 <p className="text-xs font-medium text-blue-900">This category is currently in use</p>
-                <p className="text-xs text-blue-700">234 memos are using this category. Changes will affect existing memos.</p>
+                <p className="text-xs text-blue-700">{category?.total_memos_sent || 0} memos are using this category. Changes will affect existing memos.</p>
               </div>
             </div>
           </div>
@@ -118,9 +125,10 @@ function EditCategory({ category, onClose }) {
             </button>
             <button
               type="submit"
-              className="px-3 py-1 text-xs text-white bg-black rounded-lg hover:bg-gray-800"
+              disabled={loading}
+              className="px-3 py-1 text-xs text-white bg-black rounded-lg hover:bg-gray-800 disabled:opacity-50"
             >
-              Save Changes
+              {loading ? 'Saving...' : 'Save Changes'}
             </button>
           </div>
         </form>

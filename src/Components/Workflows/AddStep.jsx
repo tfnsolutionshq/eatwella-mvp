@@ -1,13 +1,17 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { FiX, FiCheck, FiEye, FiBell, FiGitBranch, FiPlus } from 'react-icons/fi'
+import { useAuth } from '../../context/AuthContext'
+import { roleAPI } from '../../services/api'
 
 function AddStep({ isOpen, onClose, onAddStep }) {
+  const { token } = useAuth()
   const [selectedType, setSelectedType] = useState('')
   const [stepName, setStepName] = useState('')
   const [description, setDescription] = useState('')
   const [assignedRole, setAssignedRole] = useState('')
   const [timeLimit, setTimeLimit] = useState('')
-
+  const [roles, setRoles] = useState([])
+ 
   const stepTypes = [
     {
       id: 'approval',
@@ -38,6 +42,23 @@ function AddStep({ isOpen, onClose, onAddStep }) {
       color: 'bg-purple-100 text-purple-600'
     }
   ]
+
+  const fetchRoles = async () => {
+    try {
+      const response = await roleAPI.getRoles(token)
+      if (response.status && response.data) {
+        setRoles(response.data.data)
+      }
+    } catch (error) {
+      console.error('Error fetching roles:', error)
+    }
+  }
+
+  useEffect(() => {
+    if (isOpen) {
+      fetchRoles()
+    }
+  }, [isOpen])
 
   const handleSubmit = (e) => {
     e.preventDefault()
@@ -141,10 +162,9 @@ function AddStep({ isOpen, onClose, onAddStep }) {
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-gray-900 focus:border-transparent text-sm"
                   >
                     <option value="">Select role</option>
-                    <option value="department-head">Department Head</option>
-                    <option value="finance-director">Finance Director</option>
-                    <option value="dean">Dean</option>
-                    <option value="hr-manager">HR Manager</option>
+                    {roles.map((role) => (
+                      <option key={role.id} value={role.id}>{role.name}</option>
+                    ))}
                   </select>
                 </div>
 

@@ -1,11 +1,15 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { FiSearch, FiDownload, FiPlus, FiMoreVertical, FiEdit, FiEye, FiKey, FiPower, FiTrash2 } from 'react-icons/fi'
+import { useAuth } from '../../context/AuthContext'
+import { useNotification } from '../../context/NotificationContext'
+import { userAPI } from '../../services/api'
 import RoleManagment from './RoleManagment'
 import Departments from './Departments'
 import MemoCategories from './MemoCategories'
 import ActivityLogs from './ActivityLogs'
 import SystemSettings from './SystemSettings'
 import AddUser from './AddUser'
+import EditUser from './EditUser'
 import ViewActivity from './ViewActivity'
 import AddRole from './AddRole'
 import AddDepartment from './AddDepartment'
@@ -13,79 +17,92 @@ import AddCategory from './AddCategory'
 
 function Administrations() {
   const [activeTab, setActiveTab] = useState('Users')
-  const [selectedUsers, setSelectedUsers] = useState([])
+
   const [showUserMenu, setShowUserMenu] = useState(null)
   const [showAddUser, setShowAddUser] = useState(false)
+  const [showEditUser, setShowEditUser] = useState(false)
   const [showViewActivity, setShowViewActivity] = useState(false)
   const [selectedUser, setSelectedUser] = useState(null)
   const [showAddRole, setShowAddRole] = useState(false)
   const [showAddDepartment, setShowAddDepartment] = useState(false)
   const [showAddCategory, setShowAddCategory] = useState(false)
+  const [users, setUsers] = useState([])
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState(null)
+  const [searchTerm, setSearchTerm] = useState('')
+  const [roleFilter, setRoleFilter] = useState('')
+  const [statusFilter, setStatusFilter] = useState('')
+  const [departmentFilter, setDepartmentFilter] = useState('')
+  const [currentPage, setCurrentPage] = useState(1)
+  const [totalPages, setTotalPages] = useState(1)
+  const [totalUsers, setTotalUsers] = useState(0)
 
   const tabs = ['Users', 'Roles & Permissions', 'Departments', 'Memo Categories', 'Activity Logs', 'System Settings']
 
-  const users = [
-    {
-      id: 1,
-      name: 'Dr. Sarah Johnson',
-      email: 'sarah.johnson@university.edu',
-      role: 'Department Head',
-      department: 'Computer Science',
-      status: 'active',
-      lastLogin: 'Dec 26, 10:30 AM',
-      memos: 45,
-      approvalRate: 94,
-      avatar: 'D'
-    },
-    {
-      id: 2,
-      name: 'Prof. Michael Brown',
-      email: 'michael.brown@university.edu',
-      role: 'Faculty',
-      department: 'Computer Science',
-      status: 'active',
-      lastLogin: 'Dec 25, 05:45 PM',
-      memos: 28,
-      approvalRate: 88,
-      avatar: 'M'
-    },
-    {
-      id: 3,
-      name: 'Sarah Wilson',
-      email: 'sarah.wilson@university.edu',
-      role: 'Administrator',
-      department: 'Administration',
-      status: 'active',
-      lastLogin: 'Dec 26, 09:15 AM',
-      memos: 67,
-      approvalRate: 96,
-      avatar: 'S'
-    },
-    {
-      id: 4,
-      name: 'James Davis',
-      email: 'james.davis@university.edu',
-      role: 'Staff',
-      department: 'Finance',
-      status: 'inactive',
-      lastLogin: 'Dec 20, 03:22 PM',
-      memos: 12,
-      approvalRate: 0,
-      avatar: 'J'
-    },
-    {
-      id: 5,
-      name: 'Emily Chen',
-      email: 'emily.chen@university.edu',
-      role: 'Dean',
-      department: 'Academic Affairs',
-      status: 'active',
-      lastLogin: 'Dec 26, 12:20 PM',
-      memos: 89,
-      approvalRate: 0,
-      avatar: 'E'
+  const { token } = useAuth()
+  const { showNotification } = useNotification()
+
+  const fetchUsers = async (page = 1) => {
+    setLoading(true)
+    setError(null)
+    try {
+      const filters = {
+        search: searchTerm,
+        role: roleFilter,
+        status: statusFilter,
+        department: departmentFilter,
+        page: page
+      }
+      
+      const response = await userAPI.getUsers(filters, token)
+      if (response.status && response.data) {
+        const transformedUsers = response.data.data.map(user => ({
+          id: user.id,
+          first_name: user.first_name,
+          last_name: user.last_name,
+          name: `${user.first_name} ${user.middle_name ? user.middle_name + ' ' : ''}${user.last_name}`,
+          email: user.email,
+          role_id: user.role_id,
+          department_id: user.department_id,
+          role: user.role,
+          department: user.department,
+          status: user.is_active ? 'active' : 'inactive',
+          lastLogin: user.last_login_at ? new Date(user.last_login_at).toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+          }) : 'Never',
+          created_at: user.created_at,
+          memos: user.approval_stats?.total_memos_sent || 0,
+          approvalRate: user.approval_stats?.approval_rate || 0,
+          avatar: user.avatar || user.first_name.charAt(0).toUpperCase()
+        }))
+        setUsers(transformedUsers)
+        setCurrentPage(response.data.current_page)
+        setTotalPages(response.data.last_page)
+        setTotalUsers(response.data.total)
+      }
+    } catch (error) {
+      console.error('Error fetching users:', error)
+      setError('Failed to fetch users. Please try again.')
+      showNotification('Failed to fetch users', 'error')
+    } finally {
+      setLoading(false)
     }
-  ]
+  }
+
+  useEffect(() => {
+    if (!token) return // Don't fetch if no token available
+    
+    const timeoutId = setTimeout(() => {
+      fetchUsers(1) // Reset to page 1 when filters change
+      setCurrentPage(1)
+    }, 300) // Debounce search by 300ms
+    
+    return () => clearTimeout(timeoutId)
+  }, [searchTerm, roleFilter, statusFilter, departmentFilter, token])
 
   const getRoleColor = (role) => {
     const colors = {
@@ -93,26 +110,14 @@ function Administrations() {
       'Faculty': 'bg-orange-100 text-orange-800',
       'Administrator': 'bg-purple-100 text-purple-800',
       'Staff': 'bg-gray-100 text-gray-800',
-      'Dean': 'bg-blue-100 text-blue-800'
+      'Dean': 'bg-blue-100 text-blue-800',
+      'Academic Dean': 'bg-indigo-100 text-indigo-800',
+      'Provost': 'bg-red-100 text-red-800'
     }
     return colors[role] || 'bg-gray-100 text-gray-800'
   }
 
-  const handleSelectAll = (checked) => {
-    if (checked) {
-      setSelectedUsers(users.map(user => user.id))
-    } else {
-      setSelectedUsers([])
-    }
-  }
 
-  const handleUserSelect = (userId, checked) => {
-    if (checked) {
-      setSelectedUsers([...selectedUsers, userId])
-    } else {
-      setSelectedUsers(selectedUsers.filter(id => id !== userId))
-    }
-  }
 
   return (
     <div className="p-4 sm:p-6 space-y-6">
@@ -153,7 +158,7 @@ function Administrations() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600">Total Users</p>
-              <p className="text-2xl font-bold text-gray-900">5</p>
+              <p className="text-2xl font-bold text-gray-900">{totalUsers}</p>
             </div>
             <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
               <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -166,7 +171,7 @@ function Administrations() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600">Active Users</p>
-              <p className="text-2xl font-bold text-gray-900">4</p>
+              <p className="text-2xl font-bold text-gray-900">{users.filter(u => u.status === 'active').length}</p>
             </div>
             <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
               <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -233,29 +238,44 @@ function Administrations() {
                 <input
                   type="text"
                   placeholder="Search users..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
                   className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
               </div>
               <div className="flex gap-2">
-                <select className="px-3 py-2 border border-gray-300 rounded-lg text-xs">
-                  <option>All Departments</option>
-                  <option>Computer Science</option>
-                  <option>Administration</option>
-                  <option>Finance</option>
-                  <option>Academic Affairs</option>
+                <select 
+                  value={departmentFilter}
+                  onChange={(e) => setDepartmentFilter(e.target.value)}
+                  className="px-3 py-2 border border-gray-300 rounded-lg text-xs"
+                >
+                  <option value="">All Departments</option>
+                  <option value="Computer Science">Computer Science</option>
+                  <option value="Administration">Administration</option>
+                  <option value="Finance">Finance</option>
+                  <option value="Academic Affairs">Academic Affairs</option>
                 </select>
-                <select className="px-3 py-2 border border-gray-300 rounded-lg text-xs">
-                  <option>All Roles</option>
-                  <option>Department Head</option>
-                  <option>Faculty</option>
-                  <option>Administrator</option>
-                  <option>Staff</option>
-                  <option>Dean</option>
+                <select 
+                  value={roleFilter}
+                  onChange={(e) => setRoleFilter(e.target.value)}
+                  className="px-3 py-2 border border-gray-300 rounded-lg text-xs"
+                >
+                  <option value="">All Roles</option>
+                  <option value="dean">Dean</option>
+                  <option value="academic_dean">Academic Dean</option>
+                  <option value="department_head">Department Head</option>
+                  <option value="provost">Provost</option>
+                  <option value="faculty">Faculty</option>
+                  <option value="staff">Staff</option>
                 </select>
-                <select className="px-3 py-2 border border-gray-300 rounded-lg text-xs">
-                  <option>All Statuses</option>
-                  <option>Active</option>
-                  <option>Inactive</option>
+                <select 
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                  className="px-3 py-2 border border-gray-300 rounded-lg text-xs"
+                >
+                  <option value="">All Statuses</option>
+                  <option value="1">Active</option>
+                  <option value="0">Inactive</option>
                 </select>
               </div>
             </div>
@@ -264,45 +284,49 @@ function Administrations() {
             <div className="mb-4">
               <h3 className="text-sm font-semibold text-gray-900">User Directory</h3>
               <p className="text-xs text-gray-600">Manage user accounts, roles, and permissions</p>
-              <div className="mt-2 flex items-center justify-between">
-                <label className="flex items-center text-xs">
-                  <input
-                    type="checkbox"
-                    checked={selectedUsers.length === users.length}
-                    onChange={(e) => handleSelectAll(e.target.checked)}
-                    className="mr-2"
-                  />
-                  Select all
-                </label>
-              </div>
             </div>
 
             {/* Users Table */}
             <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-gray-200 text-left">
-                    <th className="pb-3 text-xs font-medium text-gray-900">User</th>
-                    <th className="pb-3 text-xs font-medium text-gray-900">Role</th>
-                    <th className="pb-3 text-xs font-medium text-gray-900">Department</th>
-                    <th className="pb-3 text-xs font-medium text-gray-900">Status</th>
-                    <th className="pb-3 text-xs font-medium text-gray-900">Last Login</th>
-                    <th className="pb-3 text-xs font-medium text-gray-900">Memos</th>
-                    <th className="pb-3 text-xs font-medium text-gray-900">Approval Rate</th>
-                    <th className="pb-3 text-xs font-medium text-gray-900"></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {users.map((user) => (
+              {loading ? (
+                <div className="flex justify-center items-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+                </div>
+              ) : error ? (
+                <div className="flex justify-center items-center py-8">
+                  <div className="text-center">
+                    <p className="text-red-600 mb-2">{error}</p>
+                    <button 
+                      onClick={fetchUsers}
+                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                    >
+                      Retry
+                    </button>
+                  </div>
+                </div>
+              ) : users.length === 0 ? (
+                <div className="flex justify-center items-center py-8">
+                  <p className="text-gray-500">No users found</p>
+                </div>
+              ) : (
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-gray-200 text-left">
+                      <th className="pb-3 text-xs font-medium text-gray-900">User</th>
+                      <th className="pb-3 text-xs font-medium text-gray-900">Role</th>
+                      <th className="pb-3 text-xs font-medium text-gray-900">Department</th>
+                      <th className="pb-3 text-xs font-medium text-gray-900">Status</th>
+                      <th className="pb-3 text-xs font-medium text-gray-900">Last Login</th>
+                      <th className="pb-3 text-xs font-medium text-gray-900">Memos</th>
+                      <th className="pb-3 text-xs font-medium text-gray-900">Approval Rate</th>
+                      <th className="pb-3 text-xs font-medium text-gray-900"></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {users.map((user) => (
                     <tr key={user.id} className="border-b border-gray-100">
                       <td className="py-4">
                         <div className="flex items-center gap-3">
-                          <input
-                            type="checkbox"
-                            checked={selectedUsers.includes(user.id)}
-                            onChange={(e) => handleUserSelect(user.id, e.target.checked)}
-                            className="mr-2"
-                          />
                           <div className="w-6 h-6 bg-gray-200 rounded-full flex items-center justify-center text-xs font-medium">
                             {user.avatar}
                           </div>
@@ -313,11 +337,11 @@ function Administrations() {
                         </div>
                       </td>
                       <td className="py-4">
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${getRoleColor(user.role)}`}>
-                          {user.role}
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${getRoleColor(user.role?.name || 'No Role')}`}>
+                          {user.role?.name || 'No Role'}
                         </span>
                       </td>
-                      <td className="py-4 text-xs text-gray-900">{user.department}</td>
+                      <td className="py-4 text-xs text-gray-900">{user.department?.name || 'Not Assigned'}</td>
                       <td className="py-4">
                         <span className={`px-2 py-1 rounded-full text-xs font-medium ${
                           user.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
@@ -352,7 +376,14 @@ function Administrations() {
                           </button>
                           {showUserMenu === user.id && (
                             <div className="absolute right-0 top-8 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-10 py-1">
-                              <button className="flex items-center w-full text-left px-3 py-2 text-xs hover:bg-gray-50">
+                              <button 
+                                onClick={() => {
+                                  setSelectedUser(user)
+                                  setShowEditUser(true)
+                                  setShowUserMenu(null)
+                                }}
+                                className="flex items-center w-full text-left px-3 py-2 text-xs hover:bg-gray-50"
+                              >
                                 <FiEdit className="w-3 h-3 mr-2" />
                                 Edit User
                               </button>
@@ -385,9 +416,38 @@ function Administrations() {
                         </div>
                       </td>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+              
+              {/* Pagination */}
+              {totalPages > 1 && (
+                <div className="flex items-center justify-between mt-6">
+                  <div className="text-sm text-gray-700">
+                    Showing {((currentPage - 1) * 10) + 1} to {Math.min(currentPage * 10, totalUsers)} of {totalUsers} users
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => fetchUsers(currentPage - 1)}
+                      disabled={currentPage === 1}
+                      className="px-3 py-1 border border-gray-300 rounded text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+                    >
+                      Previous
+                    </button>
+                    <span className="text-sm text-gray-700">
+                      Page {currentPage} of {totalPages}
+                    </span>
+                    <button
+                      onClick={() => fetchUsers(currentPage + 1)}
+                      disabled={currentPage === totalPages}
+                      className="px-3 py-1 border border-gray-300 rounded text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+                    >
+                      Next
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -416,9 +476,19 @@ function Administrations() {
       </div>
 
       {/* Popups */}
-      {showAddUser && <AddUser onClose={() => setShowAddUser(false)} />}
+      {showAddUser && <AddUser onClose={() => setShowAddUser(false)} onSuccess={() => fetchUsers(1)} />}
+      {showEditUser && selectedUser && (
+        <EditUser 
+          user={selectedUser} 
+          onClose={() => {
+            setShowEditUser(false)
+            setSelectedUser(null)
+          }}
+          onUserUpdated={() => fetchUsers(currentPage)}
+        />
+      )}
       {showAddRole && <AddRole onClose={() => setShowAddRole(false)} />}
-      {showAddDepartment && <AddDepartment onClose={() => setShowAddDepartment(false)} />}
+      {showAddDepartment && <AddDepartment onClose={() => setShowAddDepartment(false)} onSuccess={fetchUsers} />}
       {showAddCategory && <AddCategory onClose={() => setShowAddCategory(false)} />}
       {showViewActivity && selectedUser && (
         <ViewActivity 

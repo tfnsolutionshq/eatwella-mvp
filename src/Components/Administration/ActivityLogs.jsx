@@ -1,67 +1,83 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
+import axios from 'axios'
+import { useAuth } from '../../context/AuthContext'
+import { useNotification } from '../../context/NotificationContext'
 import { FiFilter, FiDownload } from 'react-icons/fi'
 
 function ActivityLogs() {
+  const { token } = useAuth()
+  const { showNotification } = useNotification()
   const [filterType, setFilterType] = useState('All')
   const [filterUser, setFilterUser] = useState('All Users')
+  const [activities, setActivities] = useState([])
+  const [loading, setLoading] = useState(false)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [totalPages, setTotalPages] = useState(1)
+  const [totalLogs, setTotalLogs] = useState(0)
+  const [perPage] = useState(20)
 
-  const activities = [
-    {
-      id: 1,
-      user: 'Dr. Sarah Johnson',
-      action: 'Created memo',
-      details: 'Budget Request for Q1 2025',
-      type: 'memo',
-      timestamp: 'Dec 26, 11:30 AM',
-      avatar: 'D'
-    },
-    {
-      id: 2,
-      user: 'Sarah Wilson',
-      action: 'User login',
-      details: 'Successful login from 192.168.1.100',
-      type: 'auth',
-      timestamp: 'Dec 26, 09:15 AM',
-      avatar: 'S'
-    },
-    {
-      id: 3,
-      user: 'Emily Chen',
-      action: 'Approved memo',
-      details: 'Policy Update - Academic Calendar',
-      type: 'approval',
-      timestamp: 'Dec 25, 12:20 PM',
-      avatar: 'E'
-    },
-    {
-      id: 4,
-      user: 'System',
-      action: 'Backup completed',
-      details: 'Daily database backup successful',
-      type: 'system',
-      timestamp: 'Dec 26, 03:00 AM',
-      avatar: 'SYS'
-    }
-  ]
+  useEffect(() => {
+    fetchActivityLogs()
+  }, [currentPage])
 
-  const getTypeColor = (type) => {
-    const colors = {
-      'memo': 'bg-blue-100 text-blue-800',
-      'auth': 'bg-green-100 text-green-800',
-      'approval': 'bg-orange-100 text-orange-800',
-      'system': 'bg-purple-100 text-purple-800'
+  const fetchActivityLogs = async () => {
+    setLoading(true)
+    try {
+      const response = await axios.get(`/settings-api/logs?per_page=${perPage}&page=${currentPage}`, {
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      })
+
+      if (response.data.success) {
+        setActivities(response.data.data.data)
+        setCurrentPage(response.data.data.current_page)
+        setTotalPages(response.data.data.last_page)
+        setTotalLogs(response.data.data.total)
+      }
+    } catch (error) {
+      console.error('Error fetching activity logs:', error)
+      showNotification('Failed to fetch activity logs', 'error')
+    } finally {
+      setLoading(false)
     }
-    return colors[type] || 'bg-gray-100 text-gray-800'
   }
 
-  const getTypeLabel = (type) => {
-    const labels = {
-      'memo': 'memo',
-      'auth': 'auth',
-      'approval': 'approval',
-      'system': 'system'
+  const formatDate = (dateString) => {
+    if (!dateString) return 'N/A'
+    const date = new Date(dateString)
+    if (isNaN(date.getTime())) return 'N/A'
+    return date.toLocaleString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true
+    })
+  }
+
+  const getUserName = (activity) => {
+    return activity.properties?.name || 'Unknown User'
+  }
+
+  const getUserAvatar = (activity) => {
+    const name = getUserName(activity)
+    if (name === 'Unknown User') return 'U'
+    return name.charAt(0).toUpperCase()
+  }
+
+  const getTypeColor = (action) => {
+    const colors = {
+      'login': 'bg-green-100 text-green-800',
+      'logout': 'bg-red-100 text-red-800',
+      'create': 'bg-blue-100 text-blue-800',
+      'update': 'bg-orange-100 text-orange-800',
+      'delete': 'bg-red-100 text-red-800',
+      'approve': 'bg-purple-100 text-purple-800'
     }
-    return labels[type] || type
+    return colors[action] || 'bg-gray-100 text-gray-800'
   }
 
   return (
@@ -112,37 +128,75 @@ function ActivityLogs() {
 
       {/* Activity List */}
       <div className="bg-white rounded-lg border">
-        <div className="divide-y divide-gray-200">
-          {activities.map((activity) => (
-            <div key={activity.id} className="p-4 hover:bg-gray-50">
-              <div className="flex items-start gap-3">
-                <div className="w-6 h-6 bg-gray-200 rounded-full flex items-center justify-center text-xs font-medium flex-shrink-0">
-                  {activity.avatar === 'SYS' ? (
-                    <div className="w-6 h-6 bg-gray-900 text-white rounded-full flex items-center justify-center text-xs font-medium">
-                      SYS
-                    </div>
-                  ) : (
-                    activity.avatar
-                  )}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="text-xs font-medium text-gray-900">{activity.user}</span>
-                    <span className="text-xs text-gray-600">{activity.action}</span>
-                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${getTypeColor(activity.type)}`}>
-                      {getTypeLabel(activity.type)}
-                    </span>
+        {loading ? (
+          <div className="flex justify-center py-8">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+          </div>
+        ) : activities.length === 0 ? (
+          <div className="text-center py-8">
+            <p className="text-gray-500">No activity logs found</p>
+          </div>
+        ) : (
+          <div className="divide-y divide-gray-200">
+            {activities.map((activity) => (
+              <div key={activity.id} className="p-4 hover:bg-gray-50">
+                <div className="flex items-start gap-3">
+                  <div className="w-6 h-6 bg-gray-200 rounded-full flex items-center justify-center text-xs font-medium flex-shrink-0">
+                    {activity.service_source === 'system' ? (
+                      <div className="w-6 h-6 bg-gray-900 text-white rounded-full flex items-center justify-center text-xs font-medium">
+                        SYS
+                      </div>
+                    ) : (
+                      getUserAvatar(activity)
+                    )}
                   </div>
-                  <p className="text-xs text-gray-600 mb-1">{activity.details}</p>
-                </div>
-                <div className="text-xs text-gray-500 flex-shrink-0">
-                  {activity.timestamp}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-xs font-medium text-gray-900">{getUserName(activity)}</span>
+                      <span className="text-xs text-gray-600">{activity.action}</span>
+                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${getTypeColor(activity.action)}`}>
+                        {activity.service_source}
+                      </span>
+                    </div>
+                    <p className="text-xs text-gray-600 mb-1">{activity.description}</p>
+                  </div>
+                  <div className="text-xs text-gray-500 flex-shrink-0">
+                    {formatDate(activity.created_at)}
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between mt-6">
+          <div className="text-sm text-gray-700">
+            Showing {((currentPage - 1) * perPage) + 1} to {Math.min(currentPage * perPage, totalLogs)} of {totalLogs} logs
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setCurrentPage(currentPage - 1)}
+              disabled={currentPage === 1}
+              className="px-3 py-1 border border-gray-300 rounded text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+            >
+              Previous
+            </button>
+            <span className="text-sm text-gray-700">
+              Page {currentPage} of {totalPages}
+            </span>
+            <button
+              onClick={() => setCurrentPage(currentPage + 1)}
+              disabled={currentPage === totalPages}
+              className="px-3 py-1 border border-gray-300 rounded text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+            >
+              Next
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

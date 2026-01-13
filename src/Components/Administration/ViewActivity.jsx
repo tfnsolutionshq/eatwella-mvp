@@ -1,8 +1,61 @@
-import React from 'react'
+import React, { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
-import { FiX, FiFileText } from 'react-icons/fi'
+import axios from 'axios'
+import { useAuth } from '../../context/AuthContext'
+import { useNotification } from '../../context/NotificationContext'
+import { FiX, FiFileText, FiLogIn, FiSettings, FiActivity } from 'react-icons/fi'
 
 function ViewActivity({ user, onClose }) {
+  const { token } = useAuth()
+  const { showNotification } = useNotification()
+  const [activities, setActivities] = useState([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    fetchUserActivity()
+  }, [])
+
+  const fetchUserActivity = async () => {
+    try {
+      const response = await axios.get(`/settings-api/logs/user/${user.id}`, {
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      })
+      
+      if (response.data.success) {
+        setActivities(response.data.data)
+      }
+    } catch (error) {
+      console.error('Error fetching user activity:', error)
+      showNotification('Failed to load user activity', 'error')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const getActivityIcon = (action) => {
+    switch (action) {
+      case 'login': return FiLogIn
+      case 'memo': return FiFileText
+      case 'settings': return FiSettings
+      default: return FiActivity
+    }
+  }
+
+  const formatDate = (dateString) => {
+    const date = new Date(dateString)
+    return date.toLocaleString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true
+    })
+  }
+
   return createPortal(
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999]">
       <div className="bg-white rounded-lg p-4 w-full max-w-md mx-4">
@@ -44,7 +97,7 @@ function ViewActivity({ user, onClose }) {
             <p className="text-xs text-gray-600">Approval Rate</p>
           </div>
           <div className="text-center p-2 bg-gray-50 rounded-lg">
-            <p className="text-lg font-bold text-gray-900">3/15/2023</p>
+            <p className="text-sm font-bold text-gray-900">{formatDate(user.createdAt)}</p>
             <p className="text-xs text-gray-600">Member Since</p>
           </div>
         </div>
@@ -52,17 +105,32 @@ function ViewActivity({ user, onClose }) {
         {/* Recent Activity */}
         <div className="mb-4">
           <h4 className="text-xs font-medium text-gray-900 mb-2">Recent Activity</h4>
-          <div className="space-y-2">
-            <div className="flex items-start gap-2 p-2 bg-blue-50 rounded-lg">
-              <div className="w-6 h-6 bg-blue-100 rounded-lg flex items-center justify-center">
-                <FiFileText className="w-3 h-3 text-blue-600" />
+          <div className="max-h-48 overflow-y-auto space-y-2">
+            {loading ? (
+              <div className="flex justify-center py-4">
+                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-gray-900"></div>
               </div>
-              <div className="flex-1">
-                <p className="text-xs font-medium text-gray-900">Created memo</p>
-                <p className="text-xs text-gray-600">Budget Request for Q1 2025</p>
+            ) : activities.length === 0 ? (
+              <div className="text-center py-4">
+                <p className="text-xs text-gray-500">No recent activity found</p>
               </div>
-              <span className="text-xs text-gray-500">Dec 26, 11:30 AM</span>
-            </div>
+            ) : (
+              activities.map((activity) => {
+                const Icon = getActivityIcon(activity.action)
+                return (
+                  <div key={activity.id} className="flex items-start gap-2 p-2 bg-gray-50 rounded-lg">
+                    <div className="w-6 h-6 bg-blue-100 rounded-lg flex items-center justify-center">
+                      <Icon className="w-3 h-3 text-blue-600" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-xs font-medium text-gray-900">{activity.service_source}</p>
+                      <p className="text-xs text-gray-600">{activity.description}</p>
+                    </div>
+                    <span className="text-xs text-gray-500">{formatDate(activity.created_at)}</span>
+                  </div>
+                )
+              })
+            )}
           </div>
         </div>
 

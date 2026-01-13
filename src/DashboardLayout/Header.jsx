@@ -2,14 +2,44 @@
 
 import { FiMenu, FiSearch, FiBell, FiSettings, FiUser, FiChevronDown, FiSun, FiHelpCircle } from "react-icons/fi"
 import { useState } from "react"
+import axios from "axios"
+import { useAuth } from "../context/AuthContext"
+import { useNotification } from "../context/NotificationContext"
+import { useNavigate } from "react-router-dom"
 import Notifications from "../Components/Notifications/Notifications"
 
 export default function Header({ onMenuClick }) {
+  const { logout, user } = useAuth()
+  const { showNotification } = useNotification()
+  const navigate = useNavigate()
   const [showUserMenu, setShowUserMenu] = useState(false)
   const [showNotifications, setShowNotifications] = useState(false)
 
+  const formatRole = (role) => {
+    const roleMap = {
+      'admin': 'Admin',
+      'department_head': 'Head of Department',
+      'dean': 'Dean',
+      'academic_dean': 'Academic Dean',
+      'provost': 'Provost'
+    }
+    return roleMap[role] || 'User'
+  }
+
+  const handleLogout = async () => {
+    try {
+      await axios.post(`${import.meta.env.VITE_API_BASE_URL}/logout`)
+    } catch (error) {
+      console.log('Logout API error:', error)
+    } finally {
+      logout()
+      showNotification('Logged out successfully', 'success')
+      navigate('/login')
+    }
+  }
+
   return (
-    <header className="bg-white border-b border-gray-200 px-3 py-2.5 flex items-center justify-between gap-2 h-16">
+    <header className="bg-white border-b border-gray-200 px-3 py-2.5 flex items-center justify-between gap-2 h-18">
       {/* Left Section */}
       <div className="flex items-center gap-2 flex-1">
         <button
@@ -21,7 +51,7 @@ export default function Header({ onMenuClick }) {
         </button>
 
         {/* Search Bar */}
-        <div className="hidden sm:flex items-center gap-2 bg-gray-50 rounded-lg px-2 py-1.5 flex-1 max-w-md">
+        <div className="hidden sm:flex items-center gap-2 bg-gray-50 rounded-lg px-2 py-2.5 flex-1 max-w-md">
           <FiSearch className="w-3 h-3 text-gray-400" />
           <input
             type="text"
@@ -44,9 +74,9 @@ export default function Header({ onMenuClick }) {
       {/* Right Section */}
       <div className="flex items-center gap-1 sm:gap-2 flex-1 justify-end">
         {/* Admin Badge */}
-        <span className="hidden md:inline text-xs border border-gray-300 px-2 py-1 rounded-full font-medium text-gray-700">State University</span>
+        {/* <span className="hidden md:inline text-xs border border-gray-300 px-2 py-1 rounded-full font-medium text-gray-700">State University</span> */}
         <span className="hidden sm:inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-          Admin
+          {formatRole(user?.role)}
         </span>
 
         {/* Theme Toggle */}
@@ -91,8 +121,8 @@ export default function Header({ onMenuClick }) {
               <span className="text-xs font-semibold text-white">DSJ</span>
             </div>
             <div className="hidden sm:block text-left">
-              <div className="text-sm font-medium text-gray-700">Dr. Sarah Johnson</div>
-              <div className="text-xs text-gray-500">Admin</div>
+              <div className="text-sm font-medium text-gray-700">{user?.first_name} {user?.last_name}</div>
+              <div className="text-xs text-gray-500">{formatRole(user?.role)}</div>
             </div>
             <FiChevronDown className="w-3 h-3 sm:w-4 sm:h-4 text-gray-600 hidden sm:block" />
           </button>
@@ -100,10 +130,20 @@ export default function Header({ onMenuClick }) {
           {/* User Dropdown */}
           {showUserMenu && (
             <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50 animate-in slide-in-from-top-2 fade-in duration-200">
-              <button className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors">Profile</button>
+              <button 
+                onClick={() => { setShowUserMenu(false); navigate('/profile') }}
+                className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+              >
+                Profile
+              </button>
               <button className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors">Settings</button>
               <hr className="my-2" />
-              <button className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors">Sign out</button>
+              <button 
+                onClick={handleLogout}
+                className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
+              >
+                Sign out
+              </button>
             </div>
           )}
         </div>

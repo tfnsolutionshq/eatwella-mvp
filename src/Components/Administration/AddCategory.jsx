@@ -1,20 +1,48 @@
 import React, { useState } from 'react'
 import { createPortal } from 'react-dom'
+import axios from 'axios'
+import { useAuth } from '../../context/AuthContext'
+import { useNotification } from '../../context/NotificationContext'
 import { FiX } from 'react-icons/fi'
 
-function AddCategory({ onClose }) {
+function AddCategory({ onClose, onSuccess }) {
+  const { token } = useAuth()
+  const { showNotification } = useNotification()
+  const [loading, setLoading] = useState(false)
   const [formData, setFormData] = useState({
-    categoryLabel: '',
-    internalValue: '',
+    name: '',
+    internal_value: '',
     description: '',
-    colorTheme: 'Blue',
-    status: 'Active'
+    is_active: true
   })
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
-    console.log('Creating category:', formData)
-    onClose()
+    setLoading(true)
+
+    try {
+      console.log('Sending data:', formData)
+      const response = await axios.post('/memo-api/categories', formData, {
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      })
+
+      console.log('Response:', response.data)
+      if (response.data.status || response.status === 200 || response.status === 201) {
+        showNotification('Category created successfully', 'success')
+        onSuccess && onSuccess()
+        onClose()
+      }
+    } catch (error) {
+      console.error('Error creating category:', error)
+      console.error('Error response:', error.response?.data)
+      const errorMessage = error.response?.data?.message || 'Failed to create category'
+      showNotification(errorMessage, 'error')
+    } finally {
+      setLoading(false)
+    }
   }
 
   return createPortal(
@@ -34,13 +62,13 @@ function AddCategory({ onClose }) {
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-medium text-gray-700 mb-1">
-                Category Label <span className="text-red-500">*</span>
+                Category Name <span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
-                placeholder="e.g., Internal Memo"
-                value={formData.categoryLabel}
-                onChange={(e) => setFormData({...formData, categoryLabel: e.target.value})}
+                placeholder="e.g., Confidential"
+                value={formData.name}
+                onChange={(e) => setFormData({...formData, name: e.target.value})}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-gray-50"
                 required
               />
@@ -51,9 +79,9 @@ function AddCategory({ onClose }) {
               </label>
               <input
                 type="text"
-                placeholder="e.g., internal"
-                value={formData.internalValue}
-                onChange={(e) => setFormData({...formData, internalValue: e.target.value})}
+                placeholder="e.g., Internal"
+                value={formData.internal_value}
+                onChange={(e) => setFormData({...formData, internal_value: e.target.value})}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-gray-50"
                 required
               />
@@ -63,7 +91,7 @@ function AddCategory({ onClose }) {
           <div>
             <label className="block text-xs font-medium text-gray-700 mb-1">Description</label>
             <textarea
-              placeholder="Describe what this category is used for..."
+              placeholder="Memos related to academic activities and announcements"
               value={formData.description}
               onChange={(e) => setFormData({...formData, description: e.target.value})}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-gray-50"
@@ -71,33 +99,16 @@ function AddCategory({ onClose }) {
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Color Theme</label>
-              <select
-                value={formData.colorTheme}
-                onChange={(e) => setFormData({...formData, colorTheme: e.target.value})}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-gray-50"
-              >
-                <option value="Blue">Blue</option>
-                <option value="Green">Green</option>
-                <option value="Purple">Purple</option>
-                <option value="Orange">Orange</option>
-                <option value="Red">Red</option>
-                <option value="Yellow">Yellow</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Status</label>
-              <select
-                value={formData.status}
-                onChange={(e) => setFormData({...formData, status: e.target.value})}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-gray-50"
-              >
-                <option value="Active">Active</option>
-                <option value="Inactive">Inactive</option>
-              </select>
-            </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1">Status</label>
+            <select
+              value={formData.is_active ? 'Active' : 'Inactive'}
+              onChange={(e) => setFormData({...formData, is_active: e.target.value === 'Active'})}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-gray-50"
+            >
+              <option value="Active">Active</option>
+              <option value="Inactive">Inactive</option>
+            </select>
           </div>
 
           <div className="flex justify-end gap-2 pt-3">
@@ -110,9 +121,10 @@ function AddCategory({ onClose }) {
             </button>
             <button
               type="submit"
-              className="px-3 py-1 text-xs text-white bg-black rounded-lg hover:bg-gray-800"
+              disabled={loading}
+              className="px-3 py-1 text-xs text-white bg-black rounded-lg hover:bg-gray-800 disabled:opacity-50"
             >
-              Create Category
+              {loading ? 'Creating...' : 'Create Category'}
             </button>
           </div>
         </form>

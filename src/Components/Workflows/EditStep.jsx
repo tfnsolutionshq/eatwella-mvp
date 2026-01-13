@@ -1,12 +1,33 @@
 import React, { useState, useEffect } from 'react'
 import { FiX } from 'react-icons/fi'
+import { useAuth } from '../../context/AuthContext'
+import { roleAPI } from '../../services/api'
 
 function EditStep({ isOpen, onClose, step, onUpdateStep }) {
+  const { token } = useAuth()
+  const [roles, setRoles] = useState([])
   const [stepName, setStepName] = useState('')
   const [description, setDescription] = useState('')
   const [assignedRole, setAssignedRole] = useState('')
   const [timeLimit, setTimeLimit] = useState('')
   const [stepType, setStepType] = useState('')
+
+  useEffect(() => {
+    const fetchRoles = async () => {
+      try {
+        const response = await roleAPI.getRoles(token)
+        if (response.status && response.data) {
+          setRoles(response.data.data)
+        }
+      } catch (error) {
+        console.error('Error fetching roles:', error)
+      }
+    }
+    
+    if (isOpen) {
+      fetchRoles()
+    }
+  }, [isOpen, token])
 
   useEffect(() => {
     if (step) {
@@ -97,10 +118,9 @@ function EditStep({ isOpen, onClose, step, onUpdateStep }) {
                 className="w-full px-3 py-2 bg-gray-100 border border-gray-300 rounded-md focus:ring-2 focus:ring-gray-900 focus:border-transparent text-sm"
               >
                 <option value="">Select role</option>
-                <option value="department-head">Department Head</option>
-                <option value="finance-director">Finance Director</option>
-                <option value="dean">Dean</option>
-                <option value="hr-manager">HR Manager</option>
+                {roles.map((role) => (
+                  <option key={role.id} value={role.id}>{role.name}</option>
+                ))}
               </select>
               <p className="text-xs text-gray-500 mt-1">Various</p>
             </div>

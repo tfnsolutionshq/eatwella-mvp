@@ -9,6 +9,7 @@ import { FiMail, FiLock, FiEye, FiEyeOff, FiAlertCircle } from "react-icons/fi"
 import { FcGoogle } from "react-icons/fc"
 import { SiApple } from "react-icons/si"
 import authImage from "../../assets/Authentication/Auth.jpg"
+import logo from "../../assets/SMTLogowhite.png"
 
 export default function LoginPage() {
   const navigate = useNavigate()
@@ -32,21 +33,30 @@ export default function LoginPage() {
     setLoading(true)
     
     try {
-      const response = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/login`, {
+      // Hardcoded identity API base URL (production)
+      const API_BASE_URL = 'https://identity.smt.tfnsolutions.us/api/v1'
+
+      console.log('Login - Making API call to:', `${API_BASE_URL}/login`)
+      const response = await axios.post(`${API_BASE_URL}/login`, {
         email,
         password
       }, {
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
         }
       })
 
+      console.log('Login - API response:', response.data)
+
       if (response.data.status) {
+        console.log('Login - Calling login function with token:', response.data.data.token)
         login(response.data.data.token, response.data.data.user)
         showNotification(response.data.message, 'success')
         navigate('/dashboard')
       }
     } catch (error) {
+      console.error('Login - API error:', error)
       const message = error.response?.data?.message || 'Login failed. Please try again.'
       showNotification(message, 'error')
     } finally {
@@ -67,10 +77,7 @@ export default function LoginPage() {
       <div className="relative z-10 w-full max-w-sm">
         {/* Logo and Title */}
         <div className="text-center mb-6">
-          <div className="inline-flex items-center justify-center w-10 h-10 bg-white rounded-lg mb-3">
-            <FiMail className="w-5 h-5 text-blue-600" />
-          </div>
-          <h1 className="text-xl font-bold text-white mb-1">SmartMailTrack</h1>
+          <img src={logo} alt="SmartMailTrack" className="h-14 mx-auto mb-3" />
           <p className="text-xs text-gray-300">Enterprise Memo Management Platform</p>
         </div>
 

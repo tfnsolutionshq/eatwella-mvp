@@ -1,10 +1,14 @@
 import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import axios from 'axios'
+import { useNotification } from '../../context/NotificationContext'
 import { FiMail, FiArrowLeft, FiCheck } from 'react-icons/fi'
 import authImage from "../../assets/Authentication/Auth.jpg"
+import logo from "../../assets/SMTLogowhite.png"
 
 function ForgotPassword() {
   const navigate = useNavigate()
+  const { showNotification } = useNotification()
   const [email, setEmail] = useState('')
   const [emailSent, setEmailSent] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -16,11 +20,22 @@ function ForgotPassword() {
     
     setLoading(true)
     
-    // Simulate API call
-    setTimeout(() => {
+    try {
+      const formData = new FormData()
+      formData.append('email', email)
+      
+      const response = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/reset-password-request`, formData)
+      
+      if (response.data.status) {
+        setEmailSent(true)
+        showNotification(response.data.message, 'success')
+      }
+    } catch (error) {
+      const message = error.response?.data?.message || 'Failed to send reset email. Please try again.'
+      showNotification(message, 'error')
+    } finally {
       setLoading(false)
-      setEmailSent(true)
-    }, 1500)
+    }
   }
 
   const handleBackToLogin = () => {
@@ -110,10 +125,7 @@ function ForgotPassword() {
       <div className="relative z-10 w-full max-w-sm">
         {/* Logo and Title */}
         <div className="text-center mb-6">
-          <div className="inline-flex items-center justify-center w-10 h-10 bg-white rounded-lg mb-3">
-            <FiMail className="w-5 h-5 text-blue-600" />
-          </div>
-          <h1 className="text-xl font-bold text-white mb-1">SmartMailTrack</h1>
+          <img src={logo} alt="SmartMailTrack" className="h-14 mx-auto mb-3" />
           <p className="text-xs text-gray-300">Enterprise Memo Management Platform</p>
         </div>
 

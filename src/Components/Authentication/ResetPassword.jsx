@@ -1,30 +1,59 @@
-import React, { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import React, { useState, useEffect } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
+import axios from 'axios'
+import { useNotification } from '../../context/NotificationContext'
 import { FiLock, FiEye, FiEyeOff, FiCheck, FiArrowRight } from 'react-icons/fi'
 import authImage from "../../assets/Authentication/Auth.jpg"
+import logo from "../../assets/SMTLogowhite.png"
 
 function ResetPassword() {
   const navigate = useNavigate()
-  const [newPassword, setNewPassword] = useState('demo123')
-  const [confirmPassword, setConfirmPassword] = useState('demo123')
+  const { showNotification } = useNotification()
+  const [searchParams] = useSearchParams()
+  const [email, setEmail] = useState('')
+  const [token, setToken] = useState('')
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
   const [showNewPassword, setShowNewPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [passwordReset, setPasswordReset] = useState(false)
   const [loading, setLoading] = useState(false)
 
+  useEffect(() => {
+    setEmail(searchParams.get('email') || '')
+    setToken(searchParams.get('token') || '')
+  }, [searchParams])
+
   const handleSubmit = async (e) => {
     e.preventDefault()
     
     if (!newPassword || !confirmPassword) return
-    if (newPassword !== confirmPassword) return
+    if (newPassword !== confirmPassword) {
+      showNotification('Passwords do not match', 'error')
+      return
+    }
     
     setLoading(true)
     
-    // Simulate API call
-    setTimeout(() => {
+    try {
+      const formData = new FormData()
+      formData.append('email', email)
+      formData.append('token', token)
+      formData.append('password', newPassword)
+      formData.append('password_confirmation', confirmPassword)
+      
+      const response = await axios.post(`${import.meta.env.VITE_API_BASE_URL}/reset-password`, formData)
+      
+      if (response.data.status) {
+        setPasswordReset(true)
+        showNotification(response.data.message, 'success')
+      }
+    } catch (error) {
+      const message = error.response?.data?.message || 'Failed to reset password. Please try again.'
+      showNotification(message, 'error')
+    } finally {
       setLoading(false)
-      setPasswordReset(true)
-    }, 1500)
+    }
   }
 
   const handleBackToLogin = () => {
@@ -45,10 +74,7 @@ function ResetPassword() {
         <div className="relative z-10 w-full max-w-sm">
           {/* Logo and Title */}
           <div className="text-center mb-6">
-            <div className="inline-flex items-center justify-center w-10 h-10 bg-white rounded-lg mb-3">
-              <FiLock className="w-5 h-5 text-blue-600" />
-            </div>
-            <h1 className="text-xl font-bold text-white mb-1">SmartMailTrack</h1>
+            <img src={logo} alt="SmartMailTrack" className="h-10 mx-auto mb-3" />
             <p className="text-xs text-gray-300">Enterprise Memo Management Platform</p>
           </div>
 
@@ -98,10 +124,7 @@ function ResetPassword() {
       <div className="relative z-10 w-full max-w-sm">
         {/* Logo and Title */}
         <div className="text-center mb-6">
-          <div className="inline-flex items-center justify-center w-10 h-10 bg-white rounded-lg mb-3">
-            <FiLock className="w-5 h-5 text-blue-600" />
-          </div>
-          <h1 className="text-xl font-bold text-white mb-1">SmartMailTrack</h1>
+          <img src={logo} alt="SmartMailTrack" className="h-14 mx-auto mb-3" />
           <p className="text-xs text-gray-300">Enterprise Memo Management Platform</p>
         </div>
 
@@ -114,6 +137,10 @@ function ResetPassword() {
 
           {/* Reset Form */}
           <form onSubmit={handleSubmit} className="space-y-3">
+            {/* Email Field (hidden) */}
+            <input type="hidden" value={email} />
+            <input type="hidden" value={token} />
+            
             {/* New Password Field */}
             <div>
               <label className="block text-xs font-medium text-gray-700 mb-1">New Password</label>

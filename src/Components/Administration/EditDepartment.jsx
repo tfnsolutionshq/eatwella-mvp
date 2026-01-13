@@ -1,19 +1,70 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
+import axios from 'axios'
 import { FiX } from 'react-icons/fi'
+import { useAuth } from '../../context/AuthContext'
+import { useNotification } from '../../context/NotificationContext'
+import { userAPI } from '../../services/api'
 
-function EditDepartment({ department, onClose }) {
+function EditDepartment({ department, onClose, onSuccess }) {
   const [formData, setFormData] = useState({
     departmentName: department?.name || '',
-    departmentCode: department?.code || '',
-    departmentHead: department?.head || '',
+    departmentCode: department?.department_code || '',
+    departmentHead: department?.head_id || '',
     description: department?.description || ''
   })
+  const [users, setUsers] = useState([])
+  const [loading, setLoading] = useState(false)
+  const { token } = useAuth()
+  const { showNotification } = useNotification()
 
-  const handleSubmit = (e) => {
+  const fetchUsers = async () => {
+    try {
+      const response = await userAPI.getUsers({}, token)
+      if (response.status && response.data) {
+        setUsers(response.data.data)
+      }
+    } catch (error) {
+      console.error('Error fetching users:', error)
+    }
+  }
+
+  useEffect(() => {
+    fetchUsers()
+  }, [])
+
+  const handleSubmit = async (e) => {
     e.preventDefault()
-    console.log('Updating department:', formData)
-    onClose()
+    setLoading(true)
+    try {
+      const params = new URLSearchParams({
+        name: formData.departmentName,
+        department_code: formData.departmentCode,
+        head_id: formData.departmentHead || '',
+        description: formData.description || '',
+        department_id: department.id
+      })
+      
+      const response = await axios.put(`/api/v1/departments/${department.id}?${params.toString()}`, null, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+      
+      if (response.data.status) {
+        showNotification('Department updated successfully', 'success')
+        onSuccess?.()
+        onClose()
+      } else {
+        showNotification(response.data.message || 'Failed to update department', 'error')
+      }
+    } catch (error) {
+      console.error('Error updating department:', error)
+      const errorMessage = error.response?.data?.message || 'Failed to update department'
+      showNotification(errorMessage, 'error')
+    } finally {
+      setLoading(false)
+    }
   }
 
   return createPortal(
@@ -60,10 +111,11 @@ function EditDepartment({ department, onClose }) {
               className="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-gray-50"
             >
               <option value="">Select department head</option>
-              <option value="Dr. Sarah Johnson">Dr. Sarah Johnson</option>
-              <option value="Prof. Michael Brown">Prof. Michael Brown</option>
-              <option value="Sarah Wilson">Sarah Wilson</option>
-              <option value="Emily Chen">Emily Chen</option>
+              {users.map((user) => (
+                <option key={user.id} value={user.id}>
+                  {user.first_name} {user.middle_name ? user.middle_name + ' ' : ''}{user.last_name}
+                </option>
+              ))}
             </select>
           </div>
 
@@ -87,9 +139,10 @@ function EditDepartment({ department, onClose }) {
             </button>
             <button
               type="submit"
-              className="px-3 py-1 text-xs text-white bg-black rounded-lg hover:bg-gray-800"
+              disabled={loading}
+              className="px-3 py-1 text-xs text-white bg-black rounded-lg hover:bg-gray-800 disabled:opacity-50"
             >
-              Save Changes
+              {loading ? 'Saving...' : 'Save Changes'}
             </button>
           </div>
         </form>

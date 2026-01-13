@@ -1,31 +1,71 @@
 "use client"
 
-import { FiGrid, FiMail, FiGitBranch, FiBarChart2, FiSettings, FiEdit3, FiUsers, FiX } from "react-icons/fi"
+import { FiGrid, FiMail, FiGitBranch, FiBarChart2, FiSettings, FiEdit3, FiUsers, FiX, FiFileText } from "react-icons/fi"
 import { useState } from "react"
 import { useNavigate, useLocation } from "react-router-dom"
+import { useAuth } from "../context/AuthContext"
+import logo from "../assets/SMTLogoBLCK.png"
 
 export default function Sidebar({ isOpen, onToggle }) {
   const navigate = useNavigate()
   const location = useLocation()
-  const [activeItem, setActiveItem] = useState("dashboard")
+  const { role, user } = useAuth()
+  
+  // Get active item from current pathname
+  const getActiveItem = () => {
+    const path = location.pathname
+    if (path === '/dashboard') return 'dashboard'
+    if (path === '/compose-memo') return 'compose'
+    if (path === '/record-memo') return 'recordmemo'
+    if (path === '/mailbox') return 'mailbox'
+    if (path === '/workflows') return 'workflows'
+    if (path === '/reports') return 'reports'
+    if (path.startsWith('/users')) return 'users'
+    if (path === '/administration') return 'administration'
+    if (path === '/settings') return 'settings'
+    return 'dashboard'
+  }
+  
+  const activeItem = getActiveItem()
+  
+  const isAdmin = role === 'admin'
+  
+  const formatRole = (role) => {
+    const roleMap = {
+      'admin': 'Admin',
+      'department_head': 'Head of Department',
+      'dean': 'Dean',
+      'academic_dean': 'Academic Dean',
+      'provost': 'Provost'
+    }
+    return roleMap[role] || 'User'
+  }
+  
+  const getInitials = (firstName, lastName) => {
+    return `${firstName?.charAt(0) || ''}${lastName?.charAt(0) || ''}`.toUpperCase()
+  }
 
   const mainMenuItems = [
     { id: "dashboard", label: "Dashboard", icon: FiGrid, path: "/dashboard" },
     { id: "compose", label: "Compose Memo", icon: FiEdit3, path: "/compose-memo" },
+    { id: "recordmemo", label: "Record Memo", icon: FiFileText, path: "/record-memo" },
     { id: "mailbox", label: "Mailbox", icon: FiMail, count: 12, path: "/mailbox" },
     { id: "workflows", label: "Workflows", icon: FiGitBranch, count: 5, path: "/workflows" },
   ]
 
   const handleNavigation = (item) => {
-    setActiveItem(item.id)
     navigate(item.path)
   }
 
   const systemMenuItems = [
     { id: "reports", label: "Reports", icon: FiBarChart2, path: "/reports" },
-    { id: "administration", label: "Administration", icon: FiUsers, path: "/administration" },
+    { id: "users", label: "Users", icon: FiUsers, path: "/users" },
+    { id: "administration", label: "Administration", icon: FiSettings, path: "/administration" },
     { id: "settings", label: "Settings", icon: FiSettings, path: "/settings" },
   ]
+  
+  // Filter system menu items based on role
+  const filteredSystemMenuItems = isAdmin ? systemMenuItems : []
 
   return (
     <>
@@ -40,10 +80,7 @@ export default function Sidebar({ isOpen, onToggle }) {
         {/* Logo Section */}
         <div className="p-4 border-b border-gray-200 flex items-center justify-between">
           <div className={`flex items-center gap-3 ${!isOpen && "justify-center w-full"}`}>
-            <div className="w-8 h-8 bg-black rounded-lg flex items-center justify-center flex-shrink-0">
-              <FiMail className="w-5 h-5 text-white" />
-            </div>
-            {isOpen && <span className="font-bold text-gray-900 text-sm">SmartMailTrack</span>}
+            <img src={logo} alt="SmartMailTrack" className="h-10 flex-shrink-0" />
           </div>
           {isOpen && (
             <button 
@@ -58,22 +95,22 @@ export default function Sidebar({ isOpen, onToggle }) {
 
         {/* User Profile Section */}
         {isOpen && (
-          <div className="p-4 border-b border-gray-200">
-            <div className="flex items-center gap-3">
+          <div className="">
+            {/* <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-gray-300 rounded-full flex-shrink-0 flex items-center justify-center">
-                <span className="text-black text-sm font-semibold">DSJ</span>
+                <span className="text-black text-sm font-semibold">{getInitials(user?.first_name, user?.last_name)}</span>
               </div>
               <div className="min-w-0 flex-1">
-                <p className="text-sm font-semibold text-gray-900 truncate">Dr. Sarah Johnson</p>
-                <p className="text-xs text-gray-500 truncate">Computer Science</p>
+                <p className="text-sm font-semibold text-gray-900 truncate">{user?.first_name} {user?.last_name}</p>
+                <p className="text-xs text-gray-500 truncate">{user?.email}</p>
               </div>
             </div>
             <div className="mt-3">
               <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
-                Admin
+                {formatRole(user?.role)}
               </span>
             </div>
-            
+             */}
             {/* Completion Rate Section */}
             <div className="mt-4 bg-blue-50 rounded-lg p-3">
               <p className="text-xs font-semibold text-gray-700 mb-2">Completion Rate</p>
@@ -125,13 +162,13 @@ export default function Sidebar({ isOpen, onToggle }) {
             )
           })}
 
-          {/* System Section */}
-          {isOpen && (
+          {/* System Section - Only show for admin */}
+          {isOpen && isAdmin && (
             <div className="pt-4">
               <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider px-3 mb-2">
                 SYSTEM
               </p>
-              {systemMenuItems.map((item) => {
+              {filteredSystemMenuItems.map((item) => {
                 const Icon = item.icon
                 const isActive = activeItem === item.id
 

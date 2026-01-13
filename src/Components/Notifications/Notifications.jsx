@@ -2,11 +2,15 @@
 
 import { FiCheck, FiClock, FiSettings, FiAlertTriangle, FiMessageCircle, FiMoreHorizontal, FiChevronDown } from "react-icons/fi"
 import { useState } from "react"
+import { useAuth } from "../../context/AuthContext"
 import NotificationSettings from "./NotificationSettings"
 
 export default function Notifications({ onClose }) {
+  const { role } = useAuth()
   const [activeTab, setActiveTab] = useState("all")
   const [showSettings, setShowSettings] = useState(false)
+  
+  const isAdmin = role === 'admin'
 
   const notifications = [
     {
@@ -114,12 +118,14 @@ export default function Notifications({ onClose }) {
           <button className="text-xs hover:text-gray-700 font-medium">
             Mark all read
           </button>
-          <button 
-            onClick={() => setShowSettings(true)}
-            className="p-1 hover:bg-gray-100 rounded transition-colors"
-          >
-            <FiSettings className="w-4 h-4 text-gray-600" />
-          </button>
+          {isAdmin && (
+            <button 
+              onClick={() => setShowSettings(true)}
+              className="p-1 hover:bg-gray-100 rounded transition-colors"
+            >
+              <FiSettings className="w-4 h-4 text-gray-600" />
+            </button>
+          )}
         </div>
       </div>
 

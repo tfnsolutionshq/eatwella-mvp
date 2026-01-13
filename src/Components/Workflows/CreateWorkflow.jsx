@@ -1,20 +1,36 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { FiArrowLeft, FiPlay, FiSave, FiPlus, FiCheck, FiEye, FiClock, FiBell, FiGitBranch, FiEdit, FiTrash2 } from 'react-icons/fi'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
+import { useAuth } from '../../context/AuthContext'
+import { useNotification } from '../../context/NotificationContext'
+import { categoryAPI, roleAPI, workflowAPI } from '../../services/api'
 import AddStep from './AddStep'
 import EditStep from './EditStep'
 
 function CreateWorkflow() {
   const navigate = useNavigate()
+  const { id } = useParams()
+  const { token } = useAuth()
+  const { showNotification } = useNotification()
+  const isEditing = !!id
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [workflowName, setWorkflowName] = useState('')
   const [description, setDescription] = useState('')
   const [category, setCategory] = useState('')
-  const [department, setDepartment] = useState('')
+  const [keyFeatures, setKeyFeatures] = useState([''])
+  const [categories, setCategories] = useState([])
   const [showAddStep, setShowAddStep] = useState(false)
   const [showEditStep, setShowEditStep] = useState(false)
   const [editingStep, setEditingStep] = useState(null)
   const [workflowSteps, setWorkflowSteps] = useState([])
+  const [roles, setRoles] = useState([])
+  const [loading, setLoading] = useState(false)
+
+  const getRoleName = (roleId) => {
+    if (!Array.isArray(roles) || !roleId) return 'Unknown Role'
+    const role = roles.find(r => r.id === roleId)
+    return role ? role.name : 'Unknown Role'
+  }
 
   const stepTypes = [
     {
@@ -62,6 +78,110 @@ function CreateWorkflow() {
     setWorkflowSteps(workflowSteps.filter(step => step.id !== stepId))
   }
 
+  const fetchData = async () => {
+    try {
+      const promises = [
+        categoryAPI.getCategories(token),
+        roleAPI.getRoles(token)
+      ]
+      
+      if (isEditing) {
+        promises.push(workflowAPI.getWorkflow(id, token))
+      }
+      
+      const responses = await Promise.all(promises)
+      const [categoryResponse, roleResponse, workflowResponse] = responses
+      
+      if (categoryResponse.status && categoryResponse.data) {
+        setCategories(categoryResponse.data.data)
+      }
+      
+      if (roleResponse.status && roleResponse.data) {
+        setRoles(roleResponse.data.data)
+      }
+      
+      if (isEditing && workflowResponse?.status && workflowResponse.data) {
+        const workflow = workflowResponse.data
+        setWorkflowName(workflow.name)
+        setDescription(workflow.description)
+        setCategory(workflow.category_id.toString())
+        setKeyFeatures(workflow.key_features || [''])
+        
+        const steps = workflow.steps.map((step, index) => ({
+          id: step.id || `step-${index}`,
+          name: step.name,
+          assignedRole: step.required_role,
+          timeLimit: step.time_limit.toString(),
+          description: step.description,
+          type: step.type.toLowerCase()
+        }))
+        setWorkflowSteps(steps)
+      }
+    } catch (error) {
+      console.error('Error fetching data:', error)
+      showNotification('Failed to fetch data', 'error')
+    }
+  }
+
+  useEffect(() => {
+    fetchData()
+  }, [])
+
+  const addFeature = () => {
+    setKeyFeatures([...keyFeatures, ''])
+  }
+
+  const updateFeature = (index, value) => {
+    const updated = [...keyFeatures]
+    updated[index] = value
+    setKeyFeatures(updated)
+  }
+
+  const removeFeature = (index) => {
+    setKeyFeatures(keyFeatures.filter((_, i) => i !== index))
+  }
+
+  const handleSaveWorkflow = async () => {
+    if (!workflowName || !description || !category || workflowSteps.length === 0) {
+      showNotification('Please fill all required fields and add at least one step', 'error')
+      return
+    }
+
+    setLoading(true)
+    try {
+      const workflowData = {
+        name: workflowName,
+        description,
+        key_features: keyFeatures.filter(f => f.trim()),
+        category_id: parseInt(category),
+        is_active: true,
+        steps: workflowSteps.map((step, index) => ({
+          name: step.name,
+          required_role: step.assignedRole,
+          order: index + 1,
+          time_limit: parseInt(step.timeLimit) || 48,
+          description: step.description || '',
+          type: step.type.charAt(0).toUpperCase() + step.type.slice(1),
+          is_final: index === workflowSteps.length - 1
+        }))
+      }
+
+      const response = isEditing 
+        ? await workflowAPI.updateWorkflow(id, workflowData, token)
+        : await workflowAPI.createWorkflow(workflowData, token)
+        
+      if (response.status) {
+        showNotification(`Workflow ${isEditing ? 'updated' : 'created'} successfully`, 'success')
+        navigate('/workflows')
+      }
+    } catch (error) {
+      console.error(`Error ${isEditing ? 'updating' : 'creating'} workflow:`, error)
+      showNotification(`Failed to ${isEditing ? 'update' : 'create'} workflow`, 'error')
+    } finally {
+      setLoading(false)
+    }
+  }
+
   return (
     <div className="h-screen flex flex-col bg-gray-50">
       {/* Header */}
@@ -84,7 +204,7 @@ function CreateWorkflow() {
               <span className="hidden md:inline">Back to Workflows</span>
             </button>
             <div className="min-w-0 flex-1">
-              <h1 className="text-xs sm:text-sm font-semibold text-gray-900 truncate">Create New Workflow</h1>
+              <h1 className="text-xs sm:text-sm font-semibold text-gray-900 truncate">{isEditing ? 'Edit Workflow' : 'Create New Workflow'}</h1>
               <p className="hidden sm:block text-xs text-gray-600 truncate">Design your approval workflow with drag-and-drop steps</p>
             </div>
           </div>
@@ -93,9 +213,13 @@ function CreateWorkflow() {
               <FiPlay className="w-3 h-3" />
               <span className="hidden md:inline">Test</span>
             </button>
-            <button className="flex items-center gap-1 sm:gap-1.5 px-2 py-1.5 bg-gray-900 text-white rounded hover:bg-gray-800 text-xs">
+            <button 
+              onClick={handleSaveWorkflow}
+              disabled={loading}
+              className="flex items-center gap-1 sm:gap-1.5 px-2 py-1.5 bg-gray-900 text-white rounded hover:bg-gray-800 text-xs disabled:opacity-50"
+            >
               <FiSave className="w-3 h-3" />
-              <span className="hidden sm:inline">Save</span>
+              <span className="hidden sm:inline">{loading ? 'Saving...' : (isEditing ? 'Update' : 'Save')}</span>
             </button>
           </div>
         </div>
@@ -152,27 +276,42 @@ function CreateWorkflow() {
                 className="w-full px-2 py-1.5 bg-gray-100 border border-gray-300 rounded text-xs focus:ring-1 focus:ring-gray-900 focus:border-transparent"
               >
                 <option value="">Select category</option>
-                <option value="financial">Financial</option>
-                <option value="policy">Policy</option>
-                <option value="hr">HR</option>
-                <option value="security">Security</option>
+                {categories.map((cat) => (
+                  <option key={cat.id} value={cat.id}>{cat.name}</option>
+                ))}
               </select>
             </div>
 
-            {/* Department */}
+            {/* Key Features */}
             <div>
-              <label className="block text-xs font-medium text-gray-900 mb-1">Department</label>
-              <select
-                value={department}
-                onChange={(e) => setDepartment(e.target.value)}
-                className="w-full px-2 py-1.5 bg-gray-100 border border-gray-300 rounded text-xs focus:ring-1 focus:ring-gray-900 focus:border-transparent"
-              >
-                <option value="">Select department</option>
-                <option value="finance">Finance</option>
-                <option value="hr">Human Resources</option>
-                <option value="it">Information Technology</option>
-                <option value="academic">Academic Affairs</option>
-              </select>
+              <label className="block text-xs font-medium text-gray-900 mb-1">Key Features</label>
+              <div className="space-y-2">
+                {keyFeatures.map((feature, index) => (
+                  <div key={index} className="flex gap-1">
+                    <input
+                      type="text"
+                      value={feature}
+                      onChange={(e) => updateFeature(index, e.target.value)}
+                      placeholder="Enter feature"
+                      className="flex-1 px-2 py-1.5 bg-gray-100 border border-gray-300 rounded text-xs focus:ring-1 focus:ring-gray-900 focus:border-transparent"
+                    />
+                    {keyFeatures.length > 1 && (
+                      <button
+                        onClick={() => removeFeature(index)}
+                        className="px-2 py-1.5 text-red-600 hover:bg-red-50 rounded text-xs"
+                      >
+                        ×
+                      </button>
+                    )}
+                  </div>
+                ))}
+                <button
+                  onClick={addFeature}
+                  className="w-full px-2 py-1.5 border border-dashed border-gray-300 rounded text-xs text-gray-600 hover:bg-gray-50"
+                >
+                  + Add Feature
+                </button>
+              </div>
             </div>
 
             {/* Step Types */}
@@ -196,21 +335,40 @@ function CreateWorkflow() {
               </div>
             </div>
 
+            {/* Key Features Preview */}
+            {keyFeatures.some(f => f.trim()) && (
+              <div>
+                <h4 className="text-xs font-medium text-gray-900 mb-2">Key Features</h4>
+                <div className="flex flex-wrap gap-1">
+                  {keyFeatures.filter(f => f.trim()).slice(0, 3).map((feature, index) => (
+                    <span key={index} className="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded">
+                      {feature}
+                    </span>
+                  ))}
+                  {keyFeatures.filter(f => f.trim()).length > 3 && (
+                    <span className="px-2 py-1 bg-gray-200 text-gray-600 text-xs rounded">
+                      +{keyFeatures.filter(f => f.trim()).length - 3} more
+                    </span>
+                  )}
+                </div>
+              </div>
+            )}
+
             {/* Workflow Stats */}
             <div>
               <h4 className="text-xs font-medium text-gray-900 mb-2">Workflow Stats</h4>
               <div className="space-y-1">
                 <div className="flex justify-between text-xs">
                   <span className="text-gray-600">Total Steps</span>
-                  <span className="font-medium">0</span>
+                  <span className="font-medium">{workflowSteps.length}</span>
                 </div>
                 <div className="flex justify-between text-xs">
                   <span className="text-gray-600">Est. Duration</span>
-                  <span className="font-medium">0h</span>
+                  <span className="font-medium">{workflowSteps.reduce((sum, step) => sum + (parseInt(step.timeLimit) || 48), 0)}h</span>
                 </div>
                 <div className="flex justify-between text-xs">
                   <span className="text-gray-600">Approval Steps</span>
-                  <span className="font-medium">0</span>
+                  <span className="font-medium">{workflowSteps.filter(step => step.type === 'approval').length}</span>
                 </div>
               </div>
             </div>
@@ -253,7 +411,7 @@ function CreateWorkflow() {
                         Add First Step
                       </button>
                     </div>
-                  </div>
+                  </div> 
                 ) : (
                   /* Workflow Steps */
                   <div className="w-full sm:w-[30%] space-y-4">
@@ -279,7 +437,7 @@ function CreateWorkflow() {
                                 </div>
                                 <div className="flex-1">
                                   <h4 className="text-sm font-medium text-gray-900">{step.name}</h4>
-                                  <p className="text-xs text-gray-600 mt-1">{step.assignedRole || 'Department Head'}</p>
+                                  <p className="text-xs text-gray-600 mt-1">{getRoleName(step.assignedRole) || 'Department Head'}</p>
                                 </div>
                               </div>
                               <div className="flex items-center gap-1">
