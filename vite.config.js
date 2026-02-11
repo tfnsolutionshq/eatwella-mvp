@@ -13,18 +13,18 @@ export default defineConfig(({ mode }) => {
     server: {
       proxy: {
         '/api': {
-          target: 'http://identity.smt.tfnsolutions.us',
+          target: 'https://identity.smt.tfnsolutions.us',
           changeOrigin: true,
           secure: false
         },
         '/memo-api': {
-          target: 'http://memo.smt.tfnsolutions.us/api/v1',
+          target: 'https://memo.smt.tfnsolutions.us/api/v1',
           changeOrigin: true,
           secure: false,
           rewrite: (path) => path.replace(/^\/memo-api/, '')
         },
         '/settings-api': {
-          target: 'http://setting.smt.tfnsolutions.us/api/v1',
+          target: 'https://setting.smt.tfnsolutions.us/api/v1',
           changeOrigin: true,
           secure: false,
           rewrite: (path) => path.replace(/^\/settings-api/, '')
