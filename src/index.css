@@ -2,6 +2,12 @@
 @tailwind components;
 @tailwind utilities;
 
+@layer utilities {
+  .font-bolota {
+    font-family: 'Bebas Neue', sans-serif;
+  }
+}
+
 @keyframes fadeIn {
   from {
     opacity: 0;
