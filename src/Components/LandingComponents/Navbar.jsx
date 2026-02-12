@@ -1,7 +1,7 @@
 import React from 'react'
-import { MdRestaurant } from 'react-icons/md'
 import { FiShoppingCart } from 'react-icons/fi'
 import { useNavigate } from 'react-router-dom'
+import logo from '../../assets/eatwellalogo.png'
 
 function Navbar() {
   const navigate = useNavigate()
@@ -9,10 +9,7 @@ function Navbar() {
   return (
     <nav className="max-w-6xl mx-auto px-6 py-8 flex items-center justify-between relative z-10">
       <div className="flex items-center gap-2">
-        <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center">
-          <MdRestaurant className="w-6 h-6 text-green-600" />
-        </div>
-        <span className="text-2xl font-black text-white">EATWELLA</span>
+        <img src={logo} alt="Eatwella Logo" className=" h-9" />
       </div>
       
       <div className="hidden md:flex items-center gap-8">
