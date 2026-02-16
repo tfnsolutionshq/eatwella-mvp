@@ -11,14 +11,14 @@ export default function Sidebar({ isOpen, onToggle }) {
   const [isCollapsed, setIsCollapsed] = useState(false)
 
   const menuItems = [
-    { id: "dashboard", label: "Dashboard", icon: FiGrid, path: "/dashboard" },
-    { id: "orders", label: "Orders", icon: FiShoppingCart, path: "/orders" },
-    { id: "menu", label: "Menu Management", icon: MdRestaurant, path: "/menu" },
-    { id: "meal-plans", label: "Meal Plans", icon: FiCalendar, path: "/meal-plans" },
-    { id: "voucher", label: "Voucher Redemption", icon: MdQrCodeScanner, path: "/voucher-redemption" },
-    { id: "payments", label: "Payments", icon: FiCreditCard, path: "/payments" },
-    { id: "discounts", label: "Discounts", icon: FiPercent, path: "/discounts" },
-    { id: "settings", label: "Settings", icon: FiSettings, path: "/settings" },
+    { id: "dashboard", label: "Dashboard", icon: FiGrid, path: "/admin/dashboard" },
+    { id: "orders", label: "Orders", icon: FiShoppingCart, path: "/admin/orders" },
+    { id: "menu", label: "Menu Management", icon: MdRestaurant, path: "/admin/menu" },
+    { id: "meal-plans", label: "Meal Plans", icon: FiCalendar, path: "/admin/meal-plans" },
+    { id: "voucher", label: "Voucher Redemption", icon: MdQrCodeScanner, path: "/admin/voucher-redemption" },
+    { id: "payments", label: "Payments", icon: FiCreditCard, path: "/admin/payments" },
+    { id: "discounts", label: "Discounts", icon: FiPercent, path: "/admin/discounts" },
+    { id: "settings", label: "Settings", icon: FiSettings, path: "/admin/settings" },
   ]
 
   const handleNavigation = (item) => {

@@ -2,9 +2,16 @@
 @tailwind components;
 @tailwind utilities;
 
+@font-face {
+  font-family: 'Bolota';
+  src: url('./assets/fonts/bolota-bold.ttf') format('truetype');
+  font-weight: bold;
+  font-style: normal;
+}
+
 @layer utilities {
   .font-bolota {
-    font-family: 'Bebas Neue', sans-serif;
+    font-family: 'Bolota', sans-serif;
   }
 }
 

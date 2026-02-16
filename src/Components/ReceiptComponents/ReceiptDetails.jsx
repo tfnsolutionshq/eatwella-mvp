@@ -1,8 +1,29 @@
 import React, { useState, useEffect } from 'react'
 import { CheckCircle, Download, User } from 'lucide-react'
+import { useLocation, useNavigate, useParams } from 'react-router-dom'
+import { useCart } from '../../context/CartContext'
+import api from '../../utils/api'
 
 function ReceiptDetails() {
+  const location = useLocation()
+  const navigate = useNavigate()
+  const { fetchCart } = useCart()
+  const { orderId } = useParams()
+  const [order, setOrder] = useState(location.state?.order || null)
   const [timer, setTimer] = useState(1383)
+
+  useEffect(() => {
+    fetchCart()
+    if (!order && orderId) {
+      ;(async () => {
+        try {
+          const res = await api.get(`/orders/track/${orderId}`)
+          setOrder(res.data)
+        } catch (e) {
+        }
+      })()
+    }
+  }, [order, orderId, fetchCart])
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -17,6 +38,27 @@ function ReceiptDetails() {
     const secs = seconds % 60
     return `${String(hrs).padStart(2, '0')}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`
   }
+
+  if (!order) {
+    return (
+      <div className="max-w-2xl mx-auto px-6 py-12 text-center">
+        <h2 className="text-2xl font-bold mb-4">No Order Found</h2>
+        <button 
+          onClick={() => navigate('/menu')}
+          className="bg-orange-500 text-white px-6 py-3 rounded-full font-bold"
+        >
+          Return to Menu
+        </button>
+      </div>
+    )
+  }
+
+  // Helper to get items safely (handle both structure if needed, assuming response matches standard order object)
+  const items = order.items || order.order_items || []
+  
+  // Calculate total if not explicit (though backend usually returns it)
+  // Assuming order.total or order.invoice.amount exists
+  const totalAmount = order.total_amount || order.invoice?.amount || items.reduce((sum, item) => sum + (Number(item.menu?.price || item.price || 0) * item.quantity), 0)
 
   return (
     <div className="max-w-2xl mx-auto px-6 py-12">
@@ -35,9 +77,9 @@ function ReceiptDetails() {
         {/* Order ID Box */}
         <div className="bg-gray-50 rounded-lg p-6 mb-6 text-center">
           <p className="text-xs text-gray-500 mb-1">Order ID</p>
-          <p className="text-xl font-bold mb-3">#ORD-161662</p>
-          <p className="text-xs text-gray-500 mb-1">Expires In</p>
-          <p className="text-2xl font-bold text-orange-500">{formatTime(timer)}</p>
+          <p className="text-xl font-bold mb-3">#{order.order_number || order.id || 'PENDING'}</p>
+          {/* <p className="text-xs text-gray-500 mb-1">Expires In</p>
+          <p className="text-2xl font-bold text-orange-500">{formatTime(timer)}</p> */}
         </div>
 
         {/* Order Details */}
@@ -46,38 +88,44 @@ function ReceiptDetails() {
           <div className="space-y-3 text-sm">
             <div className="flex justify-between">
               <span className="text-gray-500">Order Type</span>
-              <span className="text-gray-900">Dine-In</span>
+              <span className="text-gray-900 capitalize">{order.order_type || 'N/A'}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-500">Customer</span>
-              <span className="text-gray-900">John</span>
+              <span className="text-gray-900">{order.customer_name || 'Guest'}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-500">Email:</span>
-              <span className="text-gray-900">admin@eatw.gov</span>
+              <span className="text-gray-900">{order.customer_email || 'N/A'}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-500">Phone:</span>
-              <span className="text-gray-900">09023323</span>
+              <span className="text-gray-900">{order.customer_phone || 'N/A'}</span>
             </div>
-            <div className="flex justify-between">
-              <span className="text-gray-500">Table:</span>
-              <span className="text-gray-900">#12</span>
-            </div>
+            {order.table_number && (
+              <div className="flex justify-between">
+                <span className="text-gray-500">Table:</span>
+                <span className="text-gray-900">#{order.table_number}</span>
+              </div>
+            )}
+            {order.delivery_address && (
+              <div className="flex justify-between">
+                <span className="text-gray-500">Address:</span>
+                <span className="text-gray-900 text-right">{order.delivery_address}, {order.delivery_city}</span>
+              </div>
+            )}
           </div>
         </div>
 
         {/* Items */}
         <div className="border-t pt-4 mb-4">
           <div className="space-y-2 text-sm">
-            <div className="flex justify-between">
-              <span className="text-gray-700">1x Mediterranean Chicken Salad</span>
-              <span className="text-gray-900">₦12.99</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-700">1x Chicken Shawarma</span>
-              <span className="text-gray-900">₦11.99</span>
-            </div>
+            {items.map((item, index) => (
+              <div key={index} className="flex justify-between">
+                <span className="text-gray-700">{item.quantity}x {item.menu?.name || item.name || 'Item'}</span>
+                <span className="text-gray-900">₦{Number(item.menu?.price || item.price || 0).toFixed(2)}</span>
+              </div>
+            ))}
           </div>
         </div>
 
@@ -85,31 +133,34 @@ function ReceiptDetails() {
         <div className="border-t pt-4 mb-4">
           <div className="flex justify-between font-semibold mb-2">
             <span>Total Payment:</span>
-            <span className="text-orange-500">₦24.98</span>
+            <span className="text-orange-500">₦{Number(totalAmount).toFixed(2)}</span>
           </div>
           <div className="flex justify-between font-semibold">
             <span>Mode of Payment:</span>
-            <span className="text-orange-500">Cash</span>
+            <span className="text-orange-500 capitalize">{order.payment_type || order.invoice?.payment_method || 'N/A'}</span>
           </div>
         </div>
 
         {/* Download Button */}
-        <button className="w-full flex items-center justify-center gap-2 py-3 border border-gray-300 rounded-lg text-sm font-medium hover:bg-gray-50 mb-6">
+        {/* <button className="w-full flex items-center justify-center gap-2 py-3 border border-gray-300 rounded-lg text-sm font-medium hover:bg-gray-50 mb-6">
           <Download className="w-4 h-4" />
           Download Receipt
-        </button>
+        </button> */}
 
         {/* Account Prompt */}
-        <div className="text-center mb-4">
+        {/* <div className="text-center mb-4">
           <p className="text-sm text-gray-600 mb-3">Would you like to create an account to track your orders?</p>
           <button className="w-full bg-orange-500 text-white py-3 rounded-lg font-medium hover:bg-orange-600 flex items-center justify-center gap-2">
             <User className="w-4 h-4" />
             Create Account
           </button>
-        </div>
+        </div> */}
 
         {/* Place Another Order */}
-        <button className="w-full text-center text-sm font-medium text-gray-700 hover:text-gray-900">
+        <button 
+          onClick={() => navigate('/menu')}
+          className="w-full bg-orange-500 text-white py-3 rounded-lg font-medium hover:bg-orange-600 flex items-center justify-center gap-2"
+        >
           Place Another Order
         </button>
       </div>

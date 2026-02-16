@@ -1,98 +1,85 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import DashboardLayout from '../../DashboardLayout/DashboardLayout'
 import AddCategoryModal from '../../Components/Modals/AddCategoryModal'
+import EditCategoryModal from '../../Components/Modals/EditCategoryModal'
 import AddMenuItemModal from '../../Components/Modals/AddMenuItemModal'
 import EditMenuItemModal from '../../Components/Modals/EditMenuItemModal'
 import { FiPlus, FiFolderPlus, FiEdit2, FiTrash2, FiEye, FiEyeOff } from 'react-icons/fi'
+import api from '../../utils/api'
 
 const Menu = () => {
-    const [activeTab, setActiveTab] = useState('All Items')
+    const [activeTab, setActiveTab] = useState('all')
+    const [categories, setCategories] = useState([])
+    const [menuItems, setMenuItems] = useState([])
     const [isAddCategoryOpen, setIsAddCategoryOpen] = useState(false)
+    const [isEditCategoryOpen, setIsEditCategoryOpen] = useState(false)
+    const [editingCategory, setEditingCategory] = useState(null)
     const [isAddMenuItemOpen, setIsAddMenuItemOpen] = useState(false)
     const [isEditMenuItemOpen, setIsEditMenuItemOpen] = useState(false)
     const [editingItem, setEditingItem] = useState(null)
 
-    const categories = [
-        { name: 'All Items', count: 6 },
-        { name: 'Mains', count: 2 },
-        { name: 'Salads', count: 2 },
-        { name: 'Pasta', count: 1 },
-        { name: 'Desserts', count: 1 },
-    ]
+    useEffect(() => {
+        fetchCategories()
+        fetchMenuItems()
+    }, [])
 
-    const menuItems = [
-        {
-            id: 1,
-            name: "Grilled Salmon Bowl",
-            price: "14.99",
-            description: "Fresh Atlantic salmon with quinoa, roasted vegetables, and lemon herb",
-            category: "Mains",
-            image: "https://images.unsplash.com/photo-1564946928948-51111a41f940?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80",
-            status: "Available"
-        },
-        {
-            id: 2,
-            name: "Mediterranean Chicken Salad",
-            price: "12.99",
-            description: "Grilled chicken breast with mixed greens, feta, olives, and balsamic dressing",
-            category: "Salads",
-            image: "https://images.unsplash.com/photo-1540189549336-e6e99c3679fe?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80",
-            status: "Available"
-        },
-        {
-            id: 3,
-            name: "Penne Arrabbiata",
-            price: "11.99",
-            description: "Spicy tomato sauce with fresh basil and parmesan cheese",
-            category: "Pasta",
-            image: "https://images.unsplash.com/photo-1626844131082-256783844137?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80",
-            status: "Unavailable"
-        },
-        {
-            id: 4,
-            name: "Steak Frites",
-            price: "24.99",
-            description: "Prime sirloin steak served with crispy french fries and herb butter",
-            category: "Mains",
-            image: "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80",
-            status: "Available"
-        },
-        {
-            id: 5,
-            name: "Classic Caesar Salad",
-            price: "10.99",
-            description: "Crisp romaine lettuce, parmesan cheese, croutons, and caesar dressing",
-            category: "Salads",
-            image: "https://images.unsplash.com/photo-1550304943-4f24f54ddde9?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80",
-            status: "Available"
-        },
-        {
-            id: 6,
-            name: "Chocolate Lava Cake",
-            price: "8.99",
-            description: "Warm chocolate cake with a molten center, served with vanilla ice cream",
-            category: "Desserts",
-            image: "https://images.unsplash.com/photo-1624353365286-3f8d62daad51?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80",
-            status: "Available"
+    const fetchCategories = async () => {
+        try {
+            const { data } = await api.get('/admin/categories')
+            setCategories(data.data)
+        } catch (err) {
+            console.error('Failed to fetch categories:', err)
         }
-    ]
+    }
 
-    const filteredItems = activeTab === 'All Items'
-        ? menuItems
-        : menuItems.filter(item => item.category === activeTab)
+    const fetchMenuItems = async () => {
+        try {
+            const { data } = await api.get('/admin/menus')
+            console.log('Menu items:', data.data)
+            setMenuItems(data.data)
+        } catch (err) {
+            console.error('Failed to fetch menu items:', err)
+        }
+    }
+
+    const handleDeleteCategory = async (id) => {
+        if (!confirm('Are you sure you want to delete this category?')) return
+        try {
+            await api.delete(`/admin/categories/${id}`)
+            fetchCategories()
+            if (activeTab === id) setActiveTab('all')
+        } catch (err) {
+            alert(err.response?.data?.message || 'Failed to delete category')
+        }
+    }
+
+    const handleDeleteMenuItem = async (id) => {
+        if (!confirm('Are you sure you want to delete this item?')) return
+        try {
+            await api.delete(`/admin/menus/${id}`)
+            fetchMenuItems()
+        } catch (err) {
+            alert(err.response?.data?.message || 'Failed to delete item')
+        }
+    }
+
+    const handleToggleAvailability = async (item) => {
+        try {
+            await api.put(`/admin/menus/${item.id}`, { is_available: item.is_available ? 0 : 1 })
+            fetchMenuItems()
+        } catch (err) {
+            alert(err.response?.data?.message || 'Failed to update item')
+        }
+    }
+
+    const filteredItems = activeTab === 'all' ? menuItems : menuItems.filter(item => item.category_id === activeTab)
 
     return (
         <>
-            <AddCategoryModal isOpen={isAddCategoryOpen} onClose={() => setIsAddCategoryOpen(false)} />
-            <AddMenuItemModal isOpen={isAddMenuItemOpen} onClose={() => setIsAddMenuItemOpen(false)} />
-            <EditMenuItemModal
-                isOpen={isEditMenuItemOpen}
-                onClose={() => {
-                    setIsEditMenuItemOpen(false)
-                    setEditingItem(null)
-                }}
-                item={editingItem}
-            />
+            <AddCategoryModal isOpen={isAddCategoryOpen} onClose={() => setIsAddCategoryOpen(false)} onSuccess={fetchCategories} />
+            <EditCategoryModal isOpen={isEditCategoryOpen} onClose={() => { setIsEditCategoryOpen(false); setEditingCategory(null) }} category={editingCategory} onSuccess={fetchCategories} />
+            <AddMenuItemModal isOpen={isAddMenuItemOpen} onClose={() => setIsAddMenuItemOpen(false)} categories={categories} onSuccess={fetchMenuItems} />
+            <EditMenuItemModal isOpen={isEditMenuItemOpen} onClose={() => { setIsEditMenuItemOpen(false); setEditingItem(null) }} item={editingItem} categories={categories} onSuccess={fetchMenuItems} />
             <DashboardLayout>
                 <div className="p-6 space-y-6 bg-gray-50/50 min-h-full">
                     {/* Header Section */}
@@ -119,17 +106,27 @@ const Menu = () => {
                     {/* Filter Tabs */}
                     <div className="bg-white p-2 rounded-xl border border-gray-100 shadow-sm overflow-x-auto">
                         <div className="flex items-center gap-2 min-w-max">
-                            {categories.map((tab) => (
-                                <button
-                                    key={tab.name}
-                                    onClick={() => setActiveTab(tab.name)}
-                                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${activeTab === tab.name
-                                        ? "bg-orange-500 text-white shadow-sm"
-                                        : "text-gray-600 hover:bg-gray-100"
-                                        }`}
-                                >
-                                    {tab.name} ({tab.count})
-                                </button>
+                            <button
+                                onClick={() => setActiveTab('all')}
+                                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${activeTab === 'all' ? "bg-orange-500 text-white shadow-sm" : "text-gray-600 hover:bg-gray-100"}`}
+                            >
+                                All Items
+                            </button>
+                            {categories.map((cat) => (
+                                <div key={cat.id} className="flex items-center gap-1">
+                                    <button
+                                        onClick={() => setActiveTab(cat.id)}
+                                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${activeTab === cat.id ? "bg-orange-500 text-white shadow-sm" : "text-gray-600 hover:bg-gray-100"}`}
+                                    >
+                                        {cat.name}
+                                    </button>
+                                    <button onClick={() => { setEditingCategory(cat); setIsEditCategoryOpen(true) }} className="p-1.5 text-gray-400 hover:text-blue-500 hover:bg-blue-50 rounded transition-colors">
+                                        <FiEdit2 className="w-3.5 h-3.5" />
+                                    </button>
+                                    <button onClick={() => handleDeleteCategory(cat.id)} className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors">
+                                        <FiTrash2 className="w-3.5 h-3.5" />
+                                    </button>
+                                </div>
                             ))}
                         </div>
                     </div>
@@ -141,13 +138,13 @@ const Menu = () => {
                                 {/* Image Container */}
                                 <div className="relative h-48 overflow-hidden">
                                     <img
-                                        src={item.image}
+                                        src={item.images && item.images.length > 0 ? item.images[0] : 'https://via.placeholder.com/400x300'}
                                         alt={item.name}
+                                        onError={(e) => { e.target.src = 'https://via.placeholder.com/400x300' }}
                                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                                     />
-                                    <span className={`absolute top-3 right-3 px-3 py-1 rounded-full text-xs font-medium text-white shadow-sm ${item.status === 'Available' ? 'bg-green-500' : 'bg-gray-500'
-                                        }`}>
-                                        {item.status}
+                                    <span className={`absolute top-3 right-3 px-3 py-1 rounded-full text-xs font-medium text-white shadow-sm ${item.is_available ? 'bg-green-500' : 'bg-gray-500'}`}>
+                                        {item.is_available ? 'Available' : 'Unavailable'}
                                     </span>
                                 </div>
 
@@ -164,14 +161,14 @@ const Menu = () => {
 
                                     <div className="flex items-center gap-2 mb-6">
                                         <span className="px-2.5 py-1 rounded-md bg-gray-100 text-gray-600 text-xs font-medium border border-gray-200">
-                                            {item.category}
+                                            {item.category?.name}
                                         </span>
                                     </div>
 
                                     {/* Actions */}
                                     <div className="flex items-center gap-3 pt-4 border-t border-gray-100">
-                                        <button className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-gray-50 hover:bg-gray-100 rounded-lg text-sm font-medium text-gray-700 transition-colors group/btn">
-                                            {item.status === 'Available' ? (
+                                        <button onClick={() => handleToggleAvailability(item)} className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-gray-50 hover:bg-gray-100 rounded-lg text-sm font-medium text-gray-700 transition-colors group/btn">
+                                            {item.is_available ? (
                                                 <>
                                                     <FiEyeOff className="w-4 h-4" />
                                                     <span>Deactivate</span>
@@ -183,16 +180,10 @@ const Menu = () => {
                                                 </>
                                             )}
                                         </button>
-                                        <button
-                                            onClick={() => {
-                                                setEditingItem(item)
-                                                setIsEditMenuItemOpen(true)
-                                            }}
-                                            className="p-2 hover:bg-gray-100 rounded-lg text-gray-500 hover:text-blue-600 transition-colors"
-                                        >
+                                        <button onClick={() => { setEditingItem(item); setIsEditMenuItemOpen(true) }} className="p-2 hover:bg-gray-100 rounded-lg text-gray-500 hover:text-blue-600 transition-colors">
                                             <FiEdit2 className="w-4 h-4" />
                                         </button>
-                                        <button className="p-2 hover:bg-red-50 rounded-lg text-gray-500 hover:text-red-600 transition-colors">
+                                        <button onClick={() => handleDeleteMenuItem(item.id)} className="p-2 hover:bg-red-50 rounded-lg text-gray-500 hover:text-red-600 transition-colors">
                                             <FiTrash2 className="w-4 h-4" />
                                         </button>
                                     </div>
