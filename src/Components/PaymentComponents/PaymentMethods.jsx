@@ -7,7 +7,7 @@ import api from '../../utils/api'
 function PaymentMethods() {
   const navigate = useNavigate()
   const location = useLocation()
-  const { cart, fetchCart } = useCart() 
+  const { cart, fetchCart, clearCart } = useCart() 
   const [isProcessing, setIsProcessing] = useState(false)
   const [selectedMethod, setSelectedMethod] = useState(null)
 
@@ -50,6 +50,9 @@ function PaymentMethods() {
       } else {
         const createdOrder = response.data.order
         const id = createdOrder?.order_number || createdOrder?.id
+        if (clearCart) {
+          clearCart()
+        }
         navigate(id ? `/receipt/${id}` : '/receipt', { state: { order: createdOrder } })
       }
       

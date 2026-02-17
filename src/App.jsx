@@ -9,6 +9,9 @@ import OrderManagement from './Pages/Admin/OrderManagement'
 import DiscountManagement from './Pages/Admin/DiscountManagement'
 import StaffManagement from './Pages/Admin/StaffManagement'
 import Login from './Pages/Admin/Login'
+import UserLogin from './Pages/UserDashboard/Login'
+import CreateAccount from './Pages/UserDashboard/CreateAccount'
+import UserDashboard from './Pages/UserDashboard/Dashboard'
 import Homepage from './Pages/LandingPage/Homepage'
 import MenuPage from './Pages/MenuPage/MenuPage'
 import CartPage from './Pages/CartPage/CartPage'
@@ -42,6 +45,9 @@ function App() {
                 <Route path="/receipt" element={<ReceiptPage />} />
                 <Route path="/receipt/:orderId" element={<ReceiptPage />} />
                 <Route path="/track-order" element={<TrackOrderPage />} />
+                <Route path="/account/create" element={<CreateAccount />} />
+                <Route path="/account/login" element={<UserLogin />} />
+                <Route path="/account/dashboard" element={<UserDashboard />} />
                 <Route path="/admin/login" element={<Login />} />
                 <Route path="/admin/dashboard" element={<Dashboard />} />
                 <Route path="/admin/orders" element={<OrderManagement />} />
@@ -49,6 +55,7 @@ function App() {
                 <Route path="/admin/menu" element={<AdminMenu />} />
                 <Route path="/admin/staff" element={<StaffManagement />} />
                 <Route path="*" element={<Navigate to="/admin/login" replace />} />
+          
               </Routes>
             </Router>
           </CartProvider>

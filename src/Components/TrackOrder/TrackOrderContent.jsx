@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { 
   Search, 
   ChevronLeft, 
@@ -23,6 +23,8 @@ function TrackOrderContent() {
   const [orderData, setOrderData] = useState(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [remainingSeconds, setRemainingSeconds] = useState(null)
+  const [derivedStatus, setDerivedStatus] = useState(null)
 
   const handleInputChange = (e) => {
     setFormData({
@@ -82,6 +84,49 @@ function TrackOrderContent() {
       minute: '2-digit'
     })
   }
+
+  const formatCountdown = (seconds) => {
+    const hrs = Math.floor(seconds / 3600)
+    const mins = Math.floor((seconds % 3600) / 60)
+    const secs = seconds % 60
+    return `${String(hrs).padStart(2, '0')}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`
+  }
+
+  useEffect(() => {
+    if (!orderData) {
+      setRemainingSeconds(null)
+      setDerivedStatus(null)
+      return
+    }
+
+    const baseStatus = (orderData.status || 'pending').toLowerCase()
+    setDerivedStatus(baseStatus)
+
+    const createdAt = orderData.created_at
+    if (!createdAt) {
+      setRemainingSeconds(null)
+      return
+    }
+
+    const expiryTime = new Date(createdAt).getTime() + 45 * 60 * 1000
+
+    const updateRemaining = () => {
+      const diffMs = expiryTime - Date.now()
+      const diffSeconds = Math.floor(diffMs / 1000)
+      if (diffSeconds <= 0) {
+        setRemainingSeconds(0)
+        if (!['completed', 'cancelled'].includes(baseStatus)) {
+          setDerivedStatus('expired')
+        }
+      } else {
+        setRemainingSeconds(diffSeconds)
+      }
+    }
+
+    updateRemaining()
+    const intervalId = setInterval(updateRemaining, 1000)
+    return () => clearInterval(intervalId)
+  }, [orderData])
 
   // Determine timeline status
   const getTimelineStatus = (currentStatus) => {
@@ -159,6 +204,13 @@ function TrackOrderContent() {
   // Details View
   const timeline = getTimelineStatus(orderData.status)
   const isDelivery = orderData.order_type === 'delivery'
+  const statusValue = (derivedStatus || orderData.status || 'pending').toLowerCase()
+
+  const statusLabel = (() => {
+    if (statusValue === 'expired') return 'Expired'
+    if (!statusValue) return 'Pending'
+    return statusValue.replace('_', ' ').charAt(0).toUpperCase() + statusValue.replace('_', ' ').slice(1)
+  })()
   
   // Helper to calculate total from items if not provided (fallback)
   const items = orderData.order_items || []
@@ -177,7 +229,7 @@ function TrackOrderContent() {
     : 0
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 bg-gray-50 min-h-screen">
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 bg-gray-50 min-h-screen">
       {/* Back Button */}
       <button 
         onClick={() => setStep('search')}
@@ -194,13 +246,40 @@ function TrackOrderContent() {
             <Truck className="w-6 h-6 text-orange-600" />
           </div>
           <div>
-            <h2 className="text-xl font-bold text-orange-600 capitalize">
-              {orderData.status === 'delivery' ? 'Out for Delivery' : orderData.status.replace('_', ' ')}
+            <h2 className={`text-xl font-extrabold capitalize ${
+              statusValue === 'completed'
+                ? 'text-green-700'
+                : statusValue === 'cancelled' || statusValue === 'expired'
+                  ? 'text-red-600'
+                  : 'text-orange-600'
+            }`}>
+              {statusLabel}
             </h2>
           </div>
         </div>
-        <div className="bg-white/80 px-4 py-2 rounded-lg text-sm font-mono font-medium text-gray-600 border border-orange-100">
-          #{orderData.order_number || orderData.id}
+        <div className="flex flex-col items-start md:items-end gap-2">
+          <div className="bg-white/80 px-4 py-2 rounded-lg text-sm font-mono font-medium text-gray-600 border border-orange-100">
+            #{orderData.order_number || orderData.id}
+          </div>
+          {remainingSeconds !== null &&
+            remainingSeconds > 0 &&
+            !['completed', 'cancelled'].includes(statusValue) && (
+              <div className="flex items-center gap-2 text-xs font-semibold text-gray-700">
+                <Clock className="w-4 h-4 text-orange-500" />
+                <span>
+                  Expires in{' '}
+                  <span className="text-orange-500 font-bold">
+                    {formatCountdown(remainingSeconds)}
+                  </span>
+                </span>
+              </div>
+            )}
+          {statusValue === 'expired' && (
+            <div className="flex items-center gap-2 text-xs font-semibold text-red-600">
+              <Clock className="w-4 h-4" />
+              <span>Order has expired</span>
+            </div>
+          )}
         </div>
       </div>
 
@@ -246,7 +325,7 @@ function TrackOrderContent() {
             </div>
 
             {/* Step 3: Preparing */}
-            <div className="relative flex gap-4">
+            {/* <div className="relative flex gap-4">
               <div className={`w-8 h-8 rounded-full flex items-center justify-center z-10 ${timeline.preparing ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-400'}`}>
                 <CheckCircle className="w-5 h-5" />
               </div>
@@ -258,10 +337,10 @@ function TrackOrderContent() {
                   </div>
                 </div>
               </div>
-            </div>
+            </div> */}
 
             {/* Step 4: Out for Delivery / Ready */}
-            <div className="relative flex gap-4">
+            {/* <div className="relative flex gap-4">
               <div className={`w-8 h-8 rounded-full flex items-center justify-center z-10 ${timeline.out ? 'bg-orange-500 text-white' : 'bg-gray-100 text-gray-400'}`}>
                 {isDelivery ? <Truck className="w-5 h-5" /> : <Package className="w-5 h-5" />}
               </div>
@@ -277,7 +356,7 @@ function TrackOrderContent() {
                   </div>
                 </div>
               </div>
-            </div>
+            </div> */}
           </div>
         </div>
       </div>

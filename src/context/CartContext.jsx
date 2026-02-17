@@ -187,10 +187,19 @@ export const CartProvider = ({ children }) => {
 
   const cartItemCount = cart?.total_items || cart?.items?.reduce((sum, item) => sum + (Number(item.quantity) || 0), 0) || 0
 
+  const clearCart = () => {
+    setCart({ items: [] })
+    try {
+      localStorage.removeItem('eatwella_cart')
+    } catch (err) {
+      console.error('Failed to clear cart from local storage:', err)
+    }
+  }
+
   console.log('🛍️ Current cart item count:', cartItemCount)
 
   return (
-    <CartContext.Provider value={{ cart, addToCart, updateCartItem, removeFromCart, applyDiscount, fetchCart, loadingItems, cartItemCount }}>
+    <CartContext.Provider value={{ cart, addToCart, updateCartItem, removeFromCart, applyDiscount, fetchCart, loadingItems, cartItemCount, clearCart }}>
       {children}
     </CartContext.Provider>
   )

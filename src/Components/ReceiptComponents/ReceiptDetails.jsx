@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { CheckCircle, Download, User } from 'lucide-react'
+import { CheckCircle, Download, User, Clock } from 'lucide-react'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { useCart } from '../../context/CartContext'
 import api from '../../utils/api'
@@ -10,10 +10,14 @@ function ReceiptDetails() {
   const { fetchCart } = useCart()
   const { orderId } = useParams()
   const [order, setOrder] = useState(location.state?.order || null)
-  const [timer, setTimer] = useState(1383)
+  const [remainingSeconds, setRemainingSeconds] = useState(null)
+  const [derivedStatus, setDerivedStatus] = useState(null)
 
   useEffect(() => {
     fetchCart()
+  }, [fetchCart])
+
+  useEffect(() => {
     if (!order && orderId) {
       ;(async () => {
         try {
@@ -23,14 +27,43 @@ function ReceiptDetails() {
         }
       })()
     }
-  }, [order, orderId, fetchCart])
+  }, [order, orderId])
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      setTimer(prev => prev > 0 ? prev - 1 : 0)
-    }, 1000)
-    return () => clearInterval(interval)
-  }, [])
+    if (!order) {
+      setRemainingSeconds(null)
+      setDerivedStatus(null)
+      return
+    }
+
+    const baseStatus = (order.status || 'pending').toLowerCase()
+    setDerivedStatus(baseStatus)
+
+    const createdAt = order.created_at || order.invoice?.created_at
+    if (!createdAt) {
+      setRemainingSeconds(null)
+      return
+    }
+
+    const expiryTime = new Date(createdAt).getTime() + 45 * 60 * 1000
+
+    const updateRemaining = () => {
+      const diffMs = expiryTime - Date.now()
+      const diffSeconds = Math.floor(diffMs / 1000)
+      if (diffSeconds <= 0) {
+        setRemainingSeconds(0)
+        if (!['completed', 'cancelled'].includes(baseStatus)) {
+          setDerivedStatus('expired')
+        }
+      } else {
+        setRemainingSeconds(diffSeconds)
+      }
+    }
+
+    updateRemaining()
+    const intervalId = setInterval(updateRemaining, 1000)
+    return () => clearInterval(intervalId)
+  }, [order])
 
   const formatTime = (seconds) => {
     const hrs = Math.floor(seconds / 3600)
@@ -38,6 +71,24 @@ function ReceiptDetails() {
     const secs = seconds % 60
     return `${String(hrs).padStart(2, '0')}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`
   }
+
+  const statusValue = (derivedStatus || order?.status || 'pending').toLowerCase()
+
+  const statusLabel = (() => {
+    if (statusValue === 'expired') return 'Expired'
+    if (!statusValue) return 'Pending'
+    return statusValue.charAt(0).toUpperCase() + statusValue.slice(1)
+  })()
+
+  const statusClasses = (() => {
+    if (statusValue === 'completed') {
+      return 'bg-green-100 text-green-700'
+    }
+    if (statusValue === 'cancelled' || statusValue === 'expired') {
+      return 'bg-red-100 text-red-700'
+    }
+    return 'bg-yellow-100 text-yellow-700'
+  })()
 
   if (!order) {
     return (
@@ -74,12 +125,42 @@ function ReceiptDetails() {
         <h2 className="text-2xl font-bold text-center mb-2">Order Confirmed!</h2>
         <p className="text-center text-gray-500 text-sm mb-6">Thank you for your order</p>
 
-        {/* Order ID Box */}
-        <div className="bg-gray-50 rounded-lg p-6 mb-6 text-center">
-          <p className="text-xs text-gray-500 mb-1">Order ID</p>
-          <p className="text-xl font-bold mb-3">#{order.order_number || order.id || 'PENDING'}</p>
-          {/* <p className="text-xs text-gray-500 mb-1">Expires In</p>
-          <p className="text-2xl font-bold text-orange-500">{formatTime(timer)}</p> */}
+        {/* Order ID, Status, and Expiry */}
+        <div className="bg-gray-50 rounded-lg p-6 mb-6">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div className="text-center md:text-left">
+              <p className="text-xs text-gray-500 mb-1">Order ID</p>
+              <p className="text-xl font-bold mb-1">
+                #{order.order_number || order.id || 'PENDING'}
+              </p>
+            </div>
+            <div className="flex flex-col items-center md:items-end gap-2">
+              <span
+                className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold tracking-wide uppercase ${statusClasses}`}
+              >
+                {statusLabel}
+              </span>
+              {remainingSeconds !== null &&
+                remainingSeconds > 0 &&
+                !['completed', 'cancelled'].includes(statusValue) && (
+                  <span className="flex items-center gap-1 text-xs font-semibold text-gray-700">
+                    <Clock className="w-4 h-4 text-orange-500" />
+                    <span>
+                      Expires in{' '}
+                      <span className="text-orange-500 font-bold">
+                        {formatTime(remainingSeconds)}
+                      </span>
+                    </span>
+                  </span>
+                )}
+              {statusValue === 'expired' && (
+                <span className="flex items-center gap-1 text-xs font-semibold text-red-600">
+                  <Clock className="w-4 h-4" />
+                  <span>Order has expired</span>
+                </span>
+              )}
+            </div>
+          </div>
         </div>
 
         {/* Order Details */}
@@ -148,13 +229,13 @@ function ReceiptDetails() {
         </button> */}
 
         {/* Account Prompt */}
-        {/* <div className="text-center mb-4">
+        <div className="text-center mb-4">
           <p className="text-sm text-gray-600 mb-3">Would you like to create an account to track your orders?</p>
           <button className="w-full bg-orange-500 text-white py-3 rounded-lg font-medium hover:bg-orange-600 flex items-center justify-center gap-2">
             <User className="w-4 h-4" />
             Create Account
           </button>
-        </div> */}
+        </div>
 
         {/* Place Another Order */}
         <button 

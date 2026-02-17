@@ -7,9 +7,9 @@ function ReceiptHeader() {
       <Navbar />  
       <div className="max-w-6xl mx-auto mt-12 px-6">
         <h1 className="text-6xl md:text-7xl font-black font-bolota text-white mb-4">
-          RECEIPT
+          Create Account
         </h1>
-        <p className="text-xl text-white">Your order confirmation</p>
+        <p className="text-xl text-white">Create your account to order food</p>
       </div>
     </div>
   )
