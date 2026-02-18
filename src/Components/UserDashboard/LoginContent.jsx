@@ -33,7 +33,17 @@ function LoginContent() {
           },
         }
       )
-      localStorage.setItem('customerAuth', JSON.stringify(response.data))
+      const data = response.data
+      if (data?.token) {
+        localStorage.setItem('customer_token', data.token)
+        try {
+          axios.defaults.headers.common['Authorization'] = `Bearer ${data.token}`
+        } catch {}
+      }
+      if (data?.user) {
+        localStorage.setItem('customer_user', JSON.stringify(data.user))
+      }
+      localStorage.setItem('customerAuth', JSON.stringify(data))
       navigate('/account/dashboard', { replace: true })
     } catch (err) {
       const message =
