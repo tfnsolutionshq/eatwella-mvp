@@ -1,4 +1,5 @@
 import React from 'react'
+import { Link } from 'react-router-dom'
 import { FaPhone, FaMapMarkerAlt, FaInstagram, FaTiktok, FaFacebook, FaArrowUp } from 'react-icons/fa'
 
 function Footer() {
@@ -11,20 +12,20 @@ function Footer() {
       <div className="max-w-5xl mx-auto">
         {/* Contact Cards */}
         <div className="grid md:grid-cols-2 gap-6 mb-12">
-          <div className="bg-gray-800 rounded-3xl p-8 text-center">
+          <div className="bg-[#262626] rounded-3xl p-8 text-center">
             <div className="w-12 h-12 bg-orange-500 rounded-full flex items-center justify-center mx-auto mb-4">
               <FaPhone className="text-white text-xl" />
             </div>
-            <h3 className="text-gray-400 text-xl font-bold mb-2">CALL US</h3>
-            <p className="text-white text-3xl font-black">0809 9099 0948</p>
+            <h3 className="text-gray-400 text-2xl font-bold mb-2 font-bolota">CALL US</h3>
+            <p className="text-white text-4xl font-black font-bolota">0809 9099 0948</p>
           </div>
 
-          <div className="bg-gray-800 rounded-3xl p-8 text-center">
+          <div className="bg-[#262626] rounded-3xl p-8 text-center">
             <div className="w-12 h-12 bg-orange-500 rounded-full flex items-center justify-center mx-auto mb-4">
               <FaMapMarkerAlt className="text-white text-xl" />
             </div>
-            <h3 className="text-gray-400 text-xl font-bold mb-2">FIND US</h3>
-            <p className="text-white text-2xl font-black">INSIDE UNIZIK, AWKA,<br />NIGERIA</p>
+            <h3 className="text-gray-400 text-2xl font-bold mb-2 font-bolota">FIND US</h3>
+            <p className="text-white text-4xl font-black font-bolota">INSIDE UNIZIK, AWKA,<br />NIGERIA</p>
           </div>
         </div>
 
@@ -39,10 +40,10 @@ function Footer() {
         {/* Navigation Links and Social Media Icons */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-12 gap-6">
           <div className="flex gap-4 md:gap-8 flex-wrap">
-            <a href="#menu" className="text-white hover:text-orange-500 transition-colors">Menu</a>
-            <a href="#meal-plans" className="text-white hover:text-orange-500 transition-colors">Meal Plans</a>
+            <Link to="/menu" className="text-white hover:text-orange-500 transition-colors">Menu</Link>
+            <Link to="/meal-plans" className="text-white hover:text-orange-500 transition-colors">Meal Plans</Link>
+            <Link to="/track-order" className="text-white hover:text-orange-500 transition-colors">Track Order</Link>
             <a href="#contact" className="text-white hover:text-orange-500 transition-colors">Contact Us</a>
-            <a href="#privacy" className="text-white hover:text-orange-500 transition-colors">Privacy Policy</a>
           </div>
 
           <div className="flex gap-4">
@@ -60,7 +61,7 @@ function Footer() {
 
         {/* Large EATWELLA Text */}
         <div className="mb-6 overflow-hidden text-center">
-          <h2 className="text-[60px] sm:text-[100px] md:text-[150px] lg:text-[185px] font-black leading-none text-gray-900 w-full">
+          <h2 className="text-[60px] font-bolota sm:text-[100px] md:text-[150px] lg:text-[200px] font-black leading-none text-[#262626] w-full">
             EATWELLA
           </h2>
         </div>

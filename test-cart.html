@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Cart API Test</title>
+</head>
+<body>
+    <h1>Cart API Test</h1>
+    <button onclick="getCart()">Get Cart</button>
+    <button onclick="addItem1()">Add Item 1</button>
+    <button onclick="addItem2()">Add Item 2</button>
+    <button onclick="addItem3()">Add Item 3</button>
+    <pre id="output"></pre>
+
+    <script>
+        const API_BASE = 'https://api.eatwella.ng/api';
+        const output = document.getElementById('output');
+
+        async function getCart() {
+            try {
+                const res = await fetch(`${API_BASE}/cart`, {
+                    credentials: 'include',
+                    headers: { 'Accept': 'application/json' }
+                });
+                const data = await res.json();
+                output.textContent = 'GET CART:\n' + JSON.stringify(data, null, 2);
+                console.log('Cart data:', data);
+                
+                // Calculate count
+                const count = data?.items?.reduce((sum, item) => sum + item.quantity, 0) || 0;
+                console.log('Cart count:', count);
+            } catch (err) {
+                output.textContent = 'Error: ' + err.message;
+            }
+        }
+
+        async function addItem1() {
+            await addToCart(1);
+        }
+
+        async function addItem2() {
+            await addToCart(2);
+        }
+
+        async function addItem3() {
+            await addToCart(3);
+        }
+
+        async function addToCart(menuId) {
+            try {
+                const res = await fetch(`${API_BASE}/cart`, {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: {
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ menu_id: menuId, quantity: 1 })
+                });
+                const data = await res.json();
+                output.textContent = `ADD ITEM ${menuId}:\n` + JSON.stringify(data, null, 2);
+                console.log('Add to cart response:', data);
+                
+                // Calculate count
+                const count = data?.items?.reduce((sum, item) => sum + item.quantity, 0) || 0;
+                console.log('Cart count after add:', count);
+            } catch (err) {
+                output.textContent = 'Error: ' + err.message;
+            }
+        }
+
+        // Auto-fetch cart on load
+        getCart();
+    </script>
+</body>
+</html>
