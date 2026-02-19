@@ -29,13 +29,7 @@ function Footer() {
           </div>
         </div>
 
-        {/* Scroll to Top Button */}
-        <button 
-          onClick={scrollToTop}
-          className="w-14 h-14 bg-orange-500 rounded-full flex items-center justify-center mb-12 hover:bg-orange-600 transition-colors"
-        >
-          <FaArrowUp className="text-white text-xl" />
-        </button>
+        
 
         {/* Navigation Links and Social Media Icons */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-12 gap-6">
@@ -47,13 +41,13 @@ function Footer() {
           </div>
 
           <div className="flex gap-4">
-            <a href="#" className="w-12 h-12 bg-gray-800 rounded-full flex items-center justify-center hover:bg-orange-500 transition-colors">
+            <a href="https://www.instagram.com/eatwellang?igsh=MTFpbGs5eTI4MmN2aA==" target='_blank' className="w-12 h-12 bg-gray-800 rounded-full flex items-center justify-center hover:bg-orange-500 transition-colors">
               <FaInstagram className="text-white text-xl" />
             </a>
-            <a href="#" className="w-12 h-12 bg-gray-800 rounded-full flex items-center justify-center hover:bg-orange-500 transition-colors">
+            <a href="https://www.tiktok.com/@eatwellang?_r=1&_t=ZS-9431oOxMxL5" target='_blank' className="w-12 h-12 bg-gray-800 rounded-full flex items-center justify-center hover:bg-orange-500 transition-colors">
               <FaTiktok className="text-white text-xl" />
             </a>
-            <a href="#" className="w-12 h-12 bg-gray-800 rounded-full flex items-center justify-center hover:bg-orange-500 transition-colors">
+            <a href="https://www.facebook.com/share/19AKQ459S3/" target='_blank' className="w-12 h-12 bg-gray-800 rounded-full flex items-center justify-center hover:bg-orange-500 transition-colors">
               <FaFacebook className="text-white text-xl" />
             </a>
           </div>

@@ -208,3 +208,54 @@
   scrollbar-width: thin;
   scrollbar-color: #d1d5db transparent;
 }
+
+/* Menu slider marquee */
+@keyframes marqueeScroll {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+.animate-marquee {
+  animation: marqueeScroll 30s linear infinite;
+  will-change: transform;
+}
+
+/* Hover zoom pulse */
+@keyframes zoomPulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+}
+.hover-zoom {
+  transition: transform 200ms ease;
+}
+.hover-zoom:hover {
+  transform: scale(1.05);
+}
+
+/* Bounce in place for fixed buttons */
+@keyframes bounceStay {
+  0%, 100% { transform: translateY(0); }
+  25% { transform: translateY(-6px); }
+  50% { transform: translateY(0); }
+  75% { transform: translateY(-3px); }
+}
+.animate-bounce-stay {
+  animation: bounceStay 2.4s ease-in-out infinite;
+  will-change: transform;
+}
+
+/* Spinner utility */
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+.spinner {
+  width: 1rem;
+  height: 1rem;
+  border: 2px solid rgba(255,255,255,0.5);
+  border-top-color: #ffffff;
+  border-radius: 9999px;
+  animation: spin .8s linear infinite;
+}
+.spinner-dark {
+  border-color: rgba(0,0,0,0.2);
+  border-top-color: #000000;
+}

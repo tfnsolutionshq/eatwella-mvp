@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { FaArrowLeft } from 'react-icons/fa'
+import { FaArrowLeft, FaTimes } from 'react-icons/fa'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useCart } from '../../context/CartContext'
 import api from '../../utils/api'
@@ -7,7 +7,7 @@ import api from '../../utils/api'
 function OrderTypeForm() {
   const navigate = useNavigate()
   const location = useLocation()
-  const { cart } = useCart()
+  const { cart, removeDiscount } = useCart()
   const orderType = location.state?.orderType || 'pickup'
   
   const [formData, setFormData] = useState({
@@ -20,6 +20,7 @@ function OrderTypeForm() {
     zipCode: ''
   })
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [removingDiscount, setRemovingDiscount] = useState(false)
 
   const cartItems = cart?.items || []
 
@@ -28,6 +29,7 @@ function OrderTypeForm() {
   const discountAmount = Number(cart?.discount_amount || 0)
   const originalTotal = subtotal + deliveryFee
   const total = originalTotal - discountAmount
+  const discountPercent = originalTotal > 0 ? Math.round((discountAmount / originalTotal) * 100) : 0
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value })
@@ -71,6 +73,15 @@ function OrderTypeForm() {
     }
 
     navigate('/payment', { state: { orderData } })
+  }
+
+  const handleRemoveDiscount = async () => {
+    setRemovingDiscount(true)
+    const res = await removeDiscount()
+    setRemovingDiscount(false)
+    if (!res?.success) {
+      alert(res?.message || 'Failed to remove discount')
+    }
   }
 
   return (
@@ -201,8 +212,17 @@ function OrderTypeForm() {
               </div>
               {discountAmount > 0 && (
                 <div className="flex justify-between text-green-600">
-                  <span>Discount:</span>
-                  <span className="font-bold">-₦{discountAmount.toFixed(2)}</span>
+                  <span>{`Discount (${discountPercent}%)`}:</span>
+                  <span className="font-bold flex items-center gap-2">
+                    -₦{discountAmount.toFixed(2)}
+                    <button
+                      onClick={handleRemoveDiscount}
+                      disabled={removingDiscount}
+                      className="w-6 h-6 rounded-full bg-red-500 text-white flex items-center justify-center hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {removingDiscount ? <span className="spinner" /> : <FaTimes className="w-3 h-3" />}
+                    </button>
+                  </span>
                 </div>
               )}
               {orderType === 'delivery' && (

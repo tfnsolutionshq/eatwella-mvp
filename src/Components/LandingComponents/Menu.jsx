@@ -55,7 +55,7 @@ function Menu() {
   }
 
   return (
-    <div className="bg-black text-white py-16 px-6 relative">
+    <div className="bg-black text-white py-16 px-0 relative">
       <div className="max-w-5xl mx-auto relative z-10">
         <h2 className="text-4xl font-bolota md:text-6xl font-black mb-8">
           MENU WEY SIZE YOUR<br />POCKET
@@ -79,27 +79,55 @@ function Menu() {
           ))}
         </div>
 
-        <div className="grid md:grid-cols-3 gap-6 mb-8">
-          {menuItems.map((item) => (
-            <div key={item.id} className="bg-white rounded-3xl overflow-hidden text-black">
-              <img 
-                src={item.images?.[0] || 'https://via.placeholder.com/400x300'} 
-                alt={item.name}
-                className="w-full h-48 object-cover"
-              />
-              <div className="p-6">
-                <div className="flex justify-between items-center mb-3">
-                  <h3 className="text-xl font-semibold">{item.name}</h3>
-                  <span className="text-orange-500 font-black text-xl">${item.price}</span>
+        {menuItems.length > 3 ? (
+          <div className="relative mb-8 overflow-hidden">
+            <div className="flex gap-6 animate-marquee">
+              {[...menuItems, ...menuItems].map((item, idx) => (
+                <div key={`${item.id}-${idx}`} className="bg-white rounded-3xl overflow-hidden text-black min-w-[260px] md:min-w-[320px] hover-zoom">
+                  <img 
+                    src={item.images?.[0] || 'https://via.placeholder.com/400x300'} 
+                    alt={item.name}
+                    className="w-full h-48 object-cover"
+                  />
+                  <div className="p-6">
+                    <div className="flex justify-between items-center mb-3">
+                      <h3 className="text-xl font-semibold">{item.name}</h3>
+                      <span className="text-orange-500 font-black text-xl">${item.price}</span>
+                    </div>
+                    <p className="text-gray-600 mb-4">{item.description}</p>
+                    <button onClick={() => handleAddToCart(item)} disabled={loadingItems[item.id]} className="w-full bg-orange-500 hover:bg-orange-600 text-white py-3 rounded-full font-bold transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
+                      {loadingItems[item.id] ? <span className="spinner" /> : null}
+                      {loadingItems[item.id] ? 'Adding...' : 'Add To Cart'}
+                    </button>
+                  </div>
                 </div>
-                <p className="text-gray-600 mb-4">{item.description}</p>
-                <button onClick={() => handleAddToCart(item)} disabled={loadingItems[item.id]} className="w-full bg-orange-500 hover:bg-orange-600 text-white py-3 rounded-full font-bold transition-colors disabled:opacity-50">
-                  {loadingItems[item.id] ? 'Adding...' : 'Add To Cart'}
-                </button>
-              </div>
+              ))}
             </div>
-          ))}
-        </div>
+          </div>
+        ) : (
+          <div className="grid md:grid-cols-3 gap-6 mb-8">
+            {menuItems.map((item) => (
+              <div key={item.id} className="bg-white rounded-3xl overflow-hidden text-black hover-zoom">
+                <img 
+                  src={item.images?.[0] || 'https://via.placeholder.com/400x300'} 
+                  alt={item.name}
+                  className="w-full h-48 object-cover"
+                />
+                <div className="p-6">
+                  <div className="flex justify-between items-center mb-3">
+                    <h3 className="text-xl font-semibold">{item.name}</h3>
+                    <span className="text-orange-500 font-black text-xl">${item.price}</span>
+                  </div>
+                  <p className="text-gray-600 mb-4">{item.description}</p>
+                  <button onClick={() => handleAddToCart(item)} disabled={loadingItems[item.id]} className="w-full bg-orange-500 hover:bg-orange-600 text-white py-3 rounded-full font-bold transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
+                    {loadingItems[item.id] ? <span className="spinner" /> : null}
+                    {loadingItems[item.id] ? 'Adding...' : 'Add To Cart'}
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
 
         <div className="text-center mb-8">
           <Link to="/menu" className="block">
