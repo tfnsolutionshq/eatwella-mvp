@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { FaArrowLeft } from 'react-icons/fa'
+import { FaArrowLeft, FaTimes } from 'react-icons/fa'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useCart } from '../../context/CartContext'
 import api from '../../utils/api'
@@ -28,6 +28,7 @@ function OrderTypeForm() {
   const discountAmount = Number(cart?.discount_amount || 0)
   const originalTotal = subtotal + deliveryFee
   const total = originalTotal - discountAmount
+  const discountPercent = originalTotal > 0 ? Math.round((discountAmount / originalTotal) * 100) : 0
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value })
@@ -201,8 +202,13 @@ function OrderTypeForm() {
               </div>
               {discountAmount > 0 && (
                 <div className="flex justify-between text-green-600">
-                  <span>Discount:</span>
-                  <span className="font-bold">-₦{discountAmount.toFixed(2)}</span>
+                  <span>{`Discount (${discountPercent}%)`}:</span>
+                  <span className="font-bold flex items-center gap-2">
+                    -₦{discountAmount.toFixed(2)}
+                    <span className="w-6 h-6 rounded-full bg-red-500 text-white flex items-center justify-center">
+                      <FaTimes className="w-3 h-3" />
+                    </span>
+                  </span>
                 </div>
               )}
               {orderType === 'delivery' && (

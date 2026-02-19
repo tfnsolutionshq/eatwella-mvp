@@ -6,17 +6,21 @@ import { useCart } from '../../context/CartContext'
 
 function CartItems() {
   const navigate = useNavigate()
-  const { cart, updateCartItem, removeFromCart, applyDiscount } = useCart()
+  const { cart, updateCartItem, removeFromCart, applyDiscount, removeDiscount } = useCart()
   
   const [selectedOrderType, setSelectedOrderType] = useState('dine-in')
   const [discountCode, setDiscountCode] = useState('')
   const [discountMessage, setDiscountMessage] = useState({ type: '', text: '' })
+  const [applyingDiscount, setApplyingDiscount] = useState(false)
+  const [removingDiscount, setRemovingDiscount] = useState(false)
+  const [quantityLoading, setQuantityLoading] = useState({})
 
   const cartItems = cart?.items || []
 
   const handleApplyDiscount = async () => {
     if (!discountCode.trim()) return
     
+    setApplyingDiscount(true)
     setDiscountMessage({ type: 'info', text: 'Applying...' })
     const result = await applyDiscount(discountCode)
     
@@ -28,6 +32,7 @@ function CartItems() {
     if (result.success) {
       setDiscountCode('')
     }
+    setApplyingDiscount(false)
   }
 
   const handleUpdateQuantity = async (itemId, currentQuantity, change) => {
@@ -36,11 +41,24 @@ function CartItems() {
     if (newQuantity < 1) return
     
     // Optimistically update UI or show loading could be added here
+    setQuantityLoading(prev => ({ ...prev, [itemId]: true }))
     await updateCartItem(itemId, newQuantity)
+    setQuantityLoading(prev => ({ ...prev, [itemId]: false }))
   }
 
   const handleRemoveItem = async (itemId) => {
     await removeFromCart(itemId)
+  }
+  
+  const handleRemoveDiscount = async () => {
+    setRemovingDiscount(true)
+    const res = await removeDiscount()
+    if (res?.success) {
+      setDiscountMessage({ type: 'success', text: 'Discount removed' })
+    } else {
+      setDiscountMessage({ type: 'error', text: res?.message || 'Failed to remove discount' })
+    }
+    setRemovingDiscount(false)
   }
 
   const subtotal = cart?.subtotal ? Number(cart.subtotal) : cartItems.reduce((sum, item) => sum + (Number(item.menu.price) * item.quantity), 0)
@@ -54,6 +72,7 @@ function CartItems() {
   // If we have a discount, it's Original - Discount. 
   // If no discount, it's just Original.
   const finalTotal = originalTotal - discountAmount
+  const discountPercent = originalTotal > 0 ? Math.round((discountAmount / originalTotal) * 100) : 0
 
   if (cartItems.length === 0) {
     return (
@@ -100,17 +119,19 @@ function CartItems() {
                       <button 
                         onClick={() => handleUpdateQuantity(item.id, item.quantity, -1)}
                         className="w-6 h-6 flex items-center justify-center hover:text-orange-500 font-bold disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:text-gray-400"
-                        disabled={Number(item.quantity) <= 1}
+                        disabled={Number(item.quantity) <= 1 || quantityLoading[item.id]}
                       >
                         −
                       </button>
                       <span className="font-bold px-2">{item.quantity}</span>
                       <button 
                         onClick={() => handleUpdateQuantity(item.id, item.quantity, 1)}
-                        className="w-6 h-6 flex items-center justify-center hover:text-orange-500 font-bold"
+                        className="w-6 h-6 flex items-center justify-center hover:text-orange-500 font-bold disabled:opacity-30 disabled:cursor-not-allowed"
+                        disabled={quantityLoading[item.id]}
                       >
                         +
                       </button>
+                      {quantityLoading[item.id] && <span className="spinner-dark spinner ml-2" />}
                     </div>
                     <span className="text-orange-500 font-black">₦{(Number(item.menu?.price) * item.quantity).toFixed(2)}</span>
                   </div>
@@ -191,10 +212,11 @@ function CartItems() {
                 />
                 <button 
                   onClick={handleApplyDiscount}
-                  disabled={!discountCode.trim()}
-                  className="bg-orange-500 hover:bg-orange-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white px-6 py-3 rounded-full font-bold transition-colors"
+                  disabled={!discountCode.trim() || applyingDiscount}
+                  className="bg-orange-500 hover:bg-orange-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white px-6 py-3 rounded-full font-bold transition-colors flex items-center gap-2"
                 >
-                  Apply
+                  {applyingDiscount ? <span className="spinner" /> : null}
+                  {applyingDiscount ? 'Applying...' : 'Apply'}
                 </button>
               </div>
               {discountMessage.text && (
@@ -212,8 +234,13 @@ function CartItems() {
                       <span className="font-bold">₦{originalTotal.toFixed(2)}</span>
                     </div>
                     <div className="flex justify-between text-green-600">
-                      <span>Discount</span>
-                      <span className="font-bold">-₦{discountAmount.toFixed(2)}</span>
+                      <span>{`Discount (${discountPercent}%):`}</span>
+                      <span className="font-bold flex items-center gap-2">
+                        -₦{discountAmount.toFixed(2)}
+                        <button onClick={handleRemoveDiscount} disabled={removingDiscount} className="w-6 h-6 rounded-full bg-red-500 text-white flex items-center justify-center hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed">
+                          {removingDiscount ? <span className="spinner" /> : <FaTimes className="w-3 h-3" />}
+                        </button>
+                      </span>
                     </div>
                   </>
                 )}

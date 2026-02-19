@@ -23,6 +23,7 @@ import LoyaltyBoardPage from './Pages/LoyaltyBoardPage/LoyaltyBoardPage'
 import TrackOrderPage from './Pages/TrackOrderPage/TrackOrderPage'
 import FloatingCartButton from './Components/FloatingCartButton'
 import ScrollToTop from './Components/ScrollToTop'
+import ScrollToTopButton from './Components/ScrollToTopButton'
 
 
 function App() {
@@ -33,6 +34,7 @@ function App() {
           <CartProvider>
             <Router>
               <ScrollToTop />
+              <ScrollToTopButton />
               <FloatingCartButton />
               <Routes>
                 <Route path="/" element={<Homepage />} />

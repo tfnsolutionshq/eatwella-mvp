@@ -7,15 +7,16 @@ import api from '../../utils/api'
 function ReceiptDetails() {
   const location = useLocation()
   const navigate = useNavigate()
-  const { fetchCart } = useCart()
+  const { fetchCart, clearCart } = useCart()
   const { orderId } = useParams()
   const [order, setOrder] = useState(location.state?.order || null)
   const [remainingSeconds, setRemainingSeconds] = useState(null)
   const [derivedStatus, setDerivedStatus] = useState(null)
 
   useEffect(() => {
+    clearCart()
     fetchCart()
-  }, [fetchCart])
+  }, [fetchCart, clearCart])
 
   useEffect(() => {
     if (!order && orderId) {
@@ -231,7 +232,7 @@ function ReceiptDetails() {
         {/* Account Prompt */}
         <div className="text-center mb-4">
           <p className="text-sm text-gray-600 mb-3">Would you like to create an account to track your orders?</p>
-          <button className="w-full bg-orange-500 text-white py-3 rounded-lg font-medium hover:bg-orange-600 flex items-center justify-center gap-2">
+          <button className="w-full bg-orange-500 text-white py-3 rounded-full font-medium hover:bg-orange-600 flex items-center justify-center gap-2">
             <User className="w-4 h-4" />
             Create Account
           </button>
@@ -240,7 +241,7 @@ function ReceiptDetails() {
         {/* Place Another Order */}
         <button 
           onClick={() => navigate('/menu')}
-          className="w-full bg-orange-500 text-white py-3 rounded-lg font-medium hover:bg-orange-600 flex items-center justify-center gap-2"
+          className="w-full text-black py-3 rounded-lg font-medium flex items-center justify-center gap-2"
         >
           Place Another Order
         </button>

@@ -55,7 +55,7 @@ function Menu() {
   }
 
   return (
-    <div className="bg-black text-white py-16 px-6 relative">
+    <div className="bg-black text-white py-16 px-0 relative">
       <div className="max-w-5xl mx-auto relative z-10">
         <h2 className="text-4xl font-bolota md:text-6xl font-black mb-8">
           MENU WEY SIZE YOUR<br />POCKET
@@ -95,7 +95,8 @@ function Menu() {
                       <span className="text-orange-500 font-black text-xl">${item.price}</span>
                     </div>
                     <p className="text-gray-600 mb-4">{item.description}</p>
-                    <button onClick={() => handleAddToCart(item)} disabled={loadingItems[item.id]} className="w-full bg-orange-500 hover:bg-orange-600 text-white py-3 rounded-full font-bold transition-colors disabled:opacity-50">
+                    <button onClick={() => handleAddToCart(item)} disabled={loadingItems[item.id]} className="w-full bg-orange-500 hover:bg-orange-600 text-white py-3 rounded-full font-bold transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
+                      {loadingItems[item.id] ? <span className="spinner" /> : null}
                       {loadingItems[item.id] ? 'Adding...' : 'Add To Cart'}
                     </button>
                   </div>
@@ -118,7 +119,8 @@ function Menu() {
                     <span className="text-orange-500 font-black text-xl">${item.price}</span>
                   </div>
                   <p className="text-gray-600 mb-4">{item.description}</p>
-                  <button onClick={() => handleAddToCart(item)} disabled={loadingItems[item.id]} className="w-full bg-orange-500 hover:bg-orange-600 text-white py-3 rounded-full font-bold transition-colors disabled:opacity-50">
+                  <button onClick={() => handleAddToCart(item)} disabled={loadingItems[item.id]} className="w-full bg-orange-500 hover:bg-orange-600 text-white py-3 rounded-full font-bold transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
+                    {loadingItems[item.id] ? <span className="spinner" /> : null}
                     {loadingItems[item.id] ? 'Adding...' : 'Add To Cart'}
                   </button>
                 </div>

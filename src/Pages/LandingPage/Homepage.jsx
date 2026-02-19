@@ -14,7 +14,7 @@ function Homepage() {
       <Header />
       <Menu />
       <Feeling />
-      {/* <Footer /> */}
+      <Footer />
     </>
   )
 }

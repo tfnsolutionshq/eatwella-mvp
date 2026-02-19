@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { FiMenu, FiX } from 'react-icons/fi'
-import { Link } from 'react-router-dom'
+import { Link, NavLink } from 'react-router-dom'
 import logo from '../../assets/eatwellalogo.png'
 
 function Navbar() {
@@ -16,11 +16,40 @@ function Navbar() {
       
       {/* Desktop Menu */}
       <div className="hidden md:flex items-center gap-8">
-        <Link to="/" className="text-white hover:text-green-100 font-medium transition-colors">Home</Link>
-        <Link to="/menu" className="text-white hover:text-green-100 font-medium transition-colors">Menu</Link>
-        <Link to="/meal-plans" className="text-white hover:text-green-100 font-medium transition-colors">Meal Plans</Link>
+        <NavLink
+          to="/"
+          end
+          className={({ isActive }) =>
+            `text-white font-medium transition-colors hover:text-green-100 inline-flex px-3 py-1 rounded-full ${isActive ? 'ring-2 ring-white' : ''}`
+          }
+        >
+          Home
+        </NavLink>
+        <NavLink
+          to="/menu"
+          className={({ isActive }) =>
+            `text-white font-medium transition-colors hover:text-green-100 inline-flex px-3 py-1 rounded-full ${isActive ? 'ring-2 ring-white' : ''}`
+          }
+        >
+          Menu
+        </NavLink>
+        <NavLink
+          to="/meal-plans"
+          className={({ isActive }) =>
+            `text-white font-medium transition-colors hover:text-green-100 inline-flex px-3 py-1 rounded-full ${isActive ? 'ring-2 ring-white' : ''}`
+          }
+        >
+          Meal Plans
+        </NavLink>
         {/* <Link to="/loyalty-board" className="text-white hover:text-green-100 font-medium transition-colors">Loyalty Board</Link> */}
-        <Link to="/track-order" className="text-white hover:text-green-100 font-medium transition-colors">Track Order</Link>
+        <NavLink
+          to="/track-order"
+          className={({ isActive }) =>
+            `text-white font-medium transition-colors hover:text-green-100 inline-flex px-3 py-1 rounded-full ${isActive ? 'ring-2 ring-white' : ''}`
+          }
+        >
+          Track Order
+        </NavLink>
         <Link to="#contact" className="text-white hover:text-green-100 font-medium transition-colors">Contact Us</Link>
       </div>
 
@@ -50,27 +79,34 @@ function Navbar() {
           </div>
 
           <div className="flex flex-col gap-6">
-            <Link 
+            <NavLink 
               to="/" 
+              end
               onClick={() => setIsMenuOpen(false)}
-              className="text-gray-800 hover:text-orange-500 font-medium text-lg transition-colors"
+              className={({ isActive }) =>
+                `text-gray-800 hover:text-orange-500 font-medium text-lg transition-colors inline-flex px-3 py-1 rounded-full ${isActive ? 'ring-2 ring-white' : ''}`
+              }
             >
               Home
-            </Link>
-            <Link 
+            </NavLink>
+            <NavLink 
               to="/menu" 
               onClick={() => setIsMenuOpen(false)}
-              className="text-gray-800 hover:text-orange-500 font-medium text-lg transition-colors"
+              className={({ isActive }) =>
+                `text-gray-800 hover:text-orange-500 font-medium text-lg transition-colors inline-flex px-3 py-1 rounded-full ${isActive ? 'ring-2 ring-white' : ''}`
+              }
             >
               Menu
-            </Link>
-            <Link 
+            </NavLink>
+            <NavLink 
               to="/meal-plans" 
               onClick={() => setIsMenuOpen(false)}
-              className="text-gray-800 hover:text-orange-500 font-medium text-lg transition-colors"
+              className={({ isActive }) =>
+                `text-gray-800 hover:text-orange-500 font-medium text-lg transition-colors inline-flex px-3 py-1 rounded-full ${isActive ? 'ring-2 ring-white' : ''}`
+              }
             >
               Meal Plans
-            </Link>
+            </NavLink>
             {/* <Link 
               to="/loyalty-board" 
               onClick={() => setIsMenuOpen(false)}
@@ -78,13 +114,15 @@ function Navbar() {
             >
               Loyalty Board
             </Link> */}
-            <Link 
+            <NavLink 
               to="/track-order" 
               onClick={() => setIsMenuOpen(false)}
-              className="text-gray-800 hover:text-orange-500 font-medium text-lg transition-colors"
+              className={({ isActive }) =>
+                `text-gray-800 hover:text-orange-500 font-medium text-lg transition-colors inline-flex px-3 py-1 rounded-full ${isActive ? 'ring-2 ring-white' : ''}`
+              }
             >
               Track Order
-            </Link>
+            </NavLink>
             <Link 
               to="#contact" 
               onClick={() => setIsMenuOpen(false)}
