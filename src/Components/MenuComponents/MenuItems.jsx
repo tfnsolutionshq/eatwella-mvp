@@ -2,11 +2,15 @@ import React, { useState, useEffect } from 'react'
 import axios from 'axios'
 import { useCart } from '../../context/CartContext'
 import { useToast } from '../../context/ToastContext'
+import CustomizeMenu from '../CartComponents/CustomizeMenu'
 
 function MenuItems() {
   const [activeTab, setActiveTab] = useState('all')
   const [categories, setCategories] = useState([])
   const [menuItems, setMenuItems] = useState([])
+  const [allMenus, setAllMenus] = useState([])
+  const [isCustomizeOpen, setIsCustomizeOpen] = useState(false)
+  const [selectedItem, setSelectedItem] = useState(null)
   const { addToCart, loadingItems } = useCart()
   const { showToast } = useToast()
   
@@ -39,6 +43,9 @@ function MenuItems() {
         headers: { 'Accept': 'application/json' }
       })
       setMenuItems(data.data)
+      if (categoryId === 'all') {
+        setAllMenus(data.data)
+      }
     } catch (err) {
       console.error('Failed to fetch menu items:', err)
     }
@@ -48,9 +55,21 @@ function MenuItems() {
     const result = await addToCart(item.id, 1)
     if (result) {
       showToast(`${item.name} added to cart!`, 'success')
+      setSelectedItem(item)
+      setIsCustomizeOpen(true)
     } else {
       showToast('Failed to add to cart', 'error')
     }
+  }
+
+  const handleAddExtra = async (item) => {
+    const result = await addToCart(item.id, 1)
+    if (result) {
+      showToast(`${item.name} added to cart!`, 'success')
+    } else {
+      showToast('Failed to add to cart', 'error')
+    }
+    return result
   }
 
   return (
@@ -95,6 +114,13 @@ function MenuItems() {
             </div>
           ))}
         </div>
+        <CustomizeMenu
+          isOpen={isCustomizeOpen}
+          onClose={() => setIsCustomizeOpen(false)}
+          baseItem={selectedItem}
+          allMenus={allMenus.length ? allMenus : menuItems}
+          onAddExtra={handleAddExtra}
+        />
       </div>
     </div>
   )
