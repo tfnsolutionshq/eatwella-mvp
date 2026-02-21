@@ -4,6 +4,8 @@ import api from '../../utils/api'
 
 const EditMenuItemModal = ({ isOpen, onClose, item, categories, onSuccess }) => {
   const [formData, setFormData] = useState({ category_id: '', name: '', description: '', price: '', is_available: 1 })
+  const [image, setImage] = useState(null)
+  const [currentImage, setCurrentImage] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
@@ -16,6 +18,8 @@ const EditMenuItemModal = ({ isOpen, onClose, item, categories, onSuccess }) => 
         price: item.price || '',
         is_available: item.is_available ?? 1
       })
+      setCurrentImage(item.images?.[0] || '')
+      setImage(null)
     }
   }, [item])
 
@@ -25,7 +29,15 @@ const EditMenuItemModal = ({ isOpen, onClose, item, categories, onSuccess }) => 
     setLoading(true)
 
     try {
-      await api.put(`/admin/menus/${item.id}`, formData)
+      const data = new FormData()
+      data.append('category_id', formData.category_id)
+      data.append('name', formData.name)
+      data.append('description', formData.description)
+      data.append('price', formData.price)
+      data.append('is_available', formData.is_available)
+      if (image) data.append('images[]', image)
+
+      await api.put(`/admin/menus/${item.id}`, data, { headers: { 'Content-Type': 'multipart/form-data' } })
       onSuccess?.()
       onClose()
     } catch (err) {
@@ -38,10 +50,10 @@ const EditMenuItemModal = ({ isOpen, onClose, item, categories, onSuccess }) => 
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm overflow-y-auto">
-      <div className="bg-white rounded-2xl w-full max-w-md shadow-xl overflow-hidden my-8">
-        <form onSubmit={handleSubmit}>
-          <div className="p-6 border-b border-gray-100 flex items-start justify-between">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+      <div className="bg-white rounded-2xl w-full max-w-md shadow-xl overflow-hidden my-8 max-h-[90vh] flex flex-col">
+        <form onSubmit={handleSubmit} className="flex flex-col max-h-[90vh]">
+          <div className="p-6 border-b border-gray-100 flex items-start justify-between flex-shrink-0">
             <div>
               <h2 className="text-xl font-bold text-gray-900">Edit Menu Item</h2>
               <p className="text-sm text-gray-500 mt-1">Update item details</p>
@@ -51,7 +63,7 @@ const EditMenuItemModal = ({ isOpen, onClose, item, categories, onSuccess }) => 
             </button>
           </div>
 
-          <div className="p-6 space-y-5">
+          <div className="p-6 space-y-5 overflow-y-auto flex-1">
             {error && <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-2 rounded-lg text-sm">{error}</div>}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Item Name <span className="text-red-500">*</span></label>
@@ -60,6 +72,11 @@ const EditMenuItemModal = ({ isOpen, onClose, item, categories, onSuccess }) => 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
               <textarea rows="3" value={formData.description} onChange={(e) => setFormData({...formData, description: e.target.value})} required className="w-full px-4 py-3 rounded-xl border border-gray-200 text-gray-900 focus:outline-none focus:ring-2 focus:ring-orange-100 focus:border-orange-500 transition-all resize-none"></textarea>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Image</label>
+              {currentImage && <img src={currentImage} alt="Current" className="mb-2 w-full h-32 object-cover rounded-lg" />}
+              <input type="file" accept="image/*" onChange={(e) => setImage(e.target.files[0])} className="w-full px-4 py-3 rounded-xl border border-gray-200 text-gray-900 focus:outline-none focus:ring-2 focus:ring-orange-100 focus:border-orange-500 transition-all" />
             </div>
             <div className="grid grid-cols-2 gap-5">
               <div>
@@ -76,7 +93,7 @@ const EditMenuItemModal = ({ isOpen, onClose, item, categories, onSuccess }) => 
             </div>
           </div>
 
-          <div className="p-6 border-t border-gray-100 flex items-center justify-end gap-3 bg-gray-50/50">
+          <div className="p-6 border-t border-gray-100 flex items-center justify-end gap-3 bg-gray-50/50 flex-shrink-0">
             <button type="button" onClick={onClose} className="px-4 py-2.5 rounded-xl text-sm font-medium text-gray-700 hover:bg-white hover:text-gray-900 border border-transparent hover:border-gray-200 transition-all">Cancel</button>
             <button type="submit" disabled={loading} className="px-6 py-2.5 rounded-xl text-sm font-medium text-white bg-orange-500 hover:bg-orange-600 shadow-sm shadow-orange-200 transition-all disabled:opacity-50">{loading ? 'Saving...' : 'Save Changes'}</button>
           </div>

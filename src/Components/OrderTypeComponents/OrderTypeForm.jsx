@@ -1,14 +1,17 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { FaArrowLeft, FaTimes } from 'react-icons/fa'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useCart } from '../../context/CartContext'
+import { useAuth } from '../../context/AuthContext'
 import api from '../../utils/api'
 
 function OrderTypeForm() {
   const navigate = useNavigate()
   const location = useLocation()
-  const { cart, removeDiscount } = useCart()
+  const { cart, removeDiscount, clearCart } = useCart()
+  const { user } = useAuth()
   const orderType = location.state?.orderType || 'pickup'
+  const paymentMethod = location.state?.paymentMethod || 'cash'
   
   const [formData, setFormData] = useState({
     fullName: '',
@@ -19,6 +22,20 @@ function OrderTypeForm() {
     city: '',
     zipCode: ''
   })
+
+  useEffect(() => {
+    if (user) {
+      setFormData(prev => ({
+        ...prev,
+        fullName: user.name || '',
+        email: user.email || '',
+        phone: user.phone || '',
+        deliveryAddress: user.street_address || '',
+        city: user.state || '',
+        zipCode: user.postal_code || ''
+      }))
+    }
+  }, [user])
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [removingDiscount, setRemovingDiscount] = useState(false)
 
@@ -35,7 +52,7 @@ function OrderTypeForm() {
     setFormData({ ...formData, [e.target.name]: e.target.value })
   }
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     // Validate form data
     if (!formData.fullName || !formData.email || !formData.phone) {
       alert('Please fill in all required fields')
@@ -52,27 +69,51 @@ function OrderTypeForm() {
       return
     }
 
-    // Construct payload for next step
-    const orderData = {
-      order_type: orderType === 'dine-in' ? 'dine' : orderType,
-      customer_name: formData.fullName,
-      customer_email: formData.email,
-      customer_phone: formData.phone,
-      items: cartItems.map(item => ({
-        menu_id: item.menu.id,
-        quantity: item.quantity
-      }))
-    }
+    setIsSubmitting(true)
+    try {
+      const payload = {
+        order_type: orderType === 'dine-in' ? 'dine' : orderType,
+        customer_name: formData.fullName,
+        customer_email: formData.email,
+        customer_phone: formData.phone,
+        payment_type: paymentMethod === 'online' ? 'gateway' : 'cash',
+        callback_url: `${window.location.origin}/receipt`,
+        items: cartItems.map(item => ({
+          menu_id: item.menu.id,
+          quantity: item.quantity
+        }))
+      }
 
-    if (orderType === 'dine-in') {
-      orderData.table_number = formData.tableNumber
-    } else if (orderType === 'delivery') {
-      orderData.delivery_address = formData.deliveryAddress
-      orderData.delivery_city = formData.city
-      orderData.delivery_zip = formData.zipCode
-    }
+      if (orderType === 'dine-in') {
+        payload.table_number = formData.tableNumber
+      } else if (orderType === 'delivery') {
+        payload.delivery_address = formData.deliveryAddress
+        payload.delivery_city = formData.city
+        payload.delivery_zip = formData.zipCode
+      }
 
-    navigate('/payment', { state: { orderData } })
+      const response = await api.post('/checkout', payload)
+
+      if (paymentMethod === 'online') {
+        if (response.data.payment?.authorization_url) {
+          window.location.href = response.data.payment.authorization_url
+        } else {
+          alert('Failed to initialize payment gateway')
+        }
+      } else {
+        const createdOrder = response.data.order
+        const id = createdOrder?.order_number || createdOrder?.id
+        if (clearCart) {
+          clearCart()
+        }
+        navigate(id ? `/receipt/${id}` : '/receipt', { state: { order: createdOrder } })
+      }
+    } catch (error) {
+      console.error('Payment error:', error)
+      alert(error.response?.data?.message || 'Failed to process payment')
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   const handleRemoveDiscount = async () => {
@@ -86,7 +127,7 @@ function OrderTypeForm() {
 
   return (
     <div className="bg-gray-50 py-12 px-4 md:px-6 min-h-screen">
-      <div className="max-w-5xl mx-auto">
+      <div className="max-w-6xl mx-auto px-6">
         <button 
           onClick={() => navigate('/cart')}
           className="flex items-center gap-2 text-gray-600 mb-8 hover:text-gray-800"
@@ -243,7 +284,7 @@ function OrderTypeForm() {
               disabled={isSubmitting}
               className="w-full bg-orange-500 hover:bg-orange-600 disabled:bg-gray-400 text-white py-4 rounded-full font-bold transition-colors"
             >
-              {isSubmitting ? 'Processing...' : 'Proceed to Checkout'}
+              {isSubmitting ? 'Processing...' : paymentMethod === 'online' ? 'Pay Now' : 'Place Order'}
             </button>
           </div>
         </div>

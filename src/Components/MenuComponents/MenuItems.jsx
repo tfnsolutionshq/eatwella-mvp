@@ -104,7 +104,7 @@ function MenuItems() {
               <div className="p-6">
                 <div className="flex justify-between items-center mb-3">
                   <h3 className="text-xl font-semibold">{item.name}</h3>
-                  <span className="text-orange-500 font-black text-xl">${item.price}</span>
+                  <span className="text-orange-500 font-black text-xl">₦{item.price}</span>
                 </div>
                 <p className="text-gray-600 mb-4">{item.description}</p>
                 <button onClick={() => handleAddToCart(item)} disabled={loadingItems[item.id]} className="w-full bg-orange-500 hover:bg-orange-600 text-white py-3 rounded-full font-bold transition-colors disabled:opacity-50">

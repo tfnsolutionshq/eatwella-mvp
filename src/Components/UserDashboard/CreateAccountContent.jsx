@@ -131,10 +131,10 @@ function CreateAccountContent() {
 
           <button
             type="button"
-            onClick={() => navigate('/menu')}
-            className="mt-4 text-xs text-gray-500 hover:text-gray-700"
+            onClick={() => navigate('/account/login')}
+            className="mt-4 text-sm text-gray-500 hover:text-gray-700"
           >
-            Skip for Now
+            Have an account? <span className='text-orange-700'>Login</span>
           </button>
         </div>
       </div>

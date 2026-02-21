@@ -1,10 +1,12 @@
 import React, { useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
+import { useAuth } from '../../context/AuthContext'
 import axios from 'axios'
 
 function LoginContent() {
   const location = useLocation()
   const navigate = useNavigate()
+  const { login } = useAuth()
   const initialEmail = location.state?.email || ''
 
   const [email, setEmail] = useState(initialEmail)
@@ -34,16 +36,9 @@ function LoginContent() {
         }
       )
       const data = response.data
-      if (data?.token) {
-        localStorage.setItem('customer_token', data.token)
-        try {
-          axios.defaults.headers.common['Authorization'] = `Bearer ${data.token}`
-        } catch {}
+      if (data?.token && data?.user) {
+        login(data.token, data.user)
       }
-      if (data?.user) {
-        localStorage.setItem('customer_user', JSON.stringify(data.user))
-      }
-      localStorage.setItem('customerAuth', JSON.stringify(data))
       navigate('/account/dashboard', { replace: true })
     } catch (err) {
       const message =
@@ -124,7 +119,7 @@ function LoginContent() {
           <button
             type="button"
             onClick={() => navigate('/account/create')}
-            className="mt-4 text-xs text-orange-500 hover:text-orange-600"
+            className="mt-4 text-sm text-orange-500 hover:text-orange-600"
           >
             Create an account
           </button>

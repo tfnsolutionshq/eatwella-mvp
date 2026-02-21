@@ -187,10 +187,20 @@ export const CartProvider = ({ children }) => {
 
   const cartItemCount = cart?.total_items || cart?.items?.reduce((sum, item) => sum + (Number(item.quantity) || 0), 0) || 0
 
-  const clearCart = () => {
+  const clearCart = async () => {
+    try {
+      const itemsToRemove = cart?.items || []
+      if (itemsToRemove.length > 0) {
+        await Promise.all(itemsToRemove.map(item => cartApi.delete(`/cart/${item.id}`)))
+        console.log('✅ All cart items removed from server')
+      }
+    } catch (err) {
+      console.error('Failed to clear cart from server:', err)
+    }
     setCart({ items: [] })
     try {
       localStorage.removeItem('eatwella_cart')
+      localStorage.removeItem('eatwella_cart_id')
     } catch (err) {
       console.error('Failed to clear cart from local storage:', err)
     }

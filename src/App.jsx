@@ -12,11 +12,11 @@ import Login from './Pages/Admin/Login'
 import UserLogin from './Pages/UserDashboard/Login'
 import CreateAccount from './Pages/UserDashboard/CreateAccount'
 import UserDashboard from './Pages/UserDashboard/Dashboard'
+import EditProfile from './Pages/UserDashboard/EditProfile'
 import Homepage from './Pages/LandingPage/Homepage'
 import MenuPage from './Pages/MenuPage/MenuPage'
 import CartPage from './Pages/CartPage/CartPage'
 import OrderTypePage from './Pages/OrderTypePage/OrderTypePage'
-import PaymentPage from './Pages/PaymentPage/PaymentPage'
 import ReceiptPage from './Pages/ReceiptPage/ReceiptPage'
 import MealPlansPage from './Pages/MealPlansPage/MealPlansPage'
 import LoyaltyBoardPage from './Pages/LoyaltyBoardPage/LoyaltyBoardPage'
@@ -43,13 +43,13 @@ function App() {
                 <Route path="/loyalty-board" element={<LoyaltyBoardPage />} />
                 <Route path="/cart" element={<CartPage />} />
                 <Route path="/order-type" element={<OrderTypePage />} />
-                <Route path="/payment" element={<PaymentPage />} />
                 <Route path="/receipt" element={<ReceiptPage />} />
                 <Route path="/receipt/:orderId" element={<ReceiptPage />} />
                 <Route path="/track-order" element={<TrackOrderPage />} />
                 <Route path="/account/create" element={<CreateAccount />} />
                 <Route path="/account/login" element={<UserLogin />} />
                 <Route path="/account/dashboard" element={<UserDashboard />} />
+                <Route path="/account/edit-profile" element={<EditProfile />} />
                 <Route path="/admin/login" element={<Login />} />
                 <Route path="/admin/dashboard" element={<Dashboard />} />
                 <Route path="/admin/orders" element={<OrderManagement />} />

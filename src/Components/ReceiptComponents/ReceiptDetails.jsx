@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { CheckCircle, Download, User, Clock } from 'lucide-react'
-import { useLocation, useNavigate, useParams } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { useCart } from '../../context/CartContext'
 import api from '../../utils/api'
 
@@ -14,9 +14,12 @@ function ReceiptDetails() {
   const [derivedStatus, setDerivedStatus] = useState(null)
 
   useEffect(() => {
-    clearCart()
-    fetchCart()
-  }, [fetchCart, clearCart])
+    const clearAndFetch = async () => {
+      await clearCart()
+      await fetchCart()
+    }
+    clearAndFetch()
+  }, [])
 
   useEffect(() => {
     if (!order && orderId) {
@@ -232,10 +235,12 @@ function ReceiptDetails() {
         {/* Account Prompt */}
         <div className="text-center mb-4">
           <p className="text-sm text-gray-600 mb-3">Would you like to create an account to track your orders?</p>
+          <Link to="/account/create">
           <button className="w-full bg-orange-500 text-white py-3 rounded-full font-medium hover:bg-orange-600 flex items-center justify-center gap-2">
             <User className="w-4 h-4" />
             Create Account
           </button>
+          </Link>
         </div>
 
         {/* Place Another Order */}

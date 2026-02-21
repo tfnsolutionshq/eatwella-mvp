@@ -3,14 +3,18 @@ import axios from 'axios'
 import { useCart } from '../../context/CartContext'
 import { useToast } from '../../context/ToastContext'
 import { Link } from 'react-router-dom'
+import CustomizeMenu from '../CartComponents/CustomizeMenu'
 
 function Menu() {
   const [activeTab, setActiveTab] = useState('all')
   const [categories, setCategories] = useState([])
   const [menuItems, setMenuItems] = useState([])
+  const [allMenus, setAllMenus] = useState([])
+  const [isCustomizeOpen, setIsCustomizeOpen] = useState(false)
+  const [selectedItem, setSelectedItem] = useState(null)
   const { addToCart, loadingItems } = useCart()
   const { showToast } = useToast()
-  
+
   useEffect(() => {
     fetchCategories()
     fetchMenuItems()
@@ -33,13 +37,16 @@ function Menu() {
 
   const fetchMenuItems = async (categoryId = 'all') => {
     try {
-      const url = categoryId === 'all' 
+      const url = categoryId === 'all'
         ? 'https://api.eatwella.ng/api/menus'
         : `https://api.eatwella.ng/api/menus?category_id=${categoryId}`
       const { data } = await axios.get(url, {
         headers: { 'Accept': 'application/json' }
       })
       setMenuItems(data.data)
+      if (categoryId === 'all') {
+        setAllMenus(data.data)
+      }
     } catch (err) {
       console.error('Failed to fetch menu items:', err)
     }
@@ -49,18 +56,30 @@ function Menu() {
     const result = await addToCart(item.id, 1)
     if (result) {
       showToast(`${item.name} added to cart!`, 'success')
+      setSelectedItem(item)
+      setIsCustomizeOpen(true)
     } else {
       showToast('Failed to add to cart', 'error')
     }
   }
 
+  const handleAddExtra = async (item) => {
+    const result = await addToCart(item.id, 1)
+    if (result) {
+      showToast(`${item.name} added to cart!`, 'success')
+    } else {
+      showToast('Failed to add to cart', 'error')
+    }
+    return result
+  }
+
   return (
-    <div className="bg-black text-white py-16 px-0 relative">
-      <div className="max-w-5xl mx-auto relative z-10">
+    <div className="bg-black text-white py-16 relative">
+      <div className="max-w-5xl mx-auto px-6 relative z-10">
         <h2 className="text-4xl font-bolota md:text-6xl font-black mb-8">
           MENU WEY SIZE YOUR<br />POCKET
         </h2>
-        
+
         <div className="flex gap-3 mb-12 flex-wrap">
           <button
             onClick={() => setActiveTab('all')}
@@ -78,21 +97,22 @@ function Menu() {
             </button>
           ))}
         </div>
+      </div>
 
-        {menuItems.length > 3 ? (
-          <div className="relative mb-8 overflow-hidden">
-            <div className="flex gap-6 animate-marquee">
+      {menuItems.length > 3 ? (
+        <div className="relative mb-8 overflow-hidden w-full">
+          <div className="flex gap-6 animate-marquee">
               {[...menuItems, ...menuItems].map((item, idx) => (
                 <div key={`${item.id}-${idx}`} className="bg-white rounded-3xl overflow-hidden text-black min-w-[260px] md:min-w-[320px] hover-zoom">
-                  <img 
-                    src={item.images?.[0] || 'https://via.placeholder.com/400x300'} 
+                  <img
+                    src={item.images?.[0] || 'https://via.placeholder.com/400x300'}
                     alt={item.name}
                     className="w-full h-48 object-cover"
                   />
                   <div className="p-6">
                     <div className="flex justify-between items-center mb-3">
                       <h3 className="text-xl font-semibold">{item.name}</h3>
-                      <span className="text-orange-500 font-black text-xl">${item.price}</span>
+                      <span className="text-orange-500 font-black text-xl">₦{item.price}</span>
                     </div>
                     <p className="text-gray-600 mb-4">{item.description}</p>
                     <button onClick={() => handleAddToCart(item)} disabled={loadingItems[item.id]} className="w-full bg-orange-500 hover:bg-orange-600 text-white py-3 rounded-full font-bold transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
@@ -102,21 +122,22 @@ function Menu() {
                   </div>
                 </div>
               ))}
-            </div>
           </div>
-        ) : (
+        </div>
+      ) : (
+        <div className="max-w-5xl mx-auto px-6">
           <div className="grid md:grid-cols-3 gap-6 mb-8">
             {menuItems.map((item) => (
               <div key={item.id} className="bg-white rounded-3xl overflow-hidden text-black hover-zoom">
-                <img 
-                  src={item.images?.[0] || 'https://via.placeholder.com/400x300'} 
+                <img
+                  src={item.images?.[0] || 'https://via.placeholder.com/400x300'}
                   alt={item.name}
                   className="w-full h-48 object-cover"
                 />
                 <div className="p-6">
                   <div className="flex justify-between items-center mb-3">
                     <h3 className="text-xl font-semibold">{item.name}</h3>
-                    <span className="text-orange-500 font-black text-xl">${item.price}</span>
+                    <span className="text-orange-500 font-black text-xl">₦{item.price}</span>
                   </div>
                   <p className="text-gray-600 mb-4">{item.description}</p>
                   <button onClick={() => handleAddToCart(item)} disabled={loadingItems[item.id]} className="w-full bg-orange-500 hover:bg-orange-600 text-white py-3 rounded-full font-bold transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
@@ -127,24 +148,34 @@ function Menu() {
               </div>
             ))}
           </div>
-        )}
+        </div>
+      )}
 
+      <div className="max-w-5xl mx-auto px-6">
         <div className="text-center mb-8">
           <Link to="/menu" className="block">
-          <button className="border-2 border-white text-white px-8 py-3 rounded-full font-bold hover:bg-white hover:text-black transition-colors">
-            Satisfy Your Cravings →
-          </button>
+            <button className="border-2 border-white text-white px-8 py-3 rounded-full font-bold hover:bg-white hover:text-black transition-colors">
+              Satisfy Your Cravings →
+            </button>
           </Link>
         </div>
       </div>
-      
+
+      <CustomizeMenu
+        isOpen={isCustomizeOpen}
+        onClose={() => setIsCustomizeOpen(false)}
+        baseItem={selectedItem}
+        allMenus={allMenus.length ? allMenus : menuItems}
+        onAddExtra={handleAddExtra}
+      />
+
       {/* Repeating Background Pattern */}
       <div className="absolute bottom-0 left-0 right-0 h-8 flex overflow-hidden opacity-50">
         {[...Array(20)].map((_, i) => (
-          <img 
+          <img
             key={i}
-            src="/src/assets/Frame 24.png" 
-            alt="" 
+            src="/src/assets/Frame 24.png"
+            alt=""
             className="h-full w-auto flex-shrink-0"
           />
         ))}
