@@ -25,7 +25,7 @@ function Footer() {
               <FaMapMarkerAlt className="text-white text-xl" />
             </div>
             <h3 className="text-gray-400 text-2xl font-bold mb-2 font-bolota">FIND US</h3>
-            <p className="text-white text-4xl font-black font-bolota">INSIDE UNIZIK, AWKA,<br />NIGERIA</p>
+            <p className="text-white text-2xl font-black font-bolota">Opposite Admin Block B, Beside the Department of Geology, Nnamdi Azikiwe University<br />NIGERIA.</p>
           </div>
         </div>
 
