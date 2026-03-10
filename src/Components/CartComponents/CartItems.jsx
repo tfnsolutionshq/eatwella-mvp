@@ -1,26 +1,45 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { FaArrowLeft, FaTimes } from 'react-icons/fa'
 import { MdHome, MdRestaurant, MdDeliveryDining } from 'react-icons/md'
 import { Wallet, CreditCard } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useCart } from '../../context/CartContext'
+import { useAuth } from '../../context/AuthContext'
+import { useToast } from '../../context/ToastContext'
 import api from '../../utils/api'
 
 function CartItems() {
   const navigate = useNavigate()
-  const { cart, updateCartItem, removeFromCart, applyDiscount, removeDiscount, clearCart } = useCart()
+  const { cart, updateCartItem, removeFromCart, applyDiscount, removeDiscount } = useCart()
+  const { user } = useAuth()
+  const { showToast } = useToast()
   
   const [selectedOrderType, setSelectedOrderType] = useState('dine-in')
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState('gateway')
+  const [showPaymentModal, setShowPaymentModal] = useState(false)
+  const [taxes, setTaxes] = useState([])
+  const [processingCheckout, setProcessingCheckout] = useState(false)
   const [discountCode, setDiscountCode] = useState('')
   const [discountMessage, setDiscountMessage] = useState({ type: '', text: '' })
   const [applyingDiscount, setApplyingDiscount] = useState(false)
   const [removingDiscount, setRemovingDiscount] = useState(false)
   const [quantityLoading, setQuantityLoading] = useState({})
-  const [showPaymentModal, setShowPaymentModal] = useState(false)
-  const [selectedPayment, setSelectedPayment] = useState(null)
-  const [isProcessing, setIsProcessing] = useState(false)
 
   const cartItems = cart?.items || []
+
+  useEffect(() => {
+    fetchTaxes()
+  }, [])
+
+  const fetchTaxes = async () => {
+    try {
+      const { data } = await api.get('/admin/taxes')
+      const activeTaxes = Array.isArray(data) ? data.filter(t => t.is_active) : (data.data?.filter(t => t.is_active) || [])
+      setTaxes(activeTaxes)
+    } catch (err) {
+      console.error('Failed to fetch taxes:', err)
+    }
+  }
 
   const handleApplyDiscount = async () => {
     if (!discountCode.trim()) return
@@ -45,7 +64,6 @@ function CartItems() {
     const newQuantity = quantity + change
     if (newQuantity < 1) return
     
-    // Optimistically update UI or show loading could be added here
     setQuantityLoading(prev => ({ ...prev, [itemId]: true }))
     await updateCartItem(itemId, newQuantity)
     setQuantityLoading(prev => ({ ...prev, [itemId]: false }))
@@ -67,24 +85,42 @@ function CartItems() {
   }
 
   const handleProceedToCheckout = () => {
-    setShowPaymentModal(true)
+    if (!user) {
+      navigate('/order-type', {
+        state: {
+          orderType: selectedOrderType,
+          paymentMethod: 'gateway'
+        }
+      })
+    } else {
+      setShowPaymentModal(true)
+    }
   }
 
-  const handlePayment = async () => {
-    if (!selectedPayment) return
-
-    setIsProcessing(true)
-    try {
-      navigate('/order-type', { 
-        state: { 
+  const handleConfirmCheckout = async () => {
+    if (selectedPaymentMethod === 'loyalty_points') {
+      setProcessingCheckout(true)
+      try {
+        const orderData = {
+          order_type: selectedOrderType,
+          payment_type: 'loyalty_points',
+          customer_email: user.email
+        }
+        await api.post('/checkout', orderData)
+        showToast('Order placed successfully with loyalty points!')
+        navigate('/receipt')
+      } catch (err) {
+        showToast(err.response?.data?.message || 'Failed to process loyalty points payment', 'error')
+      } finally {
+        setProcessingCheckout(false)
+      }
+    } else {
+      navigate('/order-type', {
+        state: {
           orderType: selectedOrderType,
-          paymentMethod: selectedPayment
-        } 
+          paymentMethod: 'gateway'
+        }
       })
-    } catch (error) {
-      console.error('Navigation error:', error)
-    } finally {
-      setIsProcessing(false)
     }
   }
 
@@ -92,12 +128,11 @@ function CartItems() {
   const deliveryFee = selectedOrderType === 'delivery' ? 3.99 : 0
   const discountAmount = Number(cart?.discount_amount || 0)
   
-  // Calculate original total (what user would pay without discount)
-  const originalTotal = subtotal + deliveryFee
+  const taxAmount = taxes.reduce((sum, tax) => {
+    return sum + (subtotal * (Number(tax.rate) / 100))
+  }, 0)
   
-  // Calculate final total (what user actually pays)
-  // If we have a discount, it's Original - Discount. 
-  // If no discount, it's just Original.
+  const originalTotal = subtotal + deliveryFee + taxAmount
   const finalTotal = originalTotal - discountAmount
   const discountPercent = originalTotal > 0 ? Math.round((discountAmount / originalTotal) * 100) : 0
 
@@ -129,7 +164,6 @@ function CartItems() {
         </button>
 
         <div className="grid lg:grid-cols-2 gap-8 items-start">
-          {/* Cart Items */}
           <div className="bg-white rounded-3xl p-6 h-fit">
             {cartItems.map((item) => (
               <div key={item.id} className="flex items-center gap-4 mb-6 pb-6 border-b border-gray-200 last:border-0">
@@ -173,7 +207,6 @@ function CartItems() {
             ))}
           </div>
 
-          {/* Order Summary */}
           <div>
             <div className="bg-white rounded-3xl p-6 mb-6">
               <h3 className="font-black text-xl mb-6">Select Order Type</h3>
@@ -253,13 +286,18 @@ function CartItems() {
               )}
 
               <div className="space-y-3 mb-6">
-                {/* Only show breakdown if discount is applied */}
                 {discountAmount > 0 && (
                   <>
                     <div className="flex justify-between">
-                      <span className="text-gray-600">Total</span>
-                      <span className="font-bold">₦{originalTotal.toFixed(2)}</span>
+                      <span className="text-gray-600">Subtotal</span>
+                      <span className="font-bold">₦{subtotal.toFixed(2)}</span>
                     </div>
+                    {taxAmount > 0 && (
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Tax</span>
+                        <span className="font-bold">₦{taxAmount.toFixed(2)}</span>
+                      </div>
+                    )}
                     <div className="flex justify-between text-green-600">
                       <span>{`Discount (${discountPercent}%):`}</span>
                       <span className="font-bold flex items-center gap-2">
@@ -271,11 +309,12 @@ function CartItems() {
                     </div>
                   </>
                 )}
-                
-                {/* 
-                   Hidden as per request: "Only the total should display. No subtotal."
-                   Delivery fee is included in the calculations but hidden from line items to keep it clean.
-                */}
+                {discountAmount === 0 && taxAmount > 0 && (
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Tax</span>
+                    <span className="font-bold">₦{taxAmount.toFixed(2)}</span>
+                  </div>
+                )}
               </div>
 
               <div className="flex justify-between items-center pt-4 border-t border-gray-200 mb-6">
@@ -294,54 +333,53 @@ function CartItems() {
         </div>
       </div>
 
-      {/* Payment Method Modal */}
       {showPaymentModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-          <div className="bg-white rounded-3xl w-full max-w-md shadow-xl">
-            <div className="p-6 border-b border-gray-100">
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg font-bold">Select Payment Method</h3>
-                <button onClick={() => { setShowPaymentModal(false); setSelectedPayment(null); }} className="text-gray-400 hover:text-gray-600">
-                  <FaTimes />
-                </button>
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6">
+            <h3 className="text-xl font-bold text-gray-900 mb-4">Select Payment Method</h3>
+            <div className="space-y-3 mb-6">
+              <div
+                onClick={() => setSelectedPaymentMethod('gateway')}
+                className={`p-4 rounded-xl cursor-pointer border-2 transition-colors ${
+                  selectedPaymentMethod === 'gateway' ? 'border-orange-500 bg-orange-50' : 'border-gray-200'
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <CreditCard className="text-orange-500" />
+                  <div>
+                    <h4 className="font-bold">Online Payment</h4>
+                    <p className="text-sm text-gray-600">Pay with card or bank transfer</p>
+                  </div>
+                </div>
+              </div>
+              <div
+                onClick={() => setSelectedPaymentMethod('loyalty_points')}
+                className={`p-4 rounded-xl cursor-pointer border-2 transition-colors ${
+                  selectedPaymentMethod === 'loyalty_points' ? 'border-orange-500 bg-orange-50' : 'border-gray-200'
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <Wallet className="text-orange-500" />
+                  <div>
+                    <h4 className="font-bold">Loyalty Points</h4>
+                    <p className="text-sm text-gray-600">Redeem your points</p>
+                  </div>
+                </div>
               </div>
             </div>
-            <div className="p-6 space-y-3">
+            <div className="flex gap-3">
               <button
-                onClick={() => setSelectedPayment('cash')}
-                disabled={isProcessing}
-                className={`w-full p-4 border-2 rounded-2xl text-left transition disabled:opacity-50 disabled:cursor-not-allowed ${
-                  selectedPayment === 'cash' ? 'border-orange-500 bg-orange-50' : 'border-gray-200 hover:border-gray-300'
-                }`}
+                onClick={() => setShowPaymentModal(false)}
+                className="flex-1 py-3 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold transition-colors"
               >
-                <div className="flex items-center mb-1">
-                  <Wallet className={`w-5 h-5 mr-2 ${selectedPayment === 'cash' ? 'text-orange-500' : 'text-gray-400'}`} />
-                  <span className="font-semibold text-gray-900">Cash</span>
-                </div>
-                <p className="text-sm text-gray-500">Pay with cash at the restaurant</p>
+                Cancel
               </button>
-
               <button
-                onClick={() => setSelectedPayment('online')}
-                disabled={isProcessing}
-                className={`w-full p-4 border-2 rounded-2xl text-left transition disabled:opacity-50 disabled:cursor-not-allowed ${
-                  selectedPayment === 'online' ? 'border-orange-500 bg-orange-50' : 'border-gray-200 hover:border-gray-300'
-                }`}
+                onClick={handleConfirmCheckout}
+                disabled={processingCheckout}
+                className="flex-1 py-3 rounded-full bg-orange-500 hover:bg-orange-600 text-white font-bold disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
               >
-                <div className="flex items-center mb-1">
-                  <CreditCard className={`w-5 h-5 mr-2 ${selectedPayment === 'online' ? 'text-orange-500' : 'text-gray-400'}`} />
-                  <span className="font-semibold text-gray-900">Online Payment</span>
-                </div>
-                <p className="text-sm text-gray-500">Pay online using a credit/debit card</p>
-              </button>
-            </div>
-            <div className="p-6 border-t border-gray-100">
-              <button
-                onClick={handlePayment}
-                disabled={!selectedPayment || isProcessing}
-                className="w-full py-3 rounded-full bg-orange-500 text-white font-bold hover:bg-orange-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition"
-              >
-                {isProcessing ? 'Processing...' : 'Continue'}
+                {processingCheckout ? 'Processing...' : 'Continue'}
               </button>
             </div>
           </div>

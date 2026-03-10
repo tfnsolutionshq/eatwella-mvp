@@ -17,7 +17,7 @@ function Footer() {
               <FaPhone className="text-white text-xl" />
             </div>
             <h3 className="text-gray-400 text-2xl font-bold mb-2 font-bolota">CALL US</h3>
-            <p className="text-white text-4xl font-black font-bolota">0809 9099 0948</p>
+            <p className="text-white text-4xl font-black font-bolota">09111086770</p>
           </div>
 
           <div className="bg-[#262626] rounded-3xl p-8 text-center">
@@ -35,7 +35,7 @@ function Footer() {
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-12 gap-6">
           <div className="flex gap-4 md:gap-8 flex-wrap">
             <Link to="/menu" className="text-white hover:text-orange-500 transition-colors">Menu</Link>
-            <Link to="/meal-plans" className="text-white hover:text-orange-500 transition-colors">Meal Plans</Link>
+            <Link to="/careers" className="text-white hover:text-orange-500 transition-colors">Vacancy</Link>
             <Link to="/track-order" className="text-white hover:text-orange-500 transition-colors">Track Order</Link>
             <a href="#contact" className="text-white hover:text-orange-500 transition-colors">Contact Us</a>
           </div>
@@ -63,7 +63,7 @@ function Footer() {
         {/* Built by */}
         <div className="text-center relative z-10 mb-8">
           <p className="text-white">
-            Built by <a href="#" className="underline hover:text-orange-500 transition-colors">TFN Solutions</a>
+            Built by <a href="https://tfnsolutions.us/" target='_blank' className="underline hover:text-orange-500 transition-colors">TFN Solutions</a>
           </p>
         </div>
       </div>

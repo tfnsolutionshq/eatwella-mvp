@@ -21,9 +21,10 @@ const Login = () => {
     try {
       const { data } = await api.post('/login', { email, password })
       login(data.token, data.user)
-      navigate('/admin/dashboard')
+      navigate(data.user?.role === 'cashier' ? '/admin/orders' : '/admin/dashboard')
     } catch (err) {
-      setError(err.response?.data?.message || 'Login failed')
+      console.error('Login error:', err)
+      setError(err.response?.data?.message || err.message || 'Login failed. Please try again.')
     } finally {
       setLoading(false)
     }

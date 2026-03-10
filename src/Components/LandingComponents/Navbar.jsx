@@ -11,6 +11,9 @@ function Navbar() {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
 
+  const avatarUrl = user?.avatar_url || user?.avatar || user?.profile_image || user?.image
+  const avatarInitial = (user?.name || user?.email || '').charAt(0).toUpperCase()
+
   const toggleMenu = () => setIsMenuOpen(!isMenuOpen)
 
   const handleLogout = async () => {
@@ -50,12 +53,12 @@ function Navbar() {
           Menu
         </NavLink>
         <NavLink
-          to="/meal-plans"
+          to="/careers"
           className={({ isActive }) =>
             `text-white font-medium transition-colors hover:text-green-100 inline-flex px-3 py-1 rounded-full ${isActive ? 'ring-2 ring-white' : ''}`
           }
         >
-          Meal Plans
+          Vacancy
         </NavLink>
         <NavLink
           to="/track-order"
@@ -65,16 +68,6 @@ function Navbar() {
         >
           Track Order
         </NavLink>
-        {user && (
-          <NavLink
-            to="/account/dashboard"
-            className={({ isActive }) =>
-              `text-white font-medium transition-colors hover:text-green-100 inline-flex px-3 py-1 rounded-full ${isActive ? 'ring-2 ring-white' : ''}`
-            }
-          >
-            Dashboard
-          </NavLink>
-        )}
         {!user && (
           <Link to="/account/login" className="text-white font-semibold bg-white/20 hover:bg-white/30 px-4 py-2 rounded-full transition-colors border border-white/30">
             Login
@@ -86,8 +79,16 @@ function Navbar() {
               onClick={() => setIsDropdownOpen(!isDropdownOpen)}
               className="flex items-center gap-2 bg-white/10 hover:bg-white/20 px-3 py-2 rounded-full transition-colors"
             >
-              <div className="w-8 h-8 rounded-full bg-orange-500 flex items-center justify-center text-white font-bold text-sm">
-                {user.email?.charAt(0).toUpperCase()}
+              <div className="w-8 h-8 rounded-full bg-orange-500 overflow-hidden flex items-center justify-center text-white font-bold text-sm">
+                {avatarUrl ? (
+                  <img
+                    src={avatarUrl}
+                    alt={user?.name || user?.email || 'User avatar'}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  avatarInitial
+                )}
               </div>
               <span className="text-white text-sm font-medium">{user.email}</span>
               <FiChevronDown className="text-white w-4 h-4" />
@@ -100,7 +101,7 @@ function Navbar() {
                   className="flex items-center gap-2 px-4 py-2 text-gray-700 hover:bg-gray-100 transition-colors"
                 >
                   <FiUser className="w-4 h-4" />
-                  <span>Profile</span>
+                  <span>Dashboard</span>
                 </Link>
                 <button
                   onClick={() => { setIsDropdownOpen(false); handleLogout(); }}
@@ -121,9 +122,17 @@ function Navbar() {
           <div className="relative">
             <button
               onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-              className="w-8 h-8 rounded-full bg-orange-500 flex items-center justify-center text-white font-bold text-sm"
+              className="w-8 h-8 rounded-full bg-orange-500 overflow-hidden flex items-center justify-center text-white font-bold text-sm"
             >
-              {user.email?.charAt(0).toUpperCase()}
+              {avatarUrl ? (
+                <img
+                  src={avatarUrl}
+                  alt={user?.name || user?.email || 'User avatar'}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                avatarInitial
+              )}
             </button>
             {isDropdownOpen && (
               <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg py-2 z-50">
@@ -133,7 +142,7 @@ function Navbar() {
                   className="flex items-center gap-2 px-4 py-2 text-gray-700 hover:bg-gray-100 transition-colors"
                 >
                   <FiUser className="w-4 h-4" />
-                  <span>Profile</span>
+                  <span>Dashboard</span>
                 </Link>
                 <button
                   onClick={() => { setIsDropdownOpen(false); handleLogout(); }}
@@ -190,13 +199,13 @@ function Navbar() {
               Menu
             </NavLink>
             <NavLink 
-              to="/meal-plans" 
+              to="/careers" 
               onClick={() => setIsMenuOpen(false)}
               className={({ isActive }) =>
                 `text-gray-800 hover:text-orange-500 font-medium text-lg transition-colors inline-flex px-3 py-1 rounded-full ${isActive ? 'ring-2 ring-white' : ''}`
               }
             >
-              Meal Plans
+              Vacancy
             </NavLink>
             {/* <Link 
               to="/loyalty-board" 
@@ -214,20 +223,9 @@ function Navbar() {
             >
               Track Order
             </NavLink>
-            {user && (
-              <NavLink 
-                to="/account/dashboard" 
-                onClick={() => setIsMenuOpen(false)}
-                className={({ isActive }) =>
-                  `text-gray-800 hover:text-orange-500 font-medium text-lg transition-colors inline-flex px-3 py-1 rounded-full ${isActive ? 'ring-2 ring-white' : ''}`
-                }
-              >
-                Dashboard
-              </NavLink>
-            )}
             {!user && (
               <Link 
-                to="/login" 
+                to="/account/login" 
                 onClick={() => setIsMenuOpen(false)}
                 className="text-orange-500 hover:text-orange-600 font-bold text-lg transition-colors bg-orange-50 hover:bg-orange-100 px-4 py-2 rounded-full border-2 border-orange-200"
               >

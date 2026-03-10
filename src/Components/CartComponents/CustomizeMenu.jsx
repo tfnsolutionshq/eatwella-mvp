@@ -98,7 +98,7 @@ function CustomizeMenu({ isOpen, onClose, baseItem, allMenus = [], onAddExtra })
           </button>
         </div>
 
-        <div className="px-6 pt-4 pb-6 space-y-5 overflow-y-auto flex-1">
+        <div className="px-4 pt-4 pb-6 space-y-5 overflow-y-auto flex-1">
           <section className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-2xl border border-green-200 p-5 shadow-sm">
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">

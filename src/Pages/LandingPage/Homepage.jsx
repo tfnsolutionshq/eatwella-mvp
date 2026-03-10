@@ -2,6 +2,8 @@ import Header from "../../Components/LandingComponents/Header"
 import Feeling from "../../Components/LandingComponents/Feeling"
 import Menu from "../../Components/LandingComponents/Menu"
 import Footer from "../../Components/LandingComponents/Footer"
+import TestimonialSection from "../../Components/LandingComponents/TestimonialSection"
+import HowItWorks from "../../Components/LandingComponents/HowItWorks"
 import SEO from "../../Components/SEO"
 
 function Homepage() {
@@ -14,6 +16,8 @@ function Homepage() {
       <Header />
       <Menu />
       <Feeling />
+      <HowItWorks />
+      <TestimonialSection />
       <Footer />
     </>
   )

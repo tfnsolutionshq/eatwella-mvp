@@ -29,9 +29,9 @@ const Dashboard = () => {
   }
 
   const stats = [
-    { label: "Total Revenue", value: `$${summary?.total_revenue?.toFixed(2) || '0.00'}`, icon: FiDollarSign, color: "bg-green-500" },
+    { label: "Total Revenue", value: `₦${summary?.total_revenue?.toFixed(2) || '0.00'}`, icon: FiDollarSign, color: "bg-green-500" },
     { label: "Total Orders", value: summary?.total_orders || '0', icon: FiShoppingBag, color: "bg-blue-500" },
-    { label: "Avg Order Value", value: `$${summary?.average_order_value?.toFixed(2) || '0.00'}`, icon: FiTrendingUp, color: "bg-orange-500" },
+    { label: "Avg Order Value", value: `₦${summary?.average_order_value?.toFixed(2) || '0.00'}`, icon: FiTrendingUp, color: "bg-orange-500" },
   ]
 
   const chartData = dailySales.map(day => ({
@@ -109,7 +109,7 @@ const Dashboard = () => {
                   <h4 className="text-sm font-medium text-gray-900 truncate">{item.menu?.name}</h4>
                   <span className="text-xs text-gray-500">{item.total_sold} sold</span>
                 </div>
-                <span className="text-sm font-bold text-orange-500">${item.total_revenue}</span>
+                <span className="text-sm font-bold text-orange-500">₦{item.total_revenue}</span>
               </div>
             ))}
           </div>

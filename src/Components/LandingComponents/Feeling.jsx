@@ -1,34 +1,57 @@
 import React from 'react'
-import dineInImg from '../../assets/dinein.png'
-import pickupImg from '../../assets/pickup.png'
-import deliveryImg from '../../assets/delivery.png'
+import dineInImg from '../../assets/feeling/dine_in.png'
+import pickupImg from '../../assets/feeling/pickupp.png'
+import deliveryImg from '../../assets/feeling/deliveryyy.png'
 
 function Feeling() {
-  const images = [
-    { src: dineInImg, alt: 'Dine In' },
-    { src: deliveryImg, alt: 'Delivery' },
-    { src: pickupImg, alt: 'Pick Up' }
+  const sections = [
+    { 
+      id: 1,
+      image: dineInImg, 
+      title: 'Dine In',
+      description: 'Experience the ambiance and taste of our restaurant.',
+      align: 'left'
+    },
+    { 
+      id: 2,
+      image: pickupImg, 
+      title: 'Pick Up',
+      description: 'Order ahead and skip the line.',
+      align: 'right'
+    },
+    { 
+      id: 3,
+      image: deliveryImg, 
+      title: 'Delivery',
+      description: 'Your favorite meals delivered to your doorstep.',
+      align: 'left'
+    }
   ]
 
   return (
-    <div className="py-16 px-6">
-      <div className="max-w-5xl mx-auto">
-        <h2 className="text-4xl md:text-6xl font-black mb-12 font-bolota">
-          HOW ARE WE FEEDING<br />YOU TODAY?
-        </h2>
-        
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-          {images.map((img, index) => (
-            <div key={index} className="rounded-3xl overflow-hidden group cursor-pointer transition-transform hover:scale-105">
-              <img 
-                src={img.src} 
-                alt={img.alt}
-                className="w-full h-auto object-cover"
-              />
+    <div className="w-full">
+      {sections.map((section) => (
+        <div 
+          key={section.id}
+          className="relative w-full h-[80vh] bg-fixed bg-center bg-cover flex items-center"
+          style={{ backgroundImage: `url(${section.image})` }}
+        >
+          {/* Overlay */}
+          <div className="absolute inset-0 bg-black/40"></div>
+          
+          {/* Content */}
+          <div className={`relative z-10 container mx-auto px-6 md:px-12 flex ${section.align === 'right' ? 'justify-end' : 'justify-start'}`}>
+            <div className="max-w-xl text-white">
+              <h2 className="text-5xl md:text-7xl font-black font-bolota mb-4 tracking-tight drop-shadow-lg">
+                {section.title}
+              </h2>
+              <p className="text-xl md:text-2xl font-medium text-gray-100 drop-shadow-md">
+                {section.description}
+              </p>
             </div>
-          ))}
+          </div>
         </div>
-      </div>
+      ))}
     </div>
   )
 }

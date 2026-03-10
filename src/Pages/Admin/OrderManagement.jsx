@@ -1,10 +1,14 @@
 import React, { useState, useEffect } from 'react'
 import DashboardLayout from '../../DashboardLayout/DashboardLayout'
 import OrderDetailsModal from '../../Components/Modals/OrderDetailsModal'
-import { FiFilter, FiEye, FiClock, FiCheck, FiTruck, FiUsers } from 'react-icons/fi'
+import { FiFilter, FiEye, FiClock, FiCheck, FiTruck, FiUsers, FiPlus } from 'react-icons/fi'
+import { useNavigate } from 'react-router-dom'
 import api from '../../utils/api'
+import { useAuth } from '../../context/AuthContext'
 
 const OrderManagement = () => {
+  const navigate = useNavigate()
+  const { user } = useAuth()
   const [activeTab, setActiveTab] = useState('all')
   const [orders, setOrders] = useState([])
   const [selectedOrder, setSelectedOrder] = useState(null)
@@ -65,10 +69,21 @@ const OrderManagement = () => {
               <h1 className="text-2xl font-bold text-gray-900">Order Management</h1>
               <p className="text-sm text-gray-500 mt-1">Monitor and manage all orders</p>
             </div>
-            <button className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors shadow-sm">
-              <FiFilter className="w-4 h-4" />
-              Filter
-            </button>
+            <div className="flex items-center gap-3">
+              <button className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors shadow-sm">
+                <FiFilter className="w-4 h-4" />
+                Filter
+              </button>
+              {user?.role === 'cashier' && (
+                <button 
+                  onClick={() => navigate('/admin/create-order')}
+                  className="flex items-center gap-2 px-4 py-2 bg-orange-500 text-white rounded-lg text-sm font-medium hover:bg-orange-600 transition-colors shadow-sm shadow-orange-200"
+                >
+                  <FiPlus className="w-4 h-4" />
+                  Add Order
+                </button>
+              )}
+            </div>
           </div>
 
           <div className="bg-white p-2 rounded-xl border border-gray-100 shadow-sm overflow-x-auto">
@@ -91,7 +106,7 @@ const OrderManagement = () => {
                       <span className="font-bold text-gray-900 text-lg">#{order.order_number}</span>
                     </div>
                     <div className="text-sm text-gray-500">{order.customer_email}</div>
-                    <div className="text-xs text-gray-400 mt-0.5">{new Date(order.created_at).toLocaleString()}</div>
+                    <div className="text-xs text-gray-400 mt-0.5">{new Date(order.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} at {new Date(order.created_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</div>
                   </div>
                   <span className={`px-2.5 py-1 rounded-full text-xs font-medium flex items-center gap-1 ${getStatusColor(order.status)}`}>
                     {order.status === 'completed' && <FiCheck className="w-3 h-3" />}
@@ -108,14 +123,14 @@ const OrderManagement = () => {
                           <span className="text-gray-400 mr-2">{item.quantity}x</span>
                           {item.menu?.name}
                         </span>
-                        <span className="font-medium text-gray-900">${item.subtotal}</span>
+                        <span className="font-medium text-gray-900">₦{item.subtotal}</span>
                       </div>
                     ))}
                   </div>
 
                   <div className="pt-4 border-t border-dashed border-gray-200 flex items-end justify-between">
                     <span className="font-bold text-gray-900">Total</span>
-                    <span className="text-xl font-bold text-orange-500">${order.final_amount}</span>
+                    <span className="text-xl font-bold text-orange-500">₦{order.final_amount}</span>
                   </div>
                 </div>
 

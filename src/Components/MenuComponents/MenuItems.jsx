@@ -25,7 +25,7 @@ function MenuItems() {
 
   const fetchCategories = async () => {
     try {
-      const { data } = await axios.get('https://api.eatwella.ng/api/categories', {
+      const { data } = await axios.get('https://eatwella.tfnsolutions.us/api/categories', {
         headers: { 'Accept': 'application/json' }
       })
       setCategories(data.data)
@@ -37,8 +37,8 @@ function MenuItems() {
   const fetchMenuItems = async (categoryId = 'all') => {
     try {
       const url = categoryId === 'all' 
-        ? 'https://api.eatwella.ng/api/menus'
-        : `https://api.eatwella.ng/api/menus?category_id=${categoryId}`
+        ? 'https://eatwella.tfnsolutions.us/api/menus'
+        : `https://eatwella.tfnsolutions.us/api/menus?category_id=${categoryId}`
       const { data } = await axios.get(url, {
         headers: { 'Accept': 'application/json' }
       })
@@ -95,19 +95,19 @@ function MenuItems() {
 
         <div className="grid md:grid-cols-3 gap-6">
           {menuItems.map((item) => (
-            <div key={item.id} className="bg-white rounded-3xl overflow-hidden shadow-lg border border-gray-200">
+            <div key={item.id} className="bg-white rounded-3xl overflow-hidden shadow-lg border border-gray-200 flex flex-col h-full">
               <img 
                 src={item.images?.[0] || 'https://via.placeholder.com/400x300'} 
                 alt={item.name}
-                className="w-full h-48 object-cover"
+                className="w-full h-48 object-cover flex-shrink-0"
               />
-              <div className="p-6">
+              <div className="p-6 flex flex-col flex-grow">
                 <div className="flex justify-between items-center mb-3">
                   <h3 className="text-xl font-semibold">{item.name}</h3>
                   <span className="text-orange-500 font-black text-xl">₦{item.price}</span>
                 </div>
-                <p className="text-gray-600 mb-4">{item.description}</p>
-                <button onClick={() => handleAddToCart(item)} disabled={loadingItems[item.id]} className="w-full bg-orange-500 hover:bg-orange-600 text-white py-3 rounded-full font-bold transition-colors disabled:opacity-50">
+                <p className="text-gray-600 mb-4 line-clamp-2 flex-grow">{item.description}</p>
+                <button onClick={() => handleAddToCart(item)} disabled={loadingItems[item.id]} className="w-full bg-orange-500 hover:bg-orange-600 text-white py-3 rounded-full font-bold transition-colors disabled:opacity-50 mt-auto">
                   {loadingItems[item.id] ? 'Adding...' : 'Add To Cart'}
                 </button>
               </div>

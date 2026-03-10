@@ -4,7 +4,7 @@ import api from '../../utils/api'
 
 const EditMenuItemModal = ({ isOpen, onClose, item, categories, onSuccess }) => {
   const [formData, setFormData] = useState({ category_id: '', name: '', description: '', price: '', is_available: 1 })
-  const [image, setImage] = useState(null)
+  const [images, setImages] = useState([])
   const [currentImage, setCurrentImage] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -19,7 +19,7 @@ const EditMenuItemModal = ({ isOpen, onClose, item, categories, onSuccess }) => 
         is_available: item.is_available ?? 1
       })
       setCurrentImage(item.images?.[0] || '')
-      setImage(null)
+      setImages([])
     }
   }, [item])
 
@@ -35,7 +35,9 @@ const EditMenuItemModal = ({ isOpen, onClose, item, categories, onSuccess }) => 
       data.append('description', formData.description)
       data.append('price', formData.price)
       data.append('is_available', formData.is_available)
-      if (image) data.append('images[]', image)
+      images.forEach((img) => {
+        data.append('images[]', img)
+      })
 
       await api.put(`/admin/menus/${item.id}`, data, { headers: { 'Content-Type': 'multipart/form-data' } })
       onSuccess?.()
@@ -74,9 +76,21 @@ const EditMenuItemModal = ({ isOpen, onClose, item, categories, onSuccess }) => 
               <textarea rows="3" value={formData.description} onChange={(e) => setFormData({...formData, description: e.target.value})} required className="w-full px-4 py-3 rounded-xl border border-gray-200 text-gray-900 focus:outline-none focus:ring-2 focus:ring-orange-100 focus:border-orange-500 transition-all resize-none"></textarea>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Image</label>
-              {currentImage && <img src={currentImage} alt="Current" className="mb-2 w-full h-32 object-cover rounded-lg" />}
-              <input type="file" accept="image/*" onChange={(e) => setImage(e.target.files[0])} className="w-full px-4 py-3 rounded-xl border border-gray-200 text-gray-900 focus:outline-none focus:ring-2 focus:ring-orange-100 focus:border-orange-500 transition-all" />
+              <label className="block text-sm font-medium text-gray-700 mb-2">Images</label>
+              {currentImage && (
+                <img
+                  src={currentImage}
+                  alt="Current"
+                  className="mb-2 w-full h-32 object-cover rounded-lg"
+                />
+              )}
+              <input
+                type="file"
+                multiple
+                accept="image/*"
+                onChange={(e) => setImages(Array.from(e.target.files))}
+                className="w-full px-4 py-3 rounded-xl border border-gray-200 text-gray-900 focus:outline-none focus:ring-2 focus:ring-orange-100 focus:border-orange-500 transition-all"
+              />
             </div>
             <div className="grid grid-cols-2 gap-5">
               <div>

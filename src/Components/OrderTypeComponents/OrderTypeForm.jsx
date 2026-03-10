@@ -11,7 +11,6 @@ function OrderTypeForm() {
   const { cart, removeDiscount, clearCart } = useCart()
   const { user } = useAuth()
   const orderType = location.state?.orderType || 'pickup'
-  const paymentMethod = location.state?.paymentMethod || 'cash'
   
   const [formData, setFormData] = useState({
     fullName: '',
@@ -76,7 +75,7 @@ function OrderTypeForm() {
         customer_name: formData.fullName,
         customer_email: formData.email,
         customer_phone: formData.phone,
-        payment_type: paymentMethod === 'online' ? 'gateway' : 'cash',
+        payment_type: 'gateway',
         callback_url: `${window.location.origin}/receipt`,
         items: cartItems.map(item => ({
           menu_id: item.menu.id,
@@ -94,19 +93,10 @@ function OrderTypeForm() {
 
       const response = await api.post('/checkout', payload)
 
-      if (paymentMethod === 'online') {
-        if (response.data.payment?.authorization_url) {
-          window.location.href = response.data.payment.authorization_url
-        } else {
-          alert('Failed to initialize payment gateway')
-        }
+      if (response.data.payment?.authorization_url) {
+        window.location.href = response.data.payment.authorization_url
       } else {
-        const createdOrder = response.data.order
-        const id = createdOrder?.order_number || createdOrder?.id
-        if (clearCart) {
-          clearCart()
-        }
-        navigate(id ? `/receipt/${id}` : '/receipt', { state: { order: createdOrder } })
+        alert('Failed to initialize payment gateway')
       }
     } catch (error) {
       console.error('Payment error:', error)
@@ -284,7 +274,7 @@ function OrderTypeForm() {
               disabled={isSubmitting}
               className="w-full bg-orange-500 hover:bg-orange-600 disabled:bg-gray-400 text-white py-4 rounded-full font-bold transition-colors"
             >
-              {isSubmitting ? 'Processing...' : paymentMethod === 'online' ? 'Pay Now' : 'Place Order'}
+              {isSubmitting ? 'Processing...' : 'Pay Now'}
             </button>
           </div>
         </div>
