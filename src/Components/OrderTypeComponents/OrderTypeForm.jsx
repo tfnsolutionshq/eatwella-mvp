@@ -1,125 +1,156 @@
-import React, { useState, useEffect } from 'react'
-import { FaArrowLeft, FaTimes } from 'react-icons/fa'
-import { useNavigate, useLocation } from 'react-router-dom'
-import { useCart } from '../../context/CartContext'
-import { useAuth } from '../../context/AuthContext'
-import api from '../../utils/api'
+import React, { useState, useEffect } from "react";
+import { FaArrowLeft, FaTimes } from "react-icons/fa";
+import { useNavigate, useLocation } from "react-router-dom";
+import { useCart } from "../../context/CartContext";
+import { useAuth } from "../../context/AuthContext";
+import api from "../../utils/api";
+import { p } from "framer-motion/client";
 
 function OrderTypeForm() {
-  const navigate = useNavigate()
-  const location = useLocation()
-  const { cart, removeDiscount, clearCart } = useCart()
-  const { user } = useAuth()
-  const orderType = location.state?.orderType || 'pickup'
-  
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { cart, removeDiscount, clearCart } = useCart();
+  const { user } = useAuth();
+  const orderType = location.state?.orderType || "pickup";
+
   const [formData, setFormData] = useState({
-    fullName: '',
-    email: '',
-    phone: '',
-    tableNumber: '',
-    deliveryAddress: '',
-    city: '',
-    zipCode: ''
-  })
+    fullName: "",
+    email: "",
+    phone: "",
+    tableNumber: "",
+    deliveryAddress: "",
+    city: "",
+    zipCode: "",
+  });
+
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoadingTax, setIsLoadingTax] = useState(false);
+  const [removingDiscount, setRemovingDiscount] = useState(false);
+  const [taxList, setTaxList] = useState([]);
+  const [totalWithTaxAmount, setTotalWithTaxAmount] = useState(0);
+
+  const cartItems = cart?.items || [];
+
+  const subtotal = cart?.subtotal
+    ? Number(cart.subtotal)
+    : cartItems.reduce(
+        (sum, item) => sum + Number(item.menu.price) * item.quantity,
+        0,
+      );
+  const deliveryFee = orderType === "delivery" ? 3.99 : 0;
+  const discountAmount = Number(cart?.discount_amount || 0);
+  const originalTotal = subtotal + deliveryFee;
+  const total = originalTotal - discountAmount;
+  const discountPercent =
+    originalTotal > 0 ? Math.round((discountAmount / originalTotal) * 100) : 0;
+
+  const getTaxes = async () => {
+    setIsLoadingTax(true);
+    const { data } = await api.get("/taxes");
+
+    setTaxList(data);
+
+    const totalTaxAmount = data.reduce((total, tax) => {
+      const taxAmount = (tax.rate / 100) * cart.subtotal;
+      return total + taxAmount;
+    }, 0);
+
+    setTotalWithTaxAmount(total + totalTaxAmount);
+    setIsLoadingTax(false);
+  };
 
   useEffect(() => {
     if (user) {
-      setFormData(prev => ({
+      setFormData((prev) => ({
         ...prev,
-        fullName: user.name || '',
-        email: user.email || '',
-        phone: user.phone || '',
-        deliveryAddress: user.street_address || '',
-        city: user.state || '',
-        zipCode: user.postal_code || ''
-      }))
+        fullName: user.name || "",
+        email: user.email || "",
+        phone: user.phone || "",
+        deliveryAddress: user.street_address || "",
+        city: user.state || "",
+        zipCode: user.postal_code || "",
+      }));
     }
-  }, [user])
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [removingDiscount, setRemovingDiscount] = useState(false)
 
-  const cartItems = cart?.items || []
-
-  const subtotal = cart?.subtotal ? Number(cart.subtotal) : cartItems.reduce((sum, item) => sum + (Number(item.menu.price) * item.quantity), 0)
-  const deliveryFee = orderType === 'delivery' ? 3.99 : 0
-  const discountAmount = Number(cart?.discount_amount || 0)
-  const originalTotal = subtotal + deliveryFee
-  const total = originalTotal - discountAmount
-  const discountPercent = originalTotal > 0 ? Math.round((discountAmount / originalTotal) * 100) : 0
+    getTaxes();
+  }, [user]);
 
   const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value })
-  }
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
 
   const handleSubmit = async () => {
     // Validate form data
     if (!formData.fullName || !formData.email || !formData.phone) {
-      alert('Please fill in all required fields')
-      return
+      alert("Please fill in all required fields");
+      return;
     }
 
-    if (orderType === 'dine-in' && !formData.tableNumber) {
-      alert('Please enter your table number')
-      return
+    if (orderType === "dine-in" && !formData.tableNumber) {
+      alert("Please enter your table number");
+      return;
     }
 
-    if (orderType === 'delivery' && (!formData.deliveryAddress || !formData.city || !formData.zipCode)) {
-      alert('Please fill in delivery details')
-      return
+    if (
+      orderType === "delivery" &&
+      (!formData.deliveryAddress || !formData.city || !formData.zipCode)
+    ) {
+      alert("Please fill in delivery details");
+      return;
     }
 
-    setIsSubmitting(true)
+    setIsSubmitting(true);
     try {
       const payload = {
-        order_type: orderType === 'dine-in' ? 'dine' : orderType,
+        order_type: orderType === "dine-in" ? "dine" : orderType,
         customer_name: formData.fullName,
         customer_email: formData.email,
         customer_phone: formData.phone,
-        payment_type: 'gateway',
+        payment_type: "gateway",
         callback_url: `${window.location.origin}/receipt`,
-        items: cartItems.map(item => ({
+        items: cartItems.map((item) => ({
           menu_id: item.menu.id,
-          quantity: item.quantity
-        }))
+          quantity: item.quantity,
+        })),
+      };
+
+      if (orderType === "dine-in") {
+        payload.table_number = formData.tableNumber;
+      } else if (orderType === "delivery") {
+        payload.delivery_address = formData.deliveryAddress;
+        payload.delivery_city = formData.city;
+        payload.delivery_zip = formData.zipCode;
       }
 
-      if (orderType === 'dine-in') {
-        payload.table_number = formData.tableNumber
-      } else if (orderType === 'delivery') {
-        payload.delivery_address = formData.deliveryAddress
-        payload.delivery_city = formData.city
-        payload.delivery_zip = formData.zipCode
-      }
-
-      const response = await api.post('/checkout', payload)
+      const response = await api.post("/checkout", payload);
 
       if (response.data.payment?.authorization_url) {
-        window.location.href = response.data.payment.authorization_url
+        window.location.href = response.data.payment.authorization_url;
       } else {
-        alert('Failed to initialize payment gateway')
+        alert("Failed to initialize payment gateway");
       }
     } catch (error) {
-      console.error('Payment error:', error)
-      alert(error.response?.data?.message || 'Failed to process payment')
+      console.error("Payment error:", error);
+      alert(error.response?.data?.message || "Failed to process payment");
     } finally {
-      setIsSubmitting(false)
+      setIsSubmitting(false);
     }
-  }
+  };
 
   const handleRemoveDiscount = async () => {
-    setRemovingDiscount(true)
-    const res = await removeDiscount()
-    setRemovingDiscount(false)
+    setRemovingDiscount(true);
+    const res = await removeDiscount();
+    setRemovingDiscount(false);
     if (!res?.success) {
-      alert(res?.message || 'Failed to remove discount')
+      alert(res?.message || "Failed to remove discount");
     }
-  }
+  };
 
   return (
     <div className="bg-gray-50 py-12 px-4 md:px-6 min-h-screen">
       <div className="max-w-6xl mx-auto px-6">
-        <button 
-          onClick={() => navigate('/cart')}
+        <button
+          onClick={() => navigate("/cart")}
           className="flex items-center gap-2 text-gray-600 mb-8 hover:text-gray-800"
         >
           <FaArrowLeft />
@@ -130,7 +161,9 @@ function OrderTypeForm() {
           {/* Form Section */}
           <div className="bg-white rounded-3xl p-6 md:p-8 border border-gray-100 shadow-sm space-y-6">
             <div>
-              <label className="block text-xs font-semibold text-gray-600 mb-2 uppercase tracking-wide">Full Name *</label>
+              <label className="block text-xs font-semibold text-gray-600 mb-2 uppercase tracking-wide">
+                Full Name *
+              </label>
               <input
                 type="text"
                 name="fullName"
@@ -143,7 +176,9 @@ function OrderTypeForm() {
 
             <div className="grid md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-2 uppercase tracking-wide">Email *</label>
+                <label className="block text-xs font-semibold text-gray-600 mb-2 uppercase tracking-wide">
+                  Email *
+                </label>
                 <input
                   type="email"
                   name="email"
@@ -154,7 +189,9 @@ function OrderTypeForm() {
                 />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-2 uppercase tracking-wide">Phone *</label>
+                <label className="block text-xs font-semibold text-gray-600 mb-2 uppercase tracking-wide">
+                  Phone *
+                </label>
                 <input
                   type="tel"
                   name="phone"
@@ -167,9 +204,11 @@ function OrderTypeForm() {
             </div>
 
             {/* Dine-in specific field */}
-            {orderType === 'dine-in' && (
+            {orderType === "dine-in" && (
               <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-2 uppercase tracking-wide">Table Number *</label>
+                <label className="block text-xs font-semibold text-gray-600 mb-2 uppercase tracking-wide">
+                  Table Number *
+                </label>
                 <input
                   type="text"
                   name="tableNumber"
@@ -182,10 +221,12 @@ function OrderTypeForm() {
             )}
 
             {/* Delivery specific fields */}
-            {orderType === 'delivery' && (
+            {orderType === "delivery" && (
               <>
                 <div>
-                  <label className="block text-xs font-semibold text-gray-600 mb-2 uppercase tracking-wide">Delivery Address *</label>
+                  <label className="block text-xs font-semibold text-gray-600 mb-2 uppercase tracking-wide">
+                    Delivery Address *
+                  </label>
                   <input
                     type="text"
                     name="deliveryAddress"
@@ -197,7 +238,9 @@ function OrderTypeForm() {
                 </div>
                 <div className="grid md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs font-semibold text-gray-600 mb-2 uppercase tracking-wide">City</label>
+                    <label className="block text-xs font-semibold text-gray-600 mb-2 uppercase tracking-wide">
+                      City
+                    </label>
                     <input
                       type="text"
                       name="city"
@@ -208,7 +251,9 @@ function OrderTypeForm() {
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold text-gray-600 mb-2 uppercase tracking-wide">ZIP Code</label>
+                    <label className="block text-xs font-semibold text-gray-600 mb-2 uppercase tracking-wide">
+                      ZIP Code
+                    </label>
                     <input
                       type="text"
                       name="zipCode"
@@ -226,12 +271,16 @@ function OrderTypeForm() {
           {/* Order Summary */}
           <div className="bg-white rounded-3xl p-6 md:p-8 h-fit border border-gray-100 shadow-sm">
             <h3 className="font-black text-xl mb-6">Order Summary</h3>
-            
+
             <div className="space-y-4 mb-6">
               {cartItems.map((item) => (
                 <div key={item.id} className="flex justify-between">
-                  <span className="text-gray-700">{item.quantity}x {item.menu?.name}</span>
-                  <span className="font-bold">₦{Number(item.menu?.price).toFixed(2)}</span>
+                  <span className="text-gray-700">
+                    {item.quantity}x {item.menu?.name}
+                  </span>
+                  <span className="font-bold">
+                    ₦{Number(item.menu?.price).toFixed(2)}
+                  </span>
                 </div>
               ))}
             </div>
@@ -241,6 +290,7 @@ function OrderTypeForm() {
                 <span className="text-gray-600">Subtotal:</span>
                 <span className="font-bold">₦{subtotal.toFixed(2)}</span>
               </div>
+
               {discountAmount > 0 && (
                 <div className="flex justify-between text-green-600">
                   <span>{`Discount (${discountPercent}%)`}:</span>
@@ -251,36 +301,62 @@ function OrderTypeForm() {
                       disabled={removingDiscount}
                       className="w-6 h-6 rounded-full bg-red-500 text-white flex items-center justify-center hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      {removingDiscount ? <span className="spinner" /> : <FaTimes className="w-3 h-3" />}
+                      {removingDiscount ? (
+                        <span className="spinner" />
+                      ) : (
+                        <FaTimes className="w-3 h-3" />
+                      )}
                     </button>
                   </span>
                 </div>
               )}
-              {orderType === 'delivery' && (
+
+              {orderType === "delivery" && (
                 <div className="flex justify-between">
                   <span className="text-gray-600">Delivery Fee:</span>
                   <span className="font-bold">₦{deliveryFee.toFixed(2)}</span>
                 </div>
               )}
+
+              {isLoadingTax ? (
+                <p className="text-center text-sm text-gray-400 p-2">
+                  Loading Tax Amounts...
+                </p>
+              ) : (
+                taxList?.map((tax) => {
+                  const taxAmount = (tax.rate / 100) * cart.subtotal;
+                  return (
+                    <div key={tax.id} className="flex justify-between">
+                      <span className="text-gray-600">{`${tax.name} (${tax.rate}%)`}</span>
+                      <span className="font-bold">₦{taxAmount.toFixed(2)}</span>
+                    </div>
+                  );
+                })
+              )}
             </div>
 
             <div className="flex justify-between items-center pt-4 border-t border-gray-200 mb-6">
               <span className="font-black text-xl">Total Paid:</span>
-              <span className="font-black text-2xl text-orange-500">₦{total.toFixed(2)}</span>
+              <span className="font-black text-2xl text-orange-500">
+                ₦
+                {totalWithTaxAmount !== 0
+                  ? totalWithTaxAmount.toFixed(2)
+                  : total.toFixed(2)}
+              </span>
             </div>
 
-            <button 
+            <button
               onClick={handleSubmit}
-              disabled={isSubmitting}
+              disabled={isSubmitting || isLoadingTax}
               className="w-full bg-orange-500 hover:bg-orange-600 disabled:bg-gray-400 text-white py-4 rounded-full font-bold transition-colors"
             >
-              {isSubmitting ? 'Processing...' : 'Pay Now'}
+              {isSubmitting ? "Processing..." : "Pay Now"}
             </button>
           </div>
         </div>
       </div>
     </div>
-  )
+  );
 }
 
-export default OrderTypeForm
+export default OrderTypeForm;
