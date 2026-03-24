@@ -22,6 +22,7 @@ import Payments from "./Pages/Admin/Payments";
 import TaxAndVat from "./Pages/Admin/TaxAndVat";
 import CreateOrder from "./Pages/Admin/CreateOrder";
 import Login from "./Pages/Admin/Login";
+import DeliveryLocationManagement from "./Pages/Admin/DeliveryLocationManagement";
 import UserLogin from "./Pages/UserDashboard/Login";
 import CreateAccount from "./Pages/UserDashboard/CreateAccount";
 import UserDashboard from "./Pages/UserDashboard/Dashboard";
@@ -62,6 +63,10 @@ function App() {
                 <Route path="/track-order" element={<TrackOrderPage />} />
                 <Route path="/account/create" element={<CreateAccount />} />
                 <Route path="/account/login" element={<UserLogin />} />
+                <Route
+                  path="/admin/locations"
+                  element={<DeliveryLocationManagement />}
+                />
                 <Route path="/account/dashboard" element={<UserDashboard />} />
                 <Route path="/account/edit-profile" element={<EditProfile />} />
                 <Route path="/admin/login" element={<Login />} />
