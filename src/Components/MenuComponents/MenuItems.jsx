@@ -2,7 +2,6 @@ import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { useCart } from "../../context/CartContext";
 import { useToast } from "../../context/ToastContext";
-// import CustomizeMenu from "../CartComponents/CustomizeMenu";
 
 function MenuItems() {
   const [activeTab, setActiveTab] = useState("all");
@@ -23,7 +22,7 @@ function MenuItems() {
   const fetchCategories = async () => {
     try {
       const { data } = await axios.get(
-        "https://eatwella.tfnsolutions.us/api/categories",
+        "https://eatwella.tfnsolutions.us/api/admin/categories",
         {
           headers: { Accept: "application/json" },
         },
@@ -35,14 +34,16 @@ function MenuItems() {
   };
 
   const fetchMenuItems = async (categoryId = "all") => {
+    console.log("Hit me");
     try {
       const url =
         categoryId === "all"
-          ? "https://eatwella.tfnsolutions.us/api/menus"
+          ? "https://eatwella.tfnsolutions.us/api/admin/menus"
           : `https://eatwella.tfnsolutions.us/api/menus?category_id=${categoryId}`;
       const { data } = await axios.get(url, {
         headers: { Accept: "application/json" },
       });
+      console.log("The full data: ", data);
       setMenuItems(data.data);
       if (categoryId === "all") {
         setAllMenus(data.data);

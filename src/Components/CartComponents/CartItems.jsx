@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { FaArrowLeft, FaTimes } from "react-icons/fa";
 import { MdHome, MdRestaurant, MdDeliveryDining } from "react-icons/md";
 import { Wallet, CreditCard } from "lucide-react";
@@ -7,6 +7,7 @@ import { useCart } from "../../context/CartContext";
 import { useAuth } from "../../context/AuthContext";
 import { useToast } from "../../context/ToastContext";
 import api from "../../utils/api";
+import CustomizeMenu from "./CustomizeMenu";
 
 function CartItems() {
   const navigate = useNavigate();
@@ -188,67 +189,72 @@ function CartItems() {
         </button>
 
         <div className="grid lg:grid-cols-2 gap-8 items-start">
-          <div className="bg-white rounded-3xl p-6 h-fit">
-            {cartItems.map((item) => (
-              <div
-                key={item.id}
-                className="flex items-center gap-4 mb-6 pb-6 border-b border-gray-200 last:border-0"
-              >
-                <img
-                  src={
-                    item.menu?.images?.[0] ||
-                    "https://via.placeholder.com/400x300"
-                  }
-                  alt={item.menu?.name}
-                  className="w-20 h-20 rounded-2xl object-cover"
-                />
-                <div className="flex-1">
-                  <h3 className="font-semibold text-lg mb-1">
-                    {item.menu?.name}
-                  </h3>
-                  <p className="text-gray-500 text-sm mb-2">
-                    ₦{Number(item.menu?.price).toFixed(2)} each
-                  </p>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2 bg-gray-200 rounded-full px-3 py-1">
-                      <button
-                        onClick={() =>
-                          handleUpdateQuantity(item.id, item.quantity, -1)
-                        }
-                        className="w-6 h-6 flex items-center justify-center hover:text-orange-500 font-bold disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:text-gray-400"
-                        disabled={
-                          Number(item.quantity) <= 1 || quantityLoading[item.id]
-                        }
-                      >
-                        −
-                      </button>
-                      <span className="font-bold px-2">{item.quantity}</span>
-                      <button
-                        onClick={() =>
-                          handleUpdateQuantity(item.id, item.quantity, 1)
-                        }
-                        className="w-6 h-6 flex items-center justify-center hover:text-orange-500 font-bold disabled:opacity-30 disabled:cursor-not-allowed"
-                        disabled={quantityLoading[item.id]}
-                      >
-                        +
-                      </button>
-                      {quantityLoading[item.id] && (
-                        <span className="spinner-dark spinner ml-2" />
-                      )}
-                    </div>
-                    <span className="text-orange-500 font-black">
-                      ₦{(Number(item.menu?.price) * item.quantity).toFixed(2)}
-                    </span>
-                  </div>
-                </div>
-                <button
-                  onClick={() => handleRemoveItem(item.id)}
-                  className="text-gray-400 hover:text-red-500"
+          <div>
+            <div className="bg-white rounded-3xl p-6 h-[400px] overflow-y-auto mb-6">
+              {cartItems.map((item) => (
+                <div
+                  key={item.id}
+                  className="flex items-center gap-4 mb-6 pb-6 border-b border-gray-200 last:border-0"
                 >
-                  <FaTimes />
-                </button>
-              </div>
-            ))}
+                  <img
+                    src={
+                      item.menu?.images?.[0] ||
+                      "https://via.placeholder.com/400x300"
+                    }
+                    alt={item.menu?.name}
+                    className="w-20 h-20 rounded-2xl object-cover"
+                  />
+                  <div className="flex-1">
+                    <h3 className="font-semibold text-lg mb-1">
+                      {item.menu?.name}
+                    </h3>
+                    <p className="text-gray-500 text-sm mb-2">
+                      ₦{Number(item.menu?.price).toFixed(2)} each
+                    </p>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2 bg-gray-200 rounded-full px-3 py-1">
+                        <button
+                          onClick={() =>
+                            handleUpdateQuantity(item.id, item.quantity, -1)
+                          }
+                          className="w-6 h-6 flex items-center justify-center hover:text-orange-500 font-bold disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:text-gray-400"
+                          disabled={
+                            Number(item.quantity) <= 1 ||
+                            quantityLoading[item.id]
+                          }
+                        >
+                          −
+                        </button>
+                        <span className="font-bold px-2">{item.quantity}</span>
+                        <button
+                          onClick={() =>
+                            handleUpdateQuantity(item.id, item.quantity, 1)
+                          }
+                          className="w-6 h-6 flex items-center justify-center hover:text-orange-500 font-bold disabled:opacity-30 disabled:cursor-not-allowed"
+                          disabled={quantityLoading[item.id]}
+                        >
+                          +
+                        </button>
+                        {quantityLoading[item.id] && (
+                          <span className="spinner-dark spinner ml-2" />
+                        )}
+                      </div>
+                      <span className="text-orange-500 font-black">
+                        ₦{(Number(item.menu?.price) * item.quantity).toFixed(2)}
+                      </span>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => handleRemoveItem(item.id)}
+                    className="text-gray-400 hover:text-red-500"
+                  >
+                    <FaTimes />
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            <CustomizeMenu />
           </div>
 
           <div>

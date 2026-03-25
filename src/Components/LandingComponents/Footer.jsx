@@ -1,11 +1,18 @@
-import React from 'react'
-import { Link } from 'react-router-dom'
-import { FaPhone, FaMapMarkerAlt, FaInstagram, FaTiktok, FaFacebook, FaArrowUp } from 'react-icons/fa'
+import React from "react";
+import { Link } from "react-router-dom";
+import {
+  FaPhone,
+  FaMapMarkerAlt,
+  FaInstagram,
+  FaTiktok,
+  FaFacebook,
+  FaArrowUp,
+} from "react-icons/fa";
 
 function Footer() {
   const scrollToTop = () => {
-    window.scrollTo({ top: 0, behavior: 'smooth' })
-  }
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
 
   return (
     <footer className="bg-black text-white py-12 px-6 relative">
@@ -16,38 +23,79 @@ function Footer() {
             <div className="w-12 h-12 bg-orange-500 rounded-full flex items-center justify-center mx-auto mb-4">
               <FaPhone className="text-white text-xl" />
             </div>
-            <h3 className="text-gray-400 text-2xl font-bold mb-2 font-bolota">CALL US</h3>
-            <p className="text-white text-4xl font-black font-bolota">09111086770</p>
+            <h3 className="text-gray-400 text-2xl font-bold mb-2 font-bolota">
+              CALL US
+            </h3>
+            <p className="text-white text-4xl font-black font-bolota">
+              09017777701
+            </p>
           </div>
 
           <div className="bg-[#262626] rounded-3xl p-8 text-center">
             <div className="w-12 h-12 bg-orange-500 rounded-full flex items-center justify-center mx-auto mb-4">
               <FaMapMarkerAlt className="text-white text-xl" />
             </div>
-            <h3 className="text-gray-400 text-2xl font-bold mb-2 font-bolota">FIND US</h3>
-            <p className="text-white text-2xl font-black font-bolota">Opposite Admin Block B, Beside the Department of Geology, Nnamdi Azikiwe University<br />NIGERIA.</p>
+            <h3 className="text-gray-400 text-2xl font-bold mb-2 font-bolota">
+              FIND US
+            </h3>
+            <p className="text-white text-2xl font-black font-bolota">
+              Opposite Admin Block B, Beside the Department of Geology, Nnamdi
+              Azikiwe University
+              <br />
+              NIGERIA.
+            </p>
           </div>
         </div>
-
-        
 
         {/* Navigation Links and Social Media Icons */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-12 gap-6">
           <div className="flex gap-4 md:gap-8 flex-wrap">
-            <Link to="/menu" className="text-white hover:text-orange-500 transition-colors">Menu</Link>
-            <Link to="/careers" className="text-white hover:text-orange-500 transition-colors">Vacancy</Link>
-            <Link to="/track-order" className="text-white hover:text-orange-500 transition-colors">Track Order</Link>
-            <a href="#contact" className="text-white hover:text-orange-500 transition-colors">Contact Us</a>
+            <Link
+              to="/menu"
+              className="text-white hover:text-orange-500 transition-colors"
+            >
+              Menu
+            </Link>
+            <Link
+              to="/careers"
+              className="text-white hover:text-orange-500 transition-colors"
+            >
+              Vacancy
+            </Link>
+            <Link
+              to="/track-order"
+              className="text-white hover:text-orange-500 transition-colors"
+            >
+              Track Order
+            </Link>
+            <a
+              href="#contact"
+              className="text-white hover:text-orange-500 transition-colors"
+            >
+              Contact Us
+            </a>
           </div>
 
           <div className="flex gap-4">
-            <a href="https://www.instagram.com/eatwellang?igsh=MTFpbGs5eTI4MmN2aA==" target='_blank' className="w-12 h-12 bg-gray-800 rounded-full flex items-center justify-center hover:bg-orange-500 transition-colors">
+            <a
+              href="https://www.instagram.com/eatwellang?igsh=MTFpbGs5eTI4MmN2aA=="
+              target="_blank"
+              className="w-12 h-12 bg-gray-800 rounded-full flex items-center justify-center hover:bg-orange-500 transition-colors"
+            >
               <FaInstagram className="text-white text-xl" />
             </a>
-            <a href="https://www.tiktok.com/@eatwellang?_r=1&_t=ZS-9431oOxMxL5" target='_blank' className="w-12 h-12 bg-gray-800 rounded-full flex items-center justify-center hover:bg-orange-500 transition-colors">
+            <a
+              href="https://www.tiktok.com/@eatwellang?_r=1&_t=ZS-9431oOxMxL5"
+              target="_blank"
+              className="w-12 h-12 bg-gray-800 rounded-full flex items-center justify-center hover:bg-orange-500 transition-colors"
+            >
               <FaTiktok className="text-white text-xl" />
             </a>
-            <a href="https://www.facebook.com/share/19AKQ459S3/" target='_blank' className="w-12 h-12 bg-gray-800 rounded-full flex items-center justify-center hover:bg-orange-500 transition-colors">
+            <a
+              href="https://www.facebook.com/share/19AKQ459S3/"
+              target="_blank"
+              className="w-12 h-12 bg-gray-800 rounded-full flex items-center justify-center hover:bg-orange-500 transition-colors"
+            >
               <FaFacebook className="text-white text-xl" />
             </a>
           </div>
@@ -63,24 +111,31 @@ function Footer() {
         {/* Built by */}
         <div className="text-center relative z-10 mb-8">
           <p className="text-white">
-            Built by <a href="https://tfnsolutions.us/" target='_blank' className="underline hover:text-orange-500 transition-colors">TFN Solutions</a>
+            Built by{" "}
+            <a
+              href="https://tfnsolutions.us/"
+              target="_blank"
+              className="underline hover:text-orange-500 transition-colors"
+            >
+              TFN Solutions
+            </a>
           </p>
         </div>
       </div>
-      
+
       {/* Repeating Background Pattern */}
       <div className="absolute bottom-0 left-0 right-0 h-8 flex overflow-hidden opacity-50">
         {[...Array(20)].map((_, i) => (
-          <img 
+          <img
             key={i}
-            src="/src/assets/Frame 24.png" 
-            alt="" 
+            src="/src/assets/Frame 24.png"
+            alt=""
             className="h-full w-auto flex-shrink-0"
           />
         ))}
       </div>
     </footer>
-  )
+  );
 }
 
-export default Footer
+export default Footer;
