@@ -21,6 +21,7 @@ const Menu = () => {
   const [activeTab, setActiveTab] = useState("all");
   const [categories, setCategories] = useState([]);
   const [menuItems, setMenuItems] = useState([]);
+  const [allMenuItems, setAllMenuItems] = useState([]);
   const [isAddCategoryOpen, setIsAddCategoryOpen] = useState(false);
   const [isEditCategoryOpen, setIsEditCategoryOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState(null);
@@ -48,13 +49,26 @@ const Menu = () => {
 
   const fetchMenuItems = async () => {
     try {
-      const { data } = await api.get("/admin/menus");
-      console.log("This is the data: ", data.data);
-      setMenuItems(data.data);
-      setPrevPageURL(data.prev_page_url);
-      setNextPageURL(data.next_page_url);
+      const firstResponse = await api.get("/admin/menus");
+      const secondResponse = await api.get(
+        `/admin/menus?per_page=${firstResponse.data.total}`,
+      );
+      setMenuItems(firstResponse.data.data); // paginated — for the grid
+      setAllMenuItems(secondResponse.data.data); // full list — for the modals
+      setPrevPageURL(firstResponse.data.prev_page_url);
+      setNextPageURL(firstResponse.data.next_page_url);
     } catch (err) {
       console.error("Failed to fetch menu items:", err);
+    }
+  };
+
+  const fetchSingleMenuItem = async (itemId) => {
+    try {
+      const data = await api.get(`/menus/${itemId}`);
+      console.log("Over here: ", data.data);
+      return data.data;
+    } catch (err) {
+      console.error("Failed to fetch menu item details: ", err);
     }
   };
 
@@ -116,7 +130,7 @@ const Menu = () => {
         onClose={() => setIsAddMenuItemOpen(false)}
         categories={categories}
         onSuccess={fetchMenuItems}
-        menuItems={menuItems}
+        menuItems={allMenuItems}
       />
       <EditMenuItemModal
         isOpen={isEditMenuItemOpen}
@@ -127,7 +141,7 @@ const Menu = () => {
         item={editingItem}
         categories={categories}
         onSuccess={fetchMenuItems}
-        menuItems={menuItems}
+        menuItems={allMenuItems}
       />
       <DashboardLayout>
         <div className="p-6 space-y-6 bg-gray-50/50 min-h-full">
@@ -265,9 +279,12 @@ const Menu = () => {
                       )}
                     </button>
                     <button
-                      onClick={() => {
-                        setEditingItem(item);
-                        setIsEditMenuItemOpen(true);
+                      onClick={async () => {
+                        const itemDetails = await fetchSingleMenuItem(item.id);
+                        if (itemDetails) {
+                          setEditingItem(itemDetails);
+                          setIsEditMenuItemOpen(true);
+                        }
                       }}
                       className="p-2 hover:bg-gray-100 rounded-lg text-gray-500 hover:text-blue-600 transition-colors"
                     >

@@ -45,14 +45,16 @@ const EditMenuItemModal = ({
 
   useEffect(() => {
     if (item) {
-      console.log("My man: ", item);
+      console.log("The item here: ", item.complements);
 
       // Resolve existing side dish IDs from the item, or inject mock data for testing
       const existingSideIds = SIMULATE_EXISTING_SIDES
         ? MOCK_SIDES.map((s) => s.id)
-        : (item.sideDishes ?? []).map((s) =>
+        : (item.complements ?? []).map((s) =>
             typeof s === "object" ? s.id : s,
           );
+
+      console.log("just checking: ", existingSideIds);
 
       setFormData({
         category_id: item.category_id || "",
@@ -93,8 +95,11 @@ const EditMenuItemModal = ({
       ]
     : menuItems;
 
-  const filteredItems = allKnownItems.filter((i) =>
-    i.name.toLowerCase().includes(sideDishSearch.toLowerCase()),
+  const filteredItems = allKnownItems.filter(
+    (i) =>
+      i.is_available !== 0 &&
+      i.id !== item?.id &&
+      i.name.toLowerCase().includes(sideDishSearch.toLowerCase()),
   );
 
   const selectedSideDishes = allKnownItems.filter((i) =>
@@ -122,6 +127,8 @@ const EditMenuItemModal = ({
     setError("");
     setLoading(true);
 
+    console.log("form data: ", formData);
+
     try {
       const data = new FormData();
       data.append("category_id", formData.category_id);
@@ -130,7 +137,7 @@ const EditMenuItemModal = ({
       data.append("price", formData.price);
       data.append("is_available", formData.is_available);
       data.append("requires_takeaway", formData.takeawayPack);
-      formData.sideDishes.forEach((id) => data.append("sideDishes[]", id));
+      formData.sideDishes.forEach((id) => data.append("complements[]", id));
       images.forEach((img) => data.append("images[]", img));
 
       await api.put(`/admin/menus/${item.id}`, data, {
