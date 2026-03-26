@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { FaArrowLeft, FaTimes } from "react-icons/fa";
+import { FaArrowLeft, FaTimes, FaChevronDown } from "react-icons/fa";
 import { MdHome, MdRestaurant, MdDeliveryDining } from "react-icons/md";
 import { Wallet, CreditCard } from "lucide-react";
 import { useNavigate } from "react-router-dom";
@@ -17,6 +17,7 @@ function CartItems() {
     removeFromCart,
     applyDiscount,
     removeDiscount,
+    addToCart,
   } = useCart();
   const { user } = useAuth();
   const { showToast } = useToast();
@@ -34,23 +35,38 @@ function CartItems() {
   const [applyingDiscount, setApplyingDiscount] = useState(false);
   const [removingDiscount, setRemovingDiscount] = useState(false);
   const [quantityLoading, setQuantityLoading] = useState({});
+  const [recommendedSideDishes, setRecommendedSideDishes] = useState([]);
+  const [openIndex, setOpenIndex] = useState(null);
 
   const cartItems = cart?.items || [];
 
   useEffect(() => {
-    fetchTaxes();
-  }, []);
+    getRecommendedSideDishes();
+  }, [cartItems.length]);
 
-  const fetchTaxes = async () => {
-    try {
-      const { data } = await api.get("/admin/taxes");
-      const activeTaxes = Array.isArray(data)
-        ? data.filter((t) => t.is_active)
-        : data.data?.filter((t) => t.is_active) || [];
-      setTaxes(activeTaxes);
-    } catch (err) {
-      console.error("Failed to fetch taxes:", err);
-    }
+  const getRecommendedSideDishes = async () => {
+    const menuArray = [];
+    cartItems.map((cartItem) => {
+      menuArray.push({
+        menuId: cartItem.menu.id,
+        menuItemName: cartItem.menu.name,
+      });
+    });
+
+    const sideDishArray = [];
+    await Promise.all(
+      menuArray.map(async (menu) => {
+        const { data } = await api.get(`/menus/${menu.menuId}`);
+        sideDishArray.push({
+          menuId: menu.menuId,
+          menuItemName: menu.menuItemName,
+          menuItemComplements: data.complements,
+        });
+      }),
+    );
+
+    setRecommendedSideDishes(sideDishArray);
+    console.log("your ref: ", sideDishArray);
   };
 
   const handleApplyDiscount = async () => {
@@ -143,6 +159,10 @@ function CartItems() {
     }
   };
 
+  const handleToggleAccordion = (index) => {
+    setOpenIndex((prev) => (prev === index ? null : index));
+  };
+
   const subtotal = cart?.subtotal
     ? Number(cart.subtotal)
     : cartItems.reduce(
@@ -190,7 +210,7 @@ function CartItems() {
 
         <div className="grid lg:grid-cols-2 gap-8 items-start">
           <div>
-            <div className="bg-white rounded-3xl p-6 h-[400px] overflow-y-auto mb-6">
+            <div className="bg-white rounded-3xl p-6 h-[390px] overflow-y-auto mb-6">
               {cartItems.map((item) => (
                 <div
                   key={item.id}
@@ -254,7 +274,69 @@ function CartItems() {
               ))}
             </div>
 
-            <CustomizeMenu />
+            {/* <CustomizeMenu /> */}
+            <div className="bg-white rounded-3xl p-6 h-[390px] overflow-y-auto mb-6">
+              <div>
+                <h3 className="font-bold text-xl">Recommended Side Dishes</h3>
+                <p className="text-sm text-gray-500">
+                  Some other items to go along with items in your cart.
+                </p>
+              </div>
+
+              <div className="mt-5">
+                {recommendedSideDishes.length > 0 ? (
+                  recommendedSideDishes.map((sideDish, index) => (
+                    <div className="w-full" key={index}>
+                      <button
+                        type="button"
+                        onClick={() => handleToggleAccordion(index)}
+                        className="w-full flex items-center justify-between px-5 py-4 text-left text-gray-900 font-medium hover:bg-gray-50 transition-colors"
+                      >
+                        <span>For your {sideDish.menuItemName}</span>
+                        <FaChevronDown
+                          className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${
+                            openIndex === index ? "rotate-180" : ""
+                          }`}
+                        />
+                      </button>
+
+                      {openIndex === index && (
+                        <div className="border-t border-gray-100 divide-y divide-gray-100">
+                          {sideDish.menuItemComplements.map((complement) => (
+                            <div
+                              key={complement.id}
+                              className="px-5 py-3 text-sm text-gray-600 flex items-center justify-between"
+                            >
+                              <div className="flex gap-4 items-center">
+                                <img
+                                  src={complement?.images?.[0]}
+                                  alt=""
+                                  className="w-20 h-20 rounded-2xl object-cover"
+                                />
+                                <div>
+                                  <p className="font-bold text-lg">
+                                    {complement.name}
+                                  </p>
+                                  <p>₦{complement.price} each</p>
+                                </div>
+                              </div>
+                              <button
+                                className="bg-orange-500 px-5 py-2 rounded-full text-white"
+                                onClick={() => addToCart(complement.id, 1)}
+                              >
+                                Add to Cart
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))
+                ) : (
+                  <p>No recommendations for now</p>
+                )}
+              </div>
+            </div>
           </div>
 
           <div>
