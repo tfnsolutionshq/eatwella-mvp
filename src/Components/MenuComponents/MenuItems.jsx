@@ -13,10 +13,6 @@ function MenuItems() {
 
   useEffect(() => {
     fetchCategories();
-    fetchMenuItems();
-  }, []);
-
-  useEffect(() => {
     fetchMenuItems(activeTab);
   }, [activeTab]);
 
@@ -58,8 +54,6 @@ function MenuItems() {
     const result = await addToCart(item.id, 1);
     if (result) {
       showToast(`${item.name} added to cart!`, "success");
-      setSelectedItem(item);
-      setIsCustomizeOpen(true);
     } else {
       showToast("Failed to add to cart", "error");
     }
