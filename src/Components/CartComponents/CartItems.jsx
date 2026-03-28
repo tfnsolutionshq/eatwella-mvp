@@ -147,7 +147,8 @@ function CartItems() {
   };
 
   const handleProceedToCheckout = () => {
-    console.log("Lorem Ipsum: ", selectedOrderType);
+    console.log("selected order type: ", selectedOrderType);
+
     const packagingSelections = {};
     cartItems.forEach((item) => {
       if (item.packaging) {
