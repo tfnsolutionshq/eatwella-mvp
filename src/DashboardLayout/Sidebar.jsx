@@ -14,6 +14,7 @@ import {
   FiMap,
   FiBriefcase,
   FiAward,
+  FiPackage,
 } from "react-icons/fi";
 import { MdRestaurant, MdQrCodeScanner } from "react-icons/md";
 import { useNavigate } from "react-router-dom";
@@ -46,6 +47,13 @@ export default function Sidebar({ isOpen, onToggle }) {
       label: "Menu Management",
       icon: MdRestaurant,
       path: "/admin/menu",
+      roles: ["admin"],
+    },
+    {
+      id: "food-packaging",
+      label: "Food Packaging",
+      icon: FiPackage,
+      path: "/admin/food-packaging",
       roles: ["admin"],
     },
     {

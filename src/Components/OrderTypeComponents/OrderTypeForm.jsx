@@ -83,12 +83,14 @@ function OrderTypeForm() {
 
   const cartItems = cart?.items || [];
 
+  // ── Per-item total: menu price + packaging price (if any), times quantity ──
+  const getItemTotal = (item) =>
+    (Number(item.menu.price) + Number(item.packaging?.price ?? 0)) *
+    item.quantity;
+
   const subtotal = cart?.subtotal
     ? Number(cart.subtotal)
-    : cartItems.reduce(
-        (sum, item) => sum + Number(item.menu.price) * item.quantity,
-        0,
-      );
+    : cartItems.reduce((sum, item) => sum + getItemTotal(item), 0);
 
   const deliveryFee =
     orderType === "delivery" ? (selectedLocation?.delivery_fee ?? 0) : 0;
@@ -117,6 +119,8 @@ function OrderTypeForm() {
   };
 
   useEffect(() => {
+    console.log("The state: ", location.state.packagingSelections);
+
     if (user) {
       setFormData((prev) => ({
         ...prev,
@@ -162,24 +166,22 @@ function OrderTypeForm() {
         customer_email: formData.email,
         customer_phone: formData.phone,
         payment_type: "gateway",
-        callback_url: `${window.location.origin}/receipt`,
+        // callback_url: `${window.location.origin}/receipt`,
         items: cartItems.map((item) => ({
           menu_id: item.menu.id,
           quantity: item.quantity,
+          packaging_id: item.packaging_id,
         })),
       };
 
       if (orderType === "dine-in") {
         payload.table_number = formData.tableNumber;
       } else if (orderType === "delivery") {
-        payload.delivery_location_id = selectedLocation.id;
         payload.delivery_city = selectedLocation.city;
-        payload.delivery_state = selectedLocation.state;
         payload.delivery_address = selectedLocation.name;
         payload.delivery_zip = formData.zipCode;
+        payload.delivery_zone_id = selectedLocation.id;
       }
-
-      console.log("Payload here: ", payload);
 
       const response = await api.post("/checkout", payload);
 
@@ -375,13 +377,32 @@ function OrderTypeForm() {
 
             <div className="space-y-4 mb-6">
               {cartItems.map((item) => (
-                <div key={item.id} className="flex justify-between">
-                  <span className="text-gray-700">
-                    {item.quantity}x {item.menu?.name}
-                  </span>
-                  <span className="font-bold">
-                    ₦{(Number(item.menu?.price) * item.quantity).toFixed(2)}
-                  </span>
+                <div key={item.id}>
+                  {/* ── Item name + total price ── */}
+                  <div className="flex justify-between">
+                    <span className="text-gray-700">
+                      {item.quantity}x {item.menu?.name}
+                    </span>
+                    <span className="font-bold">
+                      ₦{getItemTotal(item).toFixed(2)}
+                    </span>
+                  </div>
+
+                  {/* ── Packaging badge (only when a packaging was selected) ── */}
+                  {item.packaging && (
+                    <div className="flex justify-between items-center mt-1 ml-3">
+                      <span className="text-xs text-gray-400 capitalize">
+                        Packaging:{" "}
+                        <span className="font-medium text-gray-500">
+                          {item.packaging.size_name}
+                        </span>
+                      </span>
+                      <span className="text-xs text-gray-400">
+                        +₦{Number(item.packaging.price).toLocaleString()}
+                        <span className="text-gray-300"> / item</span>
+                      </span>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>

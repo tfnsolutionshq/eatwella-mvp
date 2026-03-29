@@ -40,6 +40,7 @@ import NotFound from "./Pages/NotFound/NotFound";
 import FloatingCartButton from "./Components/FloatingCartButton";
 import ScrollToTop from "./Components/ScrollToTop";
 import ScrollToTopButton from "./Components/ScrollToTopButton";
+import FoodPackaging from "./Pages/Admin/FoodPackaging";
 
 function App() {
   return (
@@ -78,6 +79,10 @@ function App() {
                   element={<DiscountManagement />}
                 />
                 <Route path="/admin/menu" element={<AdminMenu />} />
+                <Route
+                  path="/admin/food-packaging"
+                  element={<FoodPackaging />}
+                />
                 <Route path="/admin/users" element={<AllUsers />} />
                 <Route path="/admin/users/:userId" element={<SingleUser />} />
                 <Route path="/admin/payments" element={<Payments />} />
