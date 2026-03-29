@@ -1,10 +1,62 @@
 import React, { useState, useEffect } from "react";
 import { FaArrowLeft, FaTimes } from "react-icons/fa";
+import { FiMapPin, FiChevronDown } from "react-icons/fi";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useCart } from "../../context/CartContext";
 import { useAuth } from "../../context/AuthContext";
 import api from "../../utils/api";
-import { p } from "framer-motion/client";
+
+// ── Dummy delivery locations (replace with API call when backend is ready) ───
+const DUMMY_DELIVERY_LOCATIONS = [
+  {
+    id: 1,
+    name: "Awka Central",
+    city: "Awka",
+    state: "Anambra",
+    delivery_fee: 500,
+    estimated_time: "20–30 mins",
+  },
+  {
+    id: 2,
+    name: "Onitsha Main Market Area",
+    city: "Onitsha",
+    state: "Anambra",
+    delivery_fee: 800,
+    estimated_time: "35–50 mins",
+  },
+  {
+    id: 3,
+    name: "Nnewi Tech Hub Zone",
+    city: "Nnewi",
+    state: "Anambra",
+    delivery_fee: 1000,
+    estimated_time: "45–60 mins",
+  },
+  {
+    id: 4,
+    name: "Enugu GRA",
+    city: "Enugu",
+    state: "Enugu",
+    delivery_fee: 1200,
+    estimated_time: "50–70 mins",
+  },
+  {
+    id: 5,
+    name: "Asaba Okpanam Road",
+    city: "Asaba",
+    state: "Delta",
+    delivery_fee: 1500,
+    estimated_time: "60–80 mins",
+  },
+  {
+    id: 6,
+    name: "Agbor Express Zone",
+    city: "Agbor",
+    state: "Delta",
+    delivery_fee: 1800,
+    estimated_time: "75–90 mins",
+  },
+];
 
 function OrderTypeForm() {
   const navigate = useNavigate();
@@ -18,16 +70,16 @@ function OrderTypeForm() {
     email: "",
     phone: "",
     tableNumber: "",
-    deliveryAddress: "",
-    city: "",
     zipCode: "",
   });
+
+  const [selectedLocation, setSelectedLocation] = useState(null);
+  const [locationDropdownOpen, setLocationDropdownOpen] = useState(false);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoadingTax, setIsLoadingTax] = useState(false);
   const [removingDiscount, setRemovingDiscount] = useState(false);
   const [taxList, setTaxList] = useState([]);
-  const [totalWithTaxAmount, setTotalWithTaxAmount] = useState(0);
 
   const cartItems = cart?.items || [];
 
@@ -37,26 +89,31 @@ function OrderTypeForm() {
         (sum, item) => sum + Number(item.menu.price) * item.quantity,
         0,
       );
-  const deliveryFee = orderType === "delivery" ? 3.99 : 0;
+
+  const deliveryFee =
+    orderType === "delivery" ? (selectedLocation?.delivery_fee ?? 0) : 0;
   const discountAmount = Number(cart?.discount_amount || 0);
+  const subtotalAfterDiscount = subtotal - discountAmount;
   const originalTotal = subtotal + deliveryFee;
-  const total = originalTotal - discountAmount;
   const discountPercent =
     originalTotal > 0 ? Math.round((discountAmount / originalTotal) * 100) : 0;
 
+  const totalTaxAmount = taxList.reduce((sum, tax) => {
+    return sum + (tax.rate / 100) * subtotal;
+  }, 0);
+
+  const grandTotal = subtotalAfterDiscount + deliveryFee + totalTaxAmount;
+
   const getTaxes = async () => {
     setIsLoadingTax(true);
-    const { data } = await api.get("/taxes");
-
-    setTaxList(data);
-
-    const totalTaxAmount = data.reduce((total, tax) => {
-      const taxAmount = (tax.rate / 100) * cart.subtotal;
-      return total + taxAmount;
-    }, 0);
-
-    setTotalWithTaxAmount(total + totalTaxAmount);
-    setIsLoadingTax(false);
+    try {
+      const { data } = await api.get("/taxes");
+      setTaxList(data);
+    } catch (err) {
+      console.error("Failed to fetch taxes:", err);
+    } finally {
+      setIsLoadingTax(false);
+    }
   };
 
   useEffect(() => {
@@ -66,12 +123,9 @@ function OrderTypeForm() {
         fullName: user.name || "",
         email: user.email || "",
         phone: user.phone || "",
-        deliveryAddress: user.street_address || "",
-        city: user.state || "",
         zipCode: user.postal_code || "",
       }));
     }
-
     getTaxes();
   }, [user]);
 
@@ -79,8 +133,12 @@ function OrderTypeForm() {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
+  const handleSelectLocation = (loc) => {
+    setSelectedLocation(loc);
+    setLocationDropdownOpen(false);
+  };
+
   const handleSubmit = async () => {
-    // Validate form data
     if (!formData.fullName || !formData.email || !formData.phone) {
       alert("Please fill in all required fields");
       return;
@@ -91,11 +149,8 @@ function OrderTypeForm() {
       return;
     }
 
-    if (
-      orderType === "delivery" &&
-      (!formData.deliveryAddress || !formData.city || !formData.zipCode)
-    ) {
-      alert("Please fill in delivery details");
+    if (orderType === "delivery" && !selectedLocation) {
+      alert("Please select a delivery location");
       return;
     }
 
@@ -117,10 +172,14 @@ function OrderTypeForm() {
       if (orderType === "dine-in") {
         payload.table_number = formData.tableNumber;
       } else if (orderType === "delivery") {
-        payload.delivery_address = formData.deliveryAddress;
-        payload.delivery_city = formData.city;
+        payload.delivery_location_id = selectedLocation.id;
+        payload.delivery_city = selectedLocation.city;
+        payload.delivery_state = selectedLocation.state;
+        payload.delivery_address = selectedLocation.name;
         payload.delivery_zip = formData.zipCode;
       }
+
+      console.log("Payload here: ", payload);
 
       const response = await api.post("/checkout", payload);
 
@@ -158,7 +217,7 @@ function OrderTypeForm() {
         </button>
 
         <div className="grid lg:grid-cols-2 gap-8 lg:gap-10 items-start">
-          {/* Form Section */}
+          {/* ── Form Section ── */}
           <div className="bg-white rounded-3xl p-6 md:p-8 border border-gray-100 shadow-sm space-y-6">
             <div>
               <label className="block text-xs font-semibold text-gray-600 mb-2 uppercase tracking-wide">
@@ -197,13 +256,13 @@ function OrderTypeForm() {
                   name="phone"
                   value={formData.phone}
                   onChange={handleChange}
-                  placeholder="+1 234 567 8900"
+                  placeholder="+234 800 000 0000"
                   className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                 />
               </div>
             </div>
 
-            {/* Dine-in specific field */}
+            {/* Dine-in */}
             {orderType === "dine-in" && (
               <div>
                 <label className="block text-xs font-semibold text-gray-600 mb-2 uppercase tracking-wide">
@@ -220,55 +279,97 @@ function OrderTypeForm() {
               </div>
             )}
 
-            {/* Delivery specific fields */}
+            {/* Delivery */}
             {orderType === "delivery" && (
               <>
+                {/* Location Dropdown */}
                 <div>
                   <label className="block text-xs font-semibold text-gray-600 mb-2 uppercase tracking-wide">
-                    Delivery Address *
+                    Delivery Location *
                   </label>
-                  <input
-                    type="text"
-                    name="deliveryAddress"
-                    value={formData.deliveryAddress}
-                    onChange={handleChange}
-                    placeholder="Street address, apt/suite"
-                    className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-                  />
-                </div>
-                <div className="grid md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-600 mb-2 uppercase tracking-wide">
-                      City
-                    </label>
-                    <input
-                      type="text"
-                      name="city"
-                      value={formData.city}
-                      onChange={handleChange}
-                      placeholder="City"
-                      className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-                    />
+                  <div className="relative">
+                    <button
+                      type="button"
+                      onClick={() => setLocationDropdownOpen((o) => !o)}
+                      className={`w-full px-4 py-3 rounded-2xl border bg-gray-50 text-sm text-left flex items-center justify-between transition focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent ${
+                        selectedLocation
+                          ? "border-orange-300 text-gray-800"
+                          : "border-gray-200 text-gray-400"
+                      }`}
+                    >
+                      <span className="flex items-center gap-2">
+                        <FiMapPin
+                          className={`w-4 h-4 flex-shrink-0 ${selectedLocation ? "text-orange-500" : "text-gray-400"}`}
+                        />
+                        {selectedLocation
+                          ? `${selectedLocation.name} — ${selectedLocation.city}, ${selectedLocation.state}`
+                          : "Select a delivery location"}
+                      </span>
+                      <FiChevronDown
+                        className={`w-4 h-4 text-gray-400 flex-shrink-0 transition-transform duration-200 ${locationDropdownOpen ? "rotate-180" : ""}`}
+                      />
+                    </button>
+
+                    {locationDropdownOpen && (
+                      <div className="absolute z-20 mt-2 w-full bg-white border border-gray-100 rounded-2xl shadow-xl overflow-hidden">
+                        {DUMMY_DELIVERY_LOCATIONS.map((loc) => (
+                          <button
+                            key={loc.id}
+                            type="button"
+                            onClick={() => handleSelectLocation(loc)}
+                            className={`w-full px-4 py-3 text-left flex items-center justify-between hover:bg-orange-50 transition-colors ${
+                              selectedLocation?.id === loc.id
+                                ? "bg-orange-50"
+                                : ""
+                            }`}
+                          >
+                            <div>
+                              <p className="text-sm font-semibold text-gray-800">
+                                {loc.name}
+                              </p>
+                              <p className="text-xs text-gray-400 mt-0.5">
+                                {loc.city}, {loc.state} · {loc.estimated_time}
+                              </p>
+                            </div>
+                            <span className="text-sm font-bold text-orange-500 flex-shrink-0 ml-4">
+                              ₦{loc.delivery_fee.toLocaleString()}
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-600 mb-2 uppercase tracking-wide">
-                      ZIP Code
-                    </label>
-                    <input
-                      type="text"
-                      name="zipCode"
-                      value={formData.zipCode}
-                      onChange={handleChange}
-                      placeholder="12345"
-                      className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-                    />
-                  </div>
+
+                  {/* Selected location info pill */}
+                  {selectedLocation && (
+                    <div className="mt-2 flex items-center gap-2 px-3 py-2 bg-orange-50 border border-orange-100 rounded-xl text-xs text-orange-700">
+                      <FiMapPin className="w-3.5 h-3.5 flex-shrink-0" />
+                      <span>
+                        Estimated arrival:{" "}
+                        <strong>{selectedLocation.estimated_time}</strong>
+                      </span>
+                    </div>
+                  )}
                 </div>
               </>
             )}
+
+            <div>
+              <label className="block text-xs font-semibold text-gray-600 mb-2 uppercase tracking-wide">
+                ZIP Code *
+              </label>
+              <input
+                type="text"
+                name="zipCode"
+                value={formData.zipCode}
+                onChange={handleChange}
+                placeholder="224455"
+                className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+              />
+            </div>
           </div>
 
-          {/* Order Summary */}
+          {/* ── Order Summary ── */}
           <div className="bg-white rounded-3xl p-6 md:p-8 h-fit border border-gray-100 shadow-sm">
             <h3 className="font-black text-xl mb-6">Order Summary</h3>
 
@@ -279,7 +380,7 @@ function OrderTypeForm() {
                     {item.quantity}x {item.menu?.name}
                   </span>
                   <span className="font-bold">
-                    ₦{Number(item.menu?.price).toFixed(2)}
+                    ₦{(Number(item.menu?.price) * item.quantity).toFixed(2)}
                   </span>
                 </div>
               ))}
@@ -311,20 +412,38 @@ function OrderTypeForm() {
                 </div>
               )}
 
+              {/* Delivery fee row */}
               {orderType === "delivery" && (
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Delivery Fee:</span>
-                  <span className="font-bold">₦{deliveryFee.toFixed(2)}</span>
+                  <span className="text-gray-600">
+                    Delivery Fee
+                    {selectedLocation && (
+                      <span className="ml-1 text-xs text-gray-400">
+                        ({selectedLocation.name})
+                      </span>
+                    )}
+                    :
+                  </span>
+                  {selectedLocation ? (
+                    <span className="font-bold">
+                      ₦{deliveryFee.toLocaleString()}
+                    </span>
+                  ) : (
+                    <span className="text-sm text-gray-400 italic">
+                      Select a location
+                    </span>
+                  )}
                 </div>
               )}
 
+              {/* Taxes */}
               {isLoadingTax ? (
                 <p className="text-center text-sm text-gray-400 p-2">
                   Loading Tax Amounts...
                 </p>
               ) : (
                 taxList?.map((tax) => {
-                  const taxAmount = (tax.rate / 100) * cart.subtotal;
+                  const taxAmount = (tax.rate / 100) * subtotal;
                   return (
                     <div key={tax.id} className="flex justify-between">
                       <span className="text-gray-600">{`${tax.name} (${tax.rate}%)`}</span>
@@ -338,20 +457,27 @@ function OrderTypeForm() {
             <div className="flex justify-between items-center pt-4 border-t border-gray-200 mb-6">
               <span className="font-black text-xl">Total Paid:</span>
               <span className="font-black text-2xl text-orange-500">
-                ₦
-                {totalWithTaxAmount !== 0
-                  ? totalWithTaxAmount.toFixed(2)
-                  : total.toFixed(2)}
+                ₦{grandTotal.toFixed(2)}
               </span>
             </div>
 
             <button
               onClick={handleSubmit}
-              disabled={isSubmitting || isLoadingTax}
-              className="w-full bg-orange-500 hover:bg-orange-600 disabled:bg-gray-400 text-white py-4 rounded-full font-bold transition-colors"
+              disabled={
+                isSubmitting ||
+                isLoadingTax ||
+                (orderType === "delivery" && !selectedLocation)
+              }
+              className="w-full bg-orange-500 hover:bg-orange-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white py-4 rounded-full font-bold transition-colors"
             >
               {isSubmitting ? "Processing..." : "Pay Now"}
             </button>
+
+            {orderType === "delivery" && !selectedLocation && (
+              <p className="text-center text-xs text-gray-400 mt-3">
+                Select a delivery location to continue
+              </p>
+            )}
           </div>
         </div>
       </div>

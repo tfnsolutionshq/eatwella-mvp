@@ -1,39 +1,45 @@
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
-import { HelmetProvider } from 'react-helmet-async'
-import { AuthProvider } from './context/AuthContext'
-import { CartProvider } from './context/CartContext'
-import { ToastProvider } from './context/ToastContext'
-import Dashboard from './Pages/Admin/Dashboard'
-import AdminMenu from './Pages/Admin/Menu'
-import OrderManagement from './Pages/Admin/OrderManagement'
-import DiscountManagement from './Pages/Admin/DiscountManagement'
-import StaffManagement from './Pages/Admin/StaffManagement'
-import Vacancies from './Pages/Admin/Vacancies'
-import CareerOpenings from './Pages/Admin/CareerOpenings'
-import LoyaltySettings from './Pages/Admin/LoyaltySettings'
-import AllUsers from './Pages/Admin/AllUsers'
-import SingleUser from './Pages/Admin/SingleUser'
-import Payments from './Pages/Admin/Payments'
-import TaxAndVat from './Pages/Admin/TaxAndVat'
-import CreateOrder from './Pages/Admin/CreateOrder'
-import Login from './Pages/Admin/Login'
-import UserLogin from './Pages/UserDashboard/Login'
-import CreateAccount from './Pages/UserDashboard/CreateAccount'
-import UserDashboard from './Pages/UserDashboard/Dashboard'
-import EditProfile from './Pages/UserDashboard/EditProfile'
-import Homepage from './Pages/LandingPage/Homepage'
-import MenuPage from './Pages/MenuPage/MenuPage'
-import CartPage from './Pages/CartPage/CartPage'
-import OrderTypePage from './Pages/OrderTypePage/OrderTypePage'
-import ReceiptPage from './Pages/ReceiptPage/ReceiptPage'
-import MealPlansPage from './Pages/MealPlansPage/MealPlansPage'
-import LoyaltyBoardPage from './Pages/LoyaltyBoardPage/LoyaltyBoardPage'
-import TrackOrderPage from './Pages/TrackOrderPage/TrackOrderPage'
-import VacancyPage from './Pages/Vacancy/Vacancies'
-import FloatingCartButton from './Components/FloatingCartButton'
-import ScrollToTop from './Components/ScrollToTop'
-import ScrollToTopButton from './Components/ScrollToTopButton'
-
+import {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  Navigate,
+} from "react-router-dom";
+import { HelmetProvider } from "react-helmet-async";
+import { AuthProvider } from "./context/AuthContext";
+import { CartProvider } from "./context/CartContext";
+import { ToastProvider } from "./context/ToastContext";
+import Dashboard from "./Pages/Admin/Dashboard";
+import AdminMenu from "./Pages/Admin/Menu";
+import OrderManagement from "./Pages/Admin/OrderManagement";
+import DiscountManagement from "./Pages/Admin/DiscountManagement";
+import StaffManagement from "./Pages/Admin/StaffManagement";
+import Vacancies from "./Pages/Admin/Vacancies";
+import CareerOpenings from "./Pages/Admin/CareerOpenings";
+import LoyaltySettings from "./Pages/Admin/LoyaltySettings";
+import AllUsers from "./Pages/Admin/AllUsers";
+import SingleUser from "./Pages/Admin/SingleUser";
+import Payments from "./Pages/Admin/Payments";
+import TaxAndVat from "./Pages/Admin/TaxAndVat";
+import CreateOrder from "./Pages/Admin/CreateOrder";
+import Login from "./Pages/Admin/Login";
+import DeliveryLocationManagement from "./Pages/Admin/DeliveryLocationManagement";
+import UserLogin from "./Pages/UserDashboard/Login";
+import CreateAccount from "./Pages/UserDashboard/CreateAccount";
+import UserDashboard from "./Pages/UserDashboard/Dashboard";
+import EditProfile from "./Pages/UserDashboard/EditProfile";
+import Homepage from "./Pages/LandingPage/Homepage";
+import MenuPage from "./Pages/MenuPage/MenuPage";
+import CartPage from "./Pages/CartPage/CartPage";
+import OrderTypePage from "./Pages/OrderTypePage/OrderTypePage";
+import ReceiptPage from "./Pages/ReceiptPage/ReceiptPage";
+import MealPlansPage from "./Pages/MealPlansPage/MealPlansPage";
+import LoyaltyBoardPage from "./Pages/LoyaltyBoardPage/LoyaltyBoardPage";
+import TrackOrderPage from "./Pages/TrackOrderPage/TrackOrderPage";
+import VacancyPage from "./Pages/Vacancy/Vacancies";
+import NotFound from "./Pages/NotFound/NotFound";
+import FloatingCartButton from "./Components/FloatingCartButton";
+import ScrollToTop from "./Components/ScrollToTop";
+import ScrollToTopButton from "./Components/ScrollToTopButton";
 
 function App() {
   return (
@@ -57,13 +63,20 @@ function App() {
                 <Route path="/track-order" element={<TrackOrderPage />} />
                 <Route path="/account/create" element={<CreateAccount />} />
                 <Route path="/account/login" element={<UserLogin />} />
+                <Route
+                  path="/admin/locations"
+                  element={<DeliveryLocationManagement />}
+                />
                 <Route path="/account/dashboard" element={<UserDashboard />} />
                 <Route path="/account/edit-profile" element={<EditProfile />} />
                 <Route path="/admin/login" element={<Login />} />
                 <Route path="/admin/dashboard" element={<Dashboard />} />
                 <Route path="/admin/orders" element={<OrderManagement />} />
                 <Route path="/admin/create-order" element={<CreateOrder />} />
-                <Route path="/admin/discounts" element={<DiscountManagement />} />
+                <Route
+                  path="/admin/discounts"
+                  element={<DiscountManagement />}
+                />
                 <Route path="/admin/menu" element={<AdminMenu />} />
                 <Route path="/admin/users" element={<AllUsers />} />
                 <Route path="/admin/users/:userId" element={<SingleUser />} />
@@ -71,18 +84,23 @@ function App() {
                 <Route path="/admin/tax-vat" element={<TaxAndVat />} />
                 <Route path="/admin/staff" element={<StaffManagement />} />
                 <Route path="/admin/careers" element={<Vacancies />} />
-                <Route path="/admin/career-openings" element={<CareerOpenings />} />
-                <Route path="/admin/loyalty-settings" element={<LoyaltySettings />} />
+                <Route
+                  path="/admin/career-openings"
+                  element={<CareerOpenings />}
+                />
+                <Route
+                  path="/admin/loyalty-settings"
+                  element={<LoyaltySettings />}
+                />
                 <Route path="/careers" element={<VacancyPage />} />
-                <Route path="*" element={<Navigate to="/admin/login" replace />} />
-          
+                <Route path="*" element={<NotFound />} />
               </Routes>
             </Router>
           </CartProvider>
         </ToastProvider>
       </AuthProvider>
     </HelmetProvider>
-  )
+  );
 }
 
-export default App
+export default App;
