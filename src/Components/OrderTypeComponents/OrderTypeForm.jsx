@@ -35,13 +35,14 @@ function OrderTypeForm() {
   const cartItems = cart?.items || [];
 
   // ── Per-item total: menu price + packaging price (if any), times quantity ──
-  const getItemTotal = (item) =>
-    (Number(item.menu.price) + Number(item.packaging?.price ?? 0)) *
-    item.quantity;
+  const getItemTotal = (item) => {
+    return (
+      (Number(item.menu.price) + Number(item.packaging?.price ?? 0)) *
+      item.quantity
+    );
+  };
 
-  const subtotal = cart?.subtotal
-    ? Number(cart.subtotal)
-    : cartItems.reduce((sum, item) => sum + getItemTotal(item), 0);
+  const subtotal = cartItems.reduce((sum, item) => sum + getItemTotal(item), 0);
 
   const deliveryFee =
     orderType === "delivery" ? Number(selectedLocation?.delivery_fee ?? 0) : 0;
@@ -88,8 +89,6 @@ function OrderTypeForm() {
   };
 
   useEffect(() => {
-    console.log("The state: ", location.state.packagingSelections);
-
     if (user) {
       setFormData((prev) => ({
         ...prev,
@@ -138,7 +137,7 @@ function OrderTypeForm() {
         customer_email: formData.email,
         customer_phone: formData.phone,
         payment_type: "gateway",
-        // callback_url: `${window.location.origin}/receipt`,
+        callback_url: `${window.location.origin}/receipt`,
         items: cartItems.map((item) => ({
           menu_id: item.menu.id,
           quantity: item.quantity,
@@ -156,8 +155,6 @@ function OrderTypeForm() {
       }
 
       const response = await api.post("/checkout", payload);
-
-      console.log("Response here: ", response);
 
       if (response.data.payment?.authorization_url) {
         window.location.href = response.data.payment.authorization_url;
@@ -385,7 +382,11 @@ function OrderTypeForm() {
                       {item.quantity}x {item.menu?.name}
                     </span>
                     <span className="font-bold">
-                      ₦{getItemTotal(item).toFixed(2)}
+                      {new Intl.NumberFormat("en-NG", {
+                        style: "currency",
+                        currency: "NGN",
+                        minimumFractionDigits: 2,
+                      }).format(getItemTotal(item))}
                     </span>
                   </div>
 
@@ -411,14 +412,24 @@ function OrderTypeForm() {
             <div className="space-y-3 mb-6 pt-4 border-t border-gray-200">
               <div className="flex justify-between">
                 <span className="text-gray-600">Subtotal:</span>
-                <span className="font-bold">₦{subtotal.toFixed(2)}</span>
+                <span className="font-bold">
+                  {new Intl.NumberFormat("en-NG", {
+                    style: "currency",
+                    currency: "NGN",
+                    minimumFractionDigits: 2,
+                  }).format(subtotal)}
+                </span>
               </div>
 
               {discountAmount > 0 && (
                 <div className="flex justify-between text-green-600">
                   <span>{`Discount (${discountPercent}%)`}:</span>
                   <span className="font-bold flex items-center gap-2">
-                    -₦{discountAmount.toFixed(2)}
+                    -₦
+                    {discountAmount
+                      .toFixed(2)
+                      .toString()
+                      .replace(/\B(?=(\d{3})+(?!\d))/g, ",")}
                     <button
                       onClick={handleRemoveDiscount}
                       disabled={removingDiscount}
@@ -448,7 +459,10 @@ function OrderTypeForm() {
                   </span>
                   {selectedLocation ? (
                     <span className="font-bold">
-                      ₦{Number(deliveryFee).toLocaleString()}
+                      ₦
+                      {Number(deliveryFee)
+                        .toString()
+                        .replace(/\B(?=(\d{3})+(?!\d))/g, ",")}
                     </span>
                   ) : (
                     <span className="text-sm text-gray-400 italic">
@@ -479,7 +493,11 @@ function OrderTypeForm() {
             <div className="flex justify-between items-center pt-4 border-t border-gray-200 mb-6">
               <span className="font-black text-xl">Total Paid:</span>
               <span className="font-black text-2xl text-orange-500">
-                ₦{grandTotal.toFixed(2)}
+                {new Intl.NumberFormat("en-NG", {
+                  style: "currency",
+                  currency: "NGN",
+                  minimumFractionDigits: 2,
+                }).format(grandTotal)}
               </span>
             </div>
 
