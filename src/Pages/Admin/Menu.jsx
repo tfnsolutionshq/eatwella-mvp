@@ -243,7 +243,7 @@ const Menu = () => {
                       {item.name}
                     </h3>
                     <span className="text-lg font-bold text-orange-500">
-                      ${item.price}
+                      ₦{item.price}
                     </span>
                   </div>
 

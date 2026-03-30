@@ -6,58 +6,6 @@ import { useCart } from "../../context/CartContext";
 import { useAuth } from "../../context/AuthContext";
 import api from "../../utils/api";
 
-// ── Dummy delivery locations (replace with API call when backend is ready) ───
-const DUMMY_DELIVERY_LOCATIONS = [
-  {
-    id: 1,
-    name: "Awka Central",
-    city: "Awka",
-    state: "Anambra",
-    delivery_fee: 500,
-    estimated_time: "20–30 mins",
-  },
-  {
-    id: 2,
-    name: "Onitsha Main Market Area",
-    city: "Onitsha",
-    state: "Anambra",
-    delivery_fee: 800,
-    estimated_time: "35–50 mins",
-  },
-  {
-    id: 3,
-    name: "Nnewi Tech Hub Zone",
-    city: "Nnewi",
-    state: "Anambra",
-    delivery_fee: 1000,
-    estimated_time: "45–60 mins",
-  },
-  {
-    id: 4,
-    name: "Enugu GRA",
-    city: "Enugu",
-    state: "Enugu",
-    delivery_fee: 1200,
-    estimated_time: "50–70 mins",
-  },
-  {
-    id: 5,
-    name: "Asaba Okpanam Road",
-    city: "Asaba",
-    state: "Delta",
-    delivery_fee: 1500,
-    estimated_time: "60–80 mins",
-  },
-  {
-    id: 6,
-    name: "Agbor Express Zone",
-    city: "Agbor",
-    state: "Delta",
-    delivery_fee: 1800,
-    estimated_time: "75–90 mins",
-  },
-];
-
 function OrderTypeForm() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -78,8 +26,11 @@ function OrderTypeForm() {
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoadingTax, setIsLoadingTax] = useState(false);
+  const [isLoadingLocations, setIsLoadingLocations] = useState(false);
+  const [locationsError, setLocationsError] = useState(null);
   const [removingDiscount, setRemovingDiscount] = useState(false);
   const [taxList, setTaxList] = useState([]);
+  const [deliveryLocations, setDeliveryLocations] = useState([]);
 
   const cartItems = cart?.items || [];
 
@@ -93,7 +44,7 @@ function OrderTypeForm() {
     : cartItems.reduce((sum, item) => sum + getItemTotal(item), 0);
 
   const deliveryFee =
-    orderType === "delivery" ? (selectedLocation?.delivery_fee ?? 0) : 0;
+    orderType === "delivery" ? Number(selectedLocation?.delivery_fee ?? 0) : 0;
   const discountAmount = Number(cart?.discount_amount || 0);
   const subtotalAfterDiscount = subtotal - discountAmount;
   const originalTotal = subtotal + deliveryFee;
@@ -118,6 +69,24 @@ function OrderTypeForm() {
     }
   };
 
+  const getDeliveryLocations = async () => {
+    setIsLoadingLocations(true);
+    setLocationsError(null);
+    try {
+      const { data } = await api.get("/zones");
+      // Handle both plain array and paginated { data: [] } response shapes
+      const active = (Array.isArray(data) ? data : (data.data ?? [])).filter(
+        (loc) => loc.is_active,
+      );
+      setDeliveryLocations(active);
+    } catch (err) {
+      console.error("Failed to fetch delivery locations:", err);
+      setLocationsError("Could not load delivery locations. Please try again.");
+    } finally {
+      setIsLoadingLocations(false);
+    }
+  };
+
   useEffect(() => {
     console.log("The state: ", location.state.packagingSelections);
 
@@ -131,6 +100,9 @@ function OrderTypeForm() {
       }));
     }
     getTaxes();
+    if (orderType === "delivery") {
+      getDeliveryLocations();
+    }
   }, [user]);
 
   const handleChange = (e) => {
@@ -184,6 +156,8 @@ function OrderTypeForm() {
       }
 
       const response = await api.post("/checkout", payload);
+
+      console.log("Response here: ", response);
 
       if (response.data.payment?.authorization_url) {
         window.location.href = response.data.payment.authorization_url;
@@ -289,66 +263,93 @@ function OrderTypeForm() {
                   <label className="block text-xs font-semibold text-gray-600 mb-2 uppercase tracking-wide">
                     Delivery Location *
                   </label>
-                  <div className="relative">
-                    <button
-                      type="button"
-                      onClick={() => setLocationDropdownOpen((o) => !o)}
-                      className={`w-full px-4 py-3 rounded-2xl border bg-gray-50 text-sm text-left flex items-center justify-between transition focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent ${
-                        selectedLocation
-                          ? "border-orange-300 text-gray-800"
-                          : "border-gray-200 text-gray-400"
-                      }`}
-                    >
-                      <span className="flex items-center gap-2">
-                        <FiMapPin
-                          className={`w-4 h-4 flex-shrink-0 ${selectedLocation ? "text-orange-500" : "text-gray-400"}`}
-                        />
-                        {selectedLocation
-                          ? `${selectedLocation.name} — ${selectedLocation.city}, ${selectedLocation.state}`
-                          : "Select a delivery location"}
-                      </span>
-                      <FiChevronDown
-                        className={`w-4 h-4 text-gray-400 flex-shrink-0 transition-transform duration-200 ${locationDropdownOpen ? "rotate-180" : ""}`}
-                      />
-                    </button>
 
-                    {locationDropdownOpen && (
-                      <div className="absolute z-20 mt-2 w-full bg-white border border-gray-100 rounded-2xl shadow-xl overflow-hidden">
-                        {DUMMY_DELIVERY_LOCATIONS.map((loc) => (
-                          <button
-                            key={loc.id}
-                            type="button"
-                            onClick={() => handleSelectLocation(loc)}
-                            className={`w-full px-4 py-3 text-left flex items-center justify-between hover:bg-orange-50 transition-colors ${
-                              selectedLocation?.id === loc.id
-                                ? "bg-orange-50"
-                                : ""
-                            }`}
-                          >
-                            <div>
-                              <p className="text-sm font-semibold text-gray-800">
-                                {loc.name}
-                              </p>
-                              <p className="text-xs text-gray-400 mt-0.5">
-                                {loc.city}, {loc.state} · {loc.estimated_time}
-                              </p>
-                            </div>
-                            <span className="text-sm font-bold text-orange-500 flex-shrink-0 ml-4">
-                              ₦{loc.delivery_fee.toLocaleString()}
-                            </span>
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
+                  {locationsError ? (
+                    <div className="flex items-center justify-between px-4 py-3 rounded-2xl border border-red-200 bg-red-50 text-sm text-red-600">
+                      <span>{locationsError}</span>
+                      <button
+                        type="button"
+                        onClick={getDeliveryLocations}
+                        className="ml-3 text-xs font-semibold underline hover:no-underline flex-shrink-0"
+                      >
+                        Retry
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="relative">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          !isLoadingLocations &&
+                          setLocationDropdownOpen((o) => !o)
+                        }
+                        className={`w-full px-4 py-3 rounded-2xl border bg-gray-50 text-sm text-left flex items-center justify-between transition focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent ${
+                          selectedLocation
+                            ? "border-orange-300 text-gray-800"
+                            : "border-gray-200 text-gray-400"
+                        } ${isLoadingLocations ? "opacity-60 cursor-not-allowed" : ""}`}
+                      >
+                        <span className="flex items-center gap-2">
+                          <FiMapPin
+                            className={`w-4 h-4 flex-shrink-0 ${selectedLocation ? "text-orange-500" : "text-gray-400"}`}
+                          />
+                          {isLoadingLocations
+                            ? "Loading locations…"
+                            : selectedLocation
+                              ? `${selectedLocation.name} — ${selectedLocation.city?.name}`
+                              : "Select a delivery location"}
+                        </span>
+                        <FiChevronDown
+                          className={`w-4 h-4 text-gray-400 flex-shrink-0 transition-transform duration-200 ${locationDropdownOpen ? "rotate-180" : ""}`}
+                        />
+                      </button>
+
+                      {locationDropdownOpen && (
+                        <div className="absolute z-20 mt-2 w-full bg-white border border-gray-100 rounded-2xl shadow-xl overflow-hidden max-h-64 overflow-y-auto">
+                          {deliveryLocations.length === 0 ? (
+                            <p className="px-4 py-4 text-sm text-gray-400 text-center">
+                              No delivery locations available.
+                            </p>
+                          ) : (
+                            deliveryLocations.map((loc) => (
+                              <button
+                                key={loc.id}
+                                type="button"
+                                onClick={() => handleSelectLocation(loc)}
+                                className={`w-full px-4 py-3 text-left flex items-center justify-between hover:bg-orange-50 transition-colors ${
+                                  selectedLocation?.id === loc.id
+                                    ? "bg-orange-50"
+                                    : ""
+                                }`}
+                              >
+                                <div>
+                                  <p className="text-sm font-semibold text-gray-800">
+                                    {loc.name}
+                                  </p>
+                                  <p className="text-xs text-gray-400 mt-0.5">
+                                    {loc.city?.name}
+                                  </p>
+                                </div>
+                                <span className="text-sm font-bold text-orange-500 flex-shrink-0 ml-4">
+                                  ₦{Number(loc.delivery_fee).toLocaleString()}
+                                </span>
+                              </button>
+                            ))
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
 
                   {/* Selected location info pill */}
                   {selectedLocation && (
                     <div className="mt-2 flex items-center gap-2 px-3 py-2 bg-orange-50 border border-orange-100 rounded-xl text-xs text-orange-700">
                       <FiMapPin className="w-3.5 h-3.5 flex-shrink-0" />
                       <span>
-                        Estimated arrival:{" "}
-                        <strong>{selectedLocation.estimated_time}</strong>
+                        Delivering to:{" "}
+                        <strong>
+                          {selectedLocation.name}, {selectedLocation.city?.name}
+                        </strong>
                       </span>
                     </div>
                   )}
@@ -447,7 +448,7 @@ function OrderTypeForm() {
                   </span>
                   {selectedLocation ? (
                     <span className="font-bold">
-                      ₦{deliveryFee.toLocaleString()}
+                      ₦{Number(deliveryFee).toLocaleString()}
                     </span>
                   ) : (
                     <span className="text-sm text-gray-400 italic">
