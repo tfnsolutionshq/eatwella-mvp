@@ -4,13 +4,6 @@ import { FiX } from "react-icons/fi";
 const OrderDetailsModal = ({ isOpen, onClose, order }) => {
   if (!isOpen || !order) return null;
 
-  console.log("Order data:", order);
-  // console.log("Order items:", order.order_items);
-  // order.order_items?.forEach((item) => {
-  //   console.log("Item menu:", item.menu);
-  //   console.log("Item images:", item.menu?.images);
-  // });
-
   const getStatusColor = (status) => {
     const colors = {
       pending: "bg-orange-100 text-orange-600",
@@ -19,6 +12,12 @@ const OrderDetailsModal = ({ isOpen, onClose, order }) => {
     };
     return colors[status] || "bg-gray-100 text-gray-600";
   };
+
+  const subtotal =
+    order.order_items?.reduce((sum, item) => {
+      const packagingPrice = item.packaging?.price ?? 0;
+      return sum + (item.subtotal ?? 0) + packagingPrice * (item.quantity ?? 1);
+    }, 0) ?? 0;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
@@ -159,7 +158,7 @@ const OrderDetailsModal = ({ isOpen, onClose, order }) => {
                         }}
                       />
                     )}
-                    <div className="flex-1 flex justify-between items-start">
+                    <div className="flex-1 flex justify-between items-center">
                       <div>
                         <p className="text-sm font-medium text-gray-900">
                           {item.menu?.name}
@@ -167,9 +166,20 @@ const OrderDetailsModal = ({ isOpen, onClose, order }) => {
                         <p className="text-xs text-gray-500">
                           Qty: {item.quantity}
                         </p>
+                        <p className="text-xs text-gray-500">
+                          {item.packaging &&
+                            "Packaging Size: " +
+                              item.packaging.size_name
+                                .toUpperCase()
+                                .slice(0, 1)
+                                .concat(item.packaging.size_name.slice(1)) +
+                              " (₦" +
+                              item.packaging.price +
+                              ")"}
+                        </p>
                       </div>
                       <span className="text-sm font-medium text-gray-900">
-                        ${item.subtotal}
+                        ₦{item.subtotal}
                       </span>
                     </div>
                   </div>
@@ -181,14 +191,14 @@ const OrderDetailsModal = ({ isOpen, onClose, order }) => {
               <div className="flex items-center justify-between">
                 <span className="text-sm text-gray-500">Subtotal</span>
                 <span className="text-sm font-medium text-gray-900">
-                  ${order.total_amount}
+                  ₦{subtotal}
                 </span>
               </div>
               {order.discount_amount > 0 && (
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-gray-500">Discount</span>
                   <span className="text-sm font-medium text-green-600">
-                    -${order.discount_amount}
+                    ₦{order.discount_amount}
                   </span>
                 </div>
               )}
@@ -197,7 +207,7 @@ const OrderDetailsModal = ({ isOpen, onClose, order }) => {
                   Total Amount
                 </span>
                 <span className="text-xl font-bold text-orange-500">
-                  ${order.final_amount}
+                  ₦{order.final_amount}
                 </span>
               </div>
             </div>

@@ -41,7 +41,6 @@ const OrderManagement = () => {
   };
 
   const handleStatusUpdate = async (orderId, status, orderType) => {
-    // console.log("Over here: ", status, orderType);
     if (status === "confirmed" && orderType === "delivery") {
       setPendingStatusUpdate({ orderId, status });
       setIsDeliveryPhotoOpen(true);
@@ -220,19 +219,31 @@ const OrderManagement = () => {
                 <div className="p-5 flex-1">
                   <div className="space-y-3 mb-6">
                     {order.order_items?.map((item) => (
-                      <div
-                        key={item.id}
-                        className="flex justify-between text-sm"
-                      >
-                        <span className="text-gray-600">
-                          <span className="text-gray-400 mr-2">
-                            {item.quantity}x
+                      <div key={item.id}>
+                        <div className="flex justify-between text-sm">
+                          <span className="text-gray-600">
+                            <span className="text-gray-400 mr-2">
+                              {item.quantity}x
+                            </span>
+                            {item.menu?.name}
                           </span>
-                          {item.menu?.name}
-                        </span>
-                        <span className="font-medium text-gray-900">
-                          ₦{item.subtotal}
-                        </span>
+                          <span className="font-medium text-gray-900">
+                            ₦{item.subtotal}
+                          </span>
+                        </div>
+                        <div className="flex justify-between text-xs text-gray-500 mt-1">
+                          <span>
+                            {item.packaging &&
+                              "Packaging Size: " +
+                                item.packaging.size_name
+                                  .toUpperCase()
+                                  .slice(0, 1)
+                                  .concat(item.packaging.size_name.slice(1))}
+                          </span>
+                          <span>
+                            {item.packaging && "₦" + item.packaging.price}
+                          </span>
+                        </div>
                       </div>
                     ))}
                   </div>

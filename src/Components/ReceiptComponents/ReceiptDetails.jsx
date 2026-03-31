@@ -107,6 +107,12 @@ function ReceiptDetails() {
     return "bg-yellow-100 text-yellow-700";
   })();
 
+  // const subtotal =
+  //   order.order_items?.reduce((sum, item) => {
+  //     const packagingPrice = item.packaging?.price ?? 0;
+  //     return sum + (item.subtotal ?? 0) + packagingPrice * (item.quantity ?? 1);
+  //   }, 0) ?? 0;
+
   // ── Loading state ──
   if (isLoading) {
     return (
@@ -198,14 +204,11 @@ function ReceiptDetails() {
   }
 
   const items = order.items || order.order_items || [];
-  const totalAmount =
-    order.total_amount ||
-    order.invoice?.amount ||
-    items.reduce(
-      (sum, item) =>
-        sum + Number(item.menu?.price || item.price || 0) * item.quantity,
-      0,
-    );
+  const subtotal =
+    order.order_items?.reduce((sum, item) => {
+      const packagingPrice = item.packaging_price ?? 0;
+      return sum + (item.subtotal ?? 0) + packagingPrice * (item.quantity ?? 1);
+    }, 0) ?? 0;
 
   return (
     <div className="max-w-2xl mx-auto px-6 py-12">
@@ -308,9 +311,15 @@ function ReceiptDetails() {
           <div className="space-y-2 text-sm">
             {items.map((item, index) => (
               <div key={index} className="flex justify-between">
-                <span className="text-gray-700">
-                  {item.quantity}x {item.menu?.name || item.name || "Item"}
-                </span>
+                <div className="text-gray-700">
+                  {item.quantity}x {item.menu?.name || item.name || "Item"}{" "}
+                  <br />
+                  <span className="text-xs text-gray-500">
+                    {item.packaging_price
+                      ? "Packaging Price: ₦" + item.packaging_price
+                      : ""}
+                  </span>
+                </div>
                 <span className="text-gray-900">
                   ₦{Number(item.menu?.price || item.price || 0).toFixed(2)}
                 </span>
@@ -323,7 +332,7 @@ function ReceiptDetails() {
           <div className="flex justify-between font-semibold mb-2">
             <span>Total Payment:</span>
             <span className="text-orange-500">
-              ₦{Number(totalAmount).toFixed(2)}
+              ₦{Number(subtotal).toFixed(2)}
             </span>
           </div>
           <div className="flex justify-between font-semibold">

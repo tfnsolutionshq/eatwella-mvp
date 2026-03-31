@@ -1,150 +1,162 @@
-import React, { useState, useEffect } from 'react'
-import { 
-  Search, 
-  ChevronLeft, 
-  Truck, 
-  CheckCircle, 
-  Clock, 
-  MapPin, 
-  Mail, 
-  Phone, 
-  Calendar, 
+import React, { useState, useEffect } from "react";
+import {
+  Search,
+  ChevronLeft,
+  Truck,
+  CheckCircle,
+  Clock,
+  MapPin,
+  Mail,
+  Phone,
+  Calendar,
   Package,
   CreditCard,
-  User
-} from 'lucide-react'
-import api from '../../utils/api'
+  User,
+} from "lucide-react";
+import api from "../../utils/api";
 
 function TrackOrderContent() {
-  const [step, setStep] = useState('search') // search, details
+  const [step, setStep] = useState("search"); // search, details
   const [formData, setFormData] = useState({
-    orderId: ''
-  })
-  const [orderData, setOrderData] = useState(null)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
-  const [remainingSeconds, setRemainingSeconds] = useState(null)
-  const [derivedStatus, setDerivedStatus] = useState(null)
+    orderId: "",
+  });
+  const [orderData, setOrderData] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [remainingSeconds, setRemainingSeconds] = useState(null);
+  const [derivedStatus, setDerivedStatus] = useState(null);
 
   const handleInputChange = (e) => {
     setFormData({
       ...formData,
-      [e.target.name]: e.target.value
-    })
-    setError('')
-  }
+      [e.target.name]: e.target.value,
+    });
+    setError("");
+  };
 
   const handleTrackOrder = async (e) => {
-    e.preventDefault()
+    e.preventDefault();
     if (!formData.orderId) {
-      setError('Please enter your order ID')
-      return
+      setError("Please enter your order ID");
+      return;
     }
 
-    setLoading(true)
-    setError('')
+    setLoading(true);
+    setError("");
 
     try {
       // The API endpoint provided: /orders/track/{order_id}
-      // Note: We might need to handle the ID format if the user enters just the number part, 
+      // Note: We might need to handle the ID format if the user enters just the number part,
       // but let's assume they enter the full ID as per placeholder.
-      const response = await api.get(`/orders/track/${formData.orderId}`)
-      
-      const order = response.data
-      
-      setOrderData(order)
-      setStep('details')
+      const response = await api.get(`/orders/track/${formData.orderId}`);
+
+      const order = response.data;
+
+      console.log("The order is here: ", order);
+
+      setOrderData(order);
+      setStep("details");
     } catch (err) {
-      console.error('Track order error:', err)
-      setError(err.response?.data?.message || 'Order not found. Please check your details and try again.')
+      console.error("Track order error:", err);
+      setError(
+        err.response?.data?.message ||
+          "Order not found. Please check your details and try again.",
+      );
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   const handleReset = () => {
-    setStep('search')
-    setFormData({ orderId: '' })
-    setOrderData(null)
-    setError('')
-  }
+    setStep("search");
+    setFormData({ orderId: "" });
+    setOrderData(null);
+    setError("");
+  };
 
   // Format currency
   const formatPrice = (price) => {
-    return `₦${Number(price).toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-  }
+    return `₦${Number(price).toLocaleString("en-NG", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  };
 
   // Format date
   const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleString('en-NG', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    })
-  }
+    return new Date(dateString).toLocaleString("en-NG", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
 
   const formatCountdown = (seconds) => {
-    const hrs = Math.floor(seconds / 3600)
-    const mins = Math.floor((seconds % 3600) / 60)
-    const secs = seconds % 60
-    return `${String(hrs).padStart(2, '0')}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`
-  }
+    const hrs = Math.floor(seconds / 3600);
+    const mins = Math.floor((seconds % 3600) / 60);
+    const secs = seconds % 60;
+    return `${String(hrs).padStart(2, "0")}:${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
+  };
 
   useEffect(() => {
     if (!orderData) {
-      setRemainingSeconds(null)
-      setDerivedStatus(null)
-      return
+      setRemainingSeconds(null);
+      setDerivedStatus(null);
+      return;
     }
 
-    const baseStatus = (orderData.status || 'pending').toLowerCase()
-    setDerivedStatus(baseStatus)
+    const baseStatus = (orderData.status || "pending").toLowerCase();
+    setDerivedStatus(baseStatus);
 
-    const createdAt = orderData.created_at
+    const createdAt = orderData.created_at;
     if (!createdAt) {
-      setRemainingSeconds(null)
-      return
+      setRemainingSeconds(null);
+      return;
     }
 
-    const expiryTime = new Date(createdAt).getTime() + 45 * 60 * 1000
+    const expiryTime = new Date(createdAt).getTime() + 45 * 60 * 1000;
 
     const updateRemaining = () => {
-      const diffMs = expiryTime - Date.now()
-      const diffSeconds = Math.floor(diffMs / 1000)
+      const diffMs = expiryTime - Date.now();
+      const diffSeconds = Math.floor(diffMs / 1000);
       if (diffSeconds <= 0) {
-        setRemainingSeconds(0)
-        if (!['completed', 'cancelled'].includes(baseStatus)) {
-          setDerivedStatus('expired')
+        setRemainingSeconds(0);
+        if (!["completed", "cancelled"].includes(baseStatus)) {
+          setDerivedStatus("expired");
         }
       } else {
-        setRemainingSeconds(diffSeconds)
+        setRemainingSeconds(diffSeconds);
       }
-    }
+    };
 
-    updateRemaining()
-    const intervalId = setInterval(updateRemaining, 1000)
-    return () => clearInterval(intervalId)
-  }, [orderData])
+    updateRemaining();
+    const intervalId = setInterval(updateRemaining, 1000);
+    return () => clearInterval(intervalId);
+  }, [orderData]);
 
   // Determine timeline status
   const getTimelineStatus = (currentStatus) => {
-    const statuses = ['pending', 'confirmed', 'preparing', 'pickup', 'delivery', 'completed']
-    const currentIndex = statuses.indexOf(currentStatus)
+    const statuses = [
+      "pending",
+      "confirmed",
+      "preparing",
+      "pickup",
+      "delivery",
+      "completed",
+    ];
+    const currentIndex = statuses.indexOf(currentStatus);
     // Map API status to UI steps
     // UI Steps: Order Placed -> Confirmed -> Preparing -> Out for Delivery/Ready
-    
+
     // Logic: if current status index >= step index, it's active/completed
     return {
       placed: true, // Always true if order exists
       confirmed: currentIndex >= 1, // 'confirmed' is index 1
       preparing: currentIndex >= 2, // 'preparing' is index 2
-      out: currentIndex >= 3 // 'pickup'/'delivery' is index 3+
-    }
-  }
+      out: currentIndex >= 3, // 'pickup'/'delivery' is index 3+
+    };
+  };
 
-  if (step === 'search') {
+  if (step === "search") {
     return (
       <div className="min-h-[60vh] flex items-center justify-center bg-gray-50 px-4 py-12">
         <div className="bg-white w-full max-w-lg p-8 rounded-2xl shadow-sm border border-gray-100">
@@ -152,8 +164,12 @@ function TrackOrderContent() {
             <div className="w-16 h-16 bg-orange-50 rounded-full flex items-center justify-center mb-4">
               <Search className="w-8 h-8 text-orange-500" />
             </div>
-            <h1 className="text-2xl font-bold text-gray-900 mb-2">Find Your Order</h1>
-            <p className="text-gray-500 text-center">Enter your order ID to track your order</p>
+            <h1 className="text-2xl font-bold text-gray-900 mb-2">
+              Find Your Order
+            </h1>
+            <p className="text-gray-500 text-center">
+              Enter your order ID to track your order
+            </p>
           </div>
 
           <form onSubmit={handleTrackOrder} className="space-y-6">
@@ -169,7 +185,9 @@ function TrackOrderContent() {
                 placeholder="ORD-123456 or 123456"
                 className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all"
               />
-              <p className="text-xs text-gray-400 mt-1">Found in your order confirmation email</p>
+              <p className="text-xs text-gray-400 mt-1">
+                Found in your order confirmation email
+              </p>
             </div>
 
             {error && (
@@ -198,41 +216,53 @@ function TrackOrderContent() {
           </form>
         </div>
       </div>
-    )
+    );
   }
 
   // Details View
-  const timeline = getTimelineStatus(orderData.status)
-  const isDelivery = orderData.order_type === 'delivery'
-  const statusValue = (derivedStatus || orderData.status || 'pending').toLowerCase()
+  const timeline = getTimelineStatus(orderData.status);
+  const isDelivery = orderData.order_type === "delivery";
+  const statusValue = (
+    derivedStatus ||
+    orderData.status ||
+    "pending"
+  ).toLowerCase();
 
   const statusLabel = (() => {
-    if (statusValue === 'expired') return 'Expired'
-    if (!statusValue) return 'Pending'
-    return statusValue.replace('_', ' ').charAt(0).toUpperCase() + statusValue.replace('_', ' ').slice(1)
-  })()
-  
+    if (statusValue === "expired") return "Expired";
+    if (!statusValue) return "Pending";
+    return (
+      statusValue.replace("_", " ").charAt(0).toUpperCase() +
+      statusValue.replace("_", " ").slice(1)
+    );
+  })();
+
   // Helper to calculate total from items if not provided (fallback)
-  const items = orderData.order_items || []
-  const subtotal = items.reduce((sum, item) => sum + (Number(item.price) * item.quantity), 0)
+  const items = orderData.order_items || [];
+  const subtotal = items.reduce(
+    (sum, item) => sum + Number(item.price) * item.quantity,
+    0,
+  );
   // Use API values or fallback
-  const finalTotal = orderData.total_amount || orderData.final_amount || subtotal
-  const discount = orderData.discount_amount || 0
-  // Infer delivery fee if not explicit in top-level, but usually it is. 
-  // If not, we can calc: total - subtotal + discount. 
+  const finalTotal =
+    orderData.total_amount || orderData.final_amount || subtotal;
+  const discount = orderData.discount_amount || 0;
+  // Infer delivery fee if not explicit in top-level, but usually it is.
+  // If not, we can calc: total - subtotal + discount.
   // But for now, let's just assume if it's delivery, there might be a fee.
-  // The provided JSON example doesn't explicitly show delivery_fee field at root, 
+  // The provided JSON example doesn't explicitly show delivery_fee field at root,
   // but let's assume standard calculation: Total = Subtotal - Discount + Delivery
   // So Delivery = Total - Subtotal + Discount
-  const deliveryFee = orderData.order_type === 'delivery' 
-    ? (Number(finalTotal) - subtotal + Number(discount)) 
-    : 0
+  const deliveryFee =
+    orderData.order_type === "delivery"
+      ? Number(finalTotal) - subtotal + Number(discount)
+      : 0;
 
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 bg-gray-50 min-h-screen">
       {/* Back Button */}
-      <button 
-        onClick={() => setStep('search')}
+      <button
+        onClick={() => setStep("search")}
         className="flex items-center text-gray-600 hover:text-gray-900 mb-6 transition-colors"
       >
         <ChevronLeft className="w-5 h-5 mr-1" />
@@ -246,13 +276,15 @@ function TrackOrderContent() {
             <Truck className="w-6 h-6 text-orange-600" />
           </div>
           <div>
-            <h2 className={`text-xl font-extrabold capitalize ${
-              statusValue === 'completed'
-                ? 'text-green-700'
-                : statusValue === 'cancelled' || statusValue === 'expired'
-                  ? 'text-red-600'
-                  : 'text-orange-600'
-            }`}>
+            <h2
+              className={`text-xl font-extrabold capitalize ${
+                statusValue === "completed"
+                  ? "text-green-700"
+                  : statusValue === "cancelled" || statusValue === "expired"
+                    ? "text-red-600"
+                    : "text-orange-600"
+              }`}
+            >
               {statusLabel}
             </h2>
           </div>
@@ -263,18 +295,18 @@ function TrackOrderContent() {
           </div>
           {remainingSeconds !== null &&
             remainingSeconds > 0 &&
-            !['completed', 'cancelled'].includes(statusValue) && (
+            !["completed", "cancelled"].includes(statusValue) && (
               <div className="flex items-center gap-2 text-xs font-semibold text-gray-700">
                 <Clock className="w-4 h-4 text-orange-500" />
                 <span>
-                  Expires in{' '}
+                  Expires in{" "}
                   <span className="text-orange-500 font-bold">
                     {formatCountdown(remainingSeconds)}
                   </span>
                 </span>
               </div>
             )}
-          {statusValue === 'expired' && (
+          {statusValue === "expired" && (
             <div className="flex items-center gap-2 text-xs font-semibold text-red-600">
               <Clock className="w-4 h-4" />
               <span>Order has expired</span>
@@ -294,32 +326,54 @@ function TrackOrderContent() {
           <div className="space-y-8">
             {/* Step 1: Placed */}
             <div className="relative flex gap-4">
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center z-10 ${timeline.placed ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-400'}`}>
+              <div
+                className={`w-8 h-8 rounded-full flex items-center justify-center z-10 ${timeline.placed ? "bg-green-100 text-green-600" : "bg-gray-100 text-gray-400"}`}
+              >
                 <CheckCircle className="w-5 h-5" />
               </div>
               <div className="flex-1">
                 <div className="flex justify-between items-start">
                   <div>
-                    <h4 className={`font-semibold ${timeline.placed ? 'text-gray-900' : 'text-gray-500'}`}>Order Placed</h4>
-                    <p className="text-sm text-gray-500">Your order has been received</p>
+                    <h4
+                      className={`font-semibold ${timeline.placed ? "text-gray-900" : "text-gray-500"}`}
+                    >
+                      Order Placed
+                    </h4>
+                    <p className="text-sm text-gray-500">
+                      Your order has been received
+                    </p>
                   </div>
-                  <span className="text-sm text-gray-400">{formatDate(orderData.created_at).split(',')[1]}</span>
+                  <span className="text-sm text-gray-400">
+                    {formatDate(orderData.created_at).split(",")[1]}
+                  </span>
                 </div>
               </div>
             </div>
 
             {/* Step 2: Confirmed */}
             <div className="relative flex gap-4">
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center z-10 ${timeline.confirmed ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-400'}`}>
+              <div
+                className={`w-8 h-8 rounded-full flex items-center justify-center z-10 ${timeline.confirmed ? "bg-green-100 text-green-600" : "bg-gray-100 text-gray-400"}`}
+              >
                 <CheckCircle className="w-5 h-5" />
               </div>
               <div className="flex-1">
                 <div className="flex justify-between items-start">
                   <div>
-                    <h4 className={`font-semibold ${timeline.confirmed ? 'text-gray-900' : 'text-gray-500'}`}>Confirmed</h4>
-                    <p className="text-sm text-gray-500">Restaurant confirmed your order</p>
+                    <h4
+                      className={`font-semibold ${timeline.confirmed ? "text-gray-900" : "text-gray-500"}`}
+                    >
+                      Confirmed
+                    </h4>
+                    <p className="text-sm text-gray-500">
+                      Restaurant confirmed your order
+                    </p>
                   </div>
-                  {timeline.confirmed && <span className="text-sm text-gray-400">{formatDate(orderData.updated_at).split(',')[1]}</span>}
+                  {timeline.confirmed && (
+                    <span className="text-sm text-gray-400">
+                      {formatDate(orderData.updated_at).split(",")[1]}
+                    </span>
+                  )}
                 </div>
               </div>
             </div>
@@ -391,7 +445,9 @@ function TrackOrderContent() {
               <Calendar className="w-5 h-5 text-gray-400 mt-1" />
               <div>
                 <p className="text-sm text-gray-500">Order Date</p>
-                <p className="font-medium">{formatDate(orderData.created_at)}</p>
+                <p className="font-medium">
+                  {formatDate(orderData.created_at)}
+                </p>
               </div>
             </div>
             {isDelivery && (
@@ -400,7 +456,10 @@ function TrackOrderContent() {
                 <div>
                   <p className="text-sm text-gray-500">Delivery Address</p>
                   <p className="font-medium">{orderData.delivery_address}</p>
-                  <p className="text-sm text-gray-500">{orderData.delivery_city}, {orderData.delivery_zip}</p>
+                  <p className="text-sm text-gray-500">
+                    {orderData.delivery_city}
+                    {orderData.delivery_zip && (", ", orderData.delivery_zip)}
+                  </p>
                 </div>
               </div>
             )}
@@ -423,14 +482,27 @@ function TrackOrderContent() {
             {items.map((item, index) => (
               <div key={index} className="flex justify-between items-start">
                 <div>
-                  <p className="font-medium text-gray-900">{item.quantity}x {item.menu?.name || 'Item'}</p>
-                  {item.menu?.description && <p className="text-xs text-gray-500 truncate max-w-[200px]">{item.menu.description}</p>}
+                  <p className="font-medium text-gray-900">
+                    {item.quantity}x {item.menu?.name || "Item"}
+                  </p>
+                  {item.menu?.description && (
+                    <p className="text-xs text-gray-500 truncate max-w-[200px]">
+                      {item.menu.description}
+                    </p>
+                  )}
+                  <p className="text-xs text-gray-500">
+                    {item.packaging_price
+                      ? "Packaging Price: " + formatPrice(item.packaging_price)
+                      : ""}
+                  </p>
                 </div>
-                <p className="font-medium text-gray-900">{formatPrice(Number(item.price) * item.quantity)}</p>
+                <p className="font-medium text-gray-900">
+                  {formatPrice(Number(item.price) * item.quantity)}
+                </p>
               </div>
             ))}
           </div>
-          
+
           <div className="border-t border-gray-100 pt-4 space-y-2">
             <div className="flex justify-between text-gray-500">
               <span>Subtotal</span>
@@ -457,7 +529,9 @@ function TrackOrderContent() {
           <div className="mt-6 pt-4 border-t border-gray-100 flex justify-between items-center">
             <span className="text-gray-500">Payment Method</span>
             <span className="inline-flex items-center gap-1 bg-gray-100 px-3 py-1 rounded-full text-xs font-medium text-gray-700 capitalize">
-              {orderData.invoice?.payment_method || orderData.payment_type || 'Unknown'}
+              {orderData.invoice?.payment_method ||
+                orderData.payment_type ||
+                "Unknown"}
             </span>
           </div>
         </div>
@@ -465,20 +539,18 @@ function TrackOrderContent() {
 
       {/* Footer Actions */}
       <div className="flex flex-col sm:flex-row gap-4 mt-8">
-        <button 
+        <button
           onClick={handleReset}
           className="flex-1 bg-white border border-gray-200 text-gray-700 font-bold py-4 rounded-full hover:bg-gray-50 transition-colors"
         >
           Track Another Order
         </button>
-        <button 
-          className="flex-1 bg-orange-500 text-white font-bold py-4 rounded-full hover:bg-orange-600 transition-colors"
-        >
+        <button className="flex-1 bg-orange-500 text-white font-bold py-4 rounded-full hover:bg-orange-600 transition-colors">
           Contact Support
         </button>
       </div>
     </div>
-  )
+  );
 }
 
-export default TrackOrderContent
+export default TrackOrderContent;
