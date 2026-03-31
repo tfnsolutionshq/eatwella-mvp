@@ -1,5 +1,3 @@
-"use client";
-
 import {
   FiGrid,
   FiShoppingCart,
@@ -40,7 +38,7 @@ export default function Sidebar({ isOpen, onToggle }) {
       label: "Orders",
       icon: FiShoppingCart,
       path: "/admin/orders",
-      roles: ["admin", "cashier", "delivery_agent"],
+      roles: ["admin", "supervisor", "attendant", "delivery_agent", "kitchen"],
     },
     {
       id: "menu",
