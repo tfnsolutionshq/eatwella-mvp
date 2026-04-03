@@ -243,7 +243,11 @@ const Menu = () => {
                       {item.name}
                     </h3>
                     <span className="text-lg font-bold text-orange-500">
-                      ₦{item.price}
+                      {new Intl.NumberFormat("en-NG", {
+                        style: "currency",
+                        currency: "NGN",
+                        minimumFractionDigits: 0,
+                      }).format(Math.ceil(item.price))}
                     </span>
                   </div>
 

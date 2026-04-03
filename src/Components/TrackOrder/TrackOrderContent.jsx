@@ -10,27 +10,34 @@ import {
   Phone,
   Calendar,
   Package,
-  CreditCard,
+  SquareAsteriskIcon,
   User,
 } from "lucide-react";
 import api from "../../utils/api";
 
+// ── Currency formatter ────────────────────────────────────────────────────────
+const ngn = (amount) =>
+  new Intl.NumberFormat("en-NG", {
+    style: "currency",
+    currency: "NGN",
+    minimumFractionDigits: 0,
+  }).format(Math.ceil(Number(amount ?? 0)));
+
+// ── Per-item subtotal: item.subtotal (price × qty) + packaging_price × qty ──
+// item.subtotal from the API does NOT include packaging. packaging_price is
+// the per-unit cost stored directly on each order_item.
+const getItemSubtotal = (item) =>
+  Number(item.subtotal) + Number(item.packaging_price ?? 0) * item.quantity;
+
 function TrackOrderContent() {
-  const [step, setStep] = useState("search"); // search, details
-  const [formData, setFormData] = useState({
-    orderId: "",
-  });
+  const [step, setStep] = useState("search"); // search | details
+  const [formData, setFormData] = useState({ orderId: "" });
   const [orderData, setOrderData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [remainingSeconds, setRemainingSeconds] = useState(null);
-  const [derivedStatus, setDerivedStatus] = useState(null);
 
   const handleInputChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value,
-    });
+    setFormData({ ...formData, [e.target.name]: e.target.value });
     setError("");
   };
 
@@ -43,21 +50,11 @@ function TrackOrderContent() {
 
     setLoading(true);
     setError("");
-
     try {
-      // The API endpoint provided: /orders/track/{order_id}
-      // Note: We might need to handle the ID format if the user enters just the number part,
-      // but let's assume they enter the full ID as per placeholder.
       const response = await api.get(`/orders/track/${formData.orderId}`);
-
-      const order = response.data;
-
-      console.log("The order is here: ", order);
-
-      setOrderData(order);
+      setOrderData(response.data);
       setStep("details");
     } catch (err) {
-      console.error("Track order error:", err);
       setError(
         err.response?.data?.message ||
           "Order not found. Please check your details and try again.",
@@ -74,88 +71,48 @@ function TrackOrderContent() {
     setError("");
   };
 
-  // Format currency
-  const formatPrice = (price) => {
-    return `₦${Number(price).toLocaleString("en-NG", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-  };
-
-  // Format date
-  const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleString("en-NG", {
+  const formatDate = (dateString) =>
+    new Date(dateString).toLocaleString("en-NG", {
       year: "numeric",
       month: "long",
       day: "numeric",
       hour: "2-digit",
       minute: "2-digit",
     });
-  };
-
-  const formatCountdown = (seconds) => {
-    const hrs = Math.floor(seconds / 3600);
-    const mins = Math.floor((seconds % 3600) / 60);
-    const secs = seconds % 60;
-    return `${String(hrs).padStart(2, "0")}:${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
-  };
 
   useEffect(() => {
     if (!orderData) {
-      setRemainingSeconds(null);
-      setDerivedStatus(null);
       return;
     }
-
-    const baseStatus = (orderData.status || "pending").toLowerCase();
-    setDerivedStatus(baseStatus);
-
-    const createdAt = orderData.created_at;
-    if (!createdAt) {
-      setRemainingSeconds(null);
-      return;
-    }
-
-    const expiryTime = new Date(createdAt).getTime() + 45 * 60 * 1000;
-
-    const updateRemaining = () => {
-      const diffMs = expiryTime - Date.now();
-      const diffSeconds = Math.floor(diffMs / 1000);
-      if (diffSeconds <= 0) {
-        setRemainingSeconds(0);
-        if (!["completed", "cancelled"].includes(baseStatus)) {
-          setDerivedStatus("expired");
-        }
-      } else {
-        setRemainingSeconds(diffSeconds);
-      }
-    };
-
-    updateRemaining();
-    const intervalId = setInterval(updateRemaining, 1000);
-    return () => clearInterval(intervalId);
   }, [orderData]);
 
-  // Determine timeline status
   const getTimelineStatus = (currentStatus) => {
-    const statuses = [
-      "pending",
-      "confirmed",
-      "preparing",
-      "pickup",
-      "delivery",
-      "completed",
-    ];
-    const currentIndex = statuses.indexOf(currentStatus);
-    // Map API status to UI steps
-    // UI Steps: Order Placed -> Confirmed -> Preparing -> Out for Delivery/Ready
-
-    // Logic: if current status index >= step index, it's active/completed
+    const s = (currentStatus || "").toLowerCase();
     return {
-      placed: true, // Always true if order exists
-      confirmed: currentIndex >= 1, // 'confirmed' is index 1
-      preparing: currentIndex >= 2, // 'preparing' is index 2
-      out: currentIndex >= 3, // 'pickup'/'delivery' is index 3+
+      placed: [
+        "confirmed",
+        "processing",
+        "ready",
+        "dispatched",
+        "completed",
+      ].includes(s),
+      confirmed: [
+        "confirmed",
+        "processing",
+        "ready",
+        "dispatched",
+        "completed",
+      ].includes(s),
+      processing: ["processing", "ready", "dispatched", "completed"].includes(
+        s,
+      ),
+      ready: ["ready", "dispatched", "completed"].includes(s),
+      dispatched: ["dispatched", "completed"].includes(s),
+      completed: s === "completed",
     };
   };
 
+  // ── Search view ─────────────────────────────────────────────────────────────
   if (step === "search") {
     return (
       <div className="min-h-[60vh] flex items-center justify-center bg-gray-50 px-4 py-12">
@@ -203,7 +160,7 @@ function TrackOrderContent() {
             >
               {loading ? (
                 <>
-                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white" />
                   Searching...
                 </>
               ) : (
@@ -219,48 +176,36 @@ function TrackOrderContent() {
     );
   }
 
-  // Details View
+  // ── Details view ────────────────────────────────────────────────────────────
   const timeline = getTimelineStatus(orderData.status);
   const isDelivery = orderData.order_type === "delivery";
-  const statusValue = (
-    derivedStatus ||
-    orderData.status ||
-    "pending"
-  ).toLowerCase();
+  const statusValue = (orderData.status || "pending").toLowerCase();
+  const statusLabel =
+    statusValue.replace("_", " ").charAt(0).toUpperCase() +
+    statusValue.replace("_", " ").slice(1);
 
-  const statusLabel = (() => {
-    if (statusValue === "expired") return "Expired";
-    if (!statusValue) return "Pending";
-    return (
-      statusValue.replace("_", " ").charAt(0).toUpperCase() +
-      statusValue.replace("_", " ").slice(1)
-    );
-  })();
-
-  // Helper to calculate total from items if not provided (fallback)
   const items = orderData.order_items || [];
-  const subtotal = items.reduce(
-    (sum, item) => sum + Number(item.price) * item.quantity,
+
+  // ── Corrected financial figures ─────────────────────────────────────────────
+  // items subtotal = sum of (menu price × qty) + (packaging price × qty) per item
+  const itemsSubtotal = items.reduce(
+    (sum, item) => sum + getItemSubtotal(item),
     0,
   );
-  // Use API values or fallback
-  const finalTotal =
-    orderData.total_amount || orderData.final_amount || subtotal;
-  const discount = orderData.discount_amount || 0;
-  // Infer delivery fee if not explicit in top-level, but usually it is.
-  // If not, we can calc: total - subtotal + discount.
-  // But for now, let's just assume if it's delivery, there might be a fee.
-  // The provided JSON example doesn't explicitly show delivery_fee field at root,
-  // but let's assume standard calculation: Total = Subtotal - Discount + Delivery
-  // So Delivery = Total - Subtotal + Discount
-  const deliveryFee =
-    orderData.order_type === "delivery"
-      ? Number(finalTotal) - subtotal + Number(discount)
-      : 0;
+  const discountAmount = Number(orderData.discount_amount ?? 0);
+  const deliveryFee = Number(orderData.delivery_fee ?? 0);
+  const taxAmount = Number(orderData.tax_amount ?? 0);
+  const taxDetails = orderData.tax_details ?? null; // e.g. { VAT: { rate: 7.5, amount: 150 } }
+
+  // Recalculated grand total = itemsSubtotal - discount + deliveryFee + tax
+  // We still show the API's final_amount as the authoritative "Total Paid" figure,
+  // but the breakdown rows now add up correctly to match it.
+  const recalculatedTotal =
+    itemsSubtotal - discountAmount + (isDelivery ? deliveryFee : 0) + taxAmount;
 
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 bg-gray-50 min-h-screen">
-      {/* Back Button */}
+      {/* Back */}
       <button
         onClick={() => setStep("search")}
         className="flex items-center text-gray-600 hover:text-gray-900 mb-6 transition-colors"
@@ -275,142 +220,113 @@ function TrackOrderContent() {
           <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center">
             <Truck className="w-6 h-6 text-orange-600" />
           </div>
-          <div>
-            <h2
-              className={`text-xl font-extrabold capitalize ${
-                statusValue === "completed"
-                  ? "text-green-700"
-                  : statusValue === "cancelled" || statusValue === "expired"
-                    ? "text-red-600"
-                    : "text-orange-600"
-              }`}
-            >
-              {statusLabel}
-            </h2>
-          </div>
+          <h2
+            className={`text-xl font-extrabold capitalize ${
+              statusValue === "completed"
+                ? "text-green-700"
+                : statusValue === "cancelled"
+                  ? "text-red-600"
+                  : "text-orange-600"
+            }`}
+          >
+            {statusLabel}
+          </h2>
         </div>
         <div className="flex flex-col items-start md:items-end gap-2">
           <div className="bg-white/80 px-4 py-2 rounded-lg text-sm font-mono font-medium text-gray-600 border border-orange-100">
             #{orderData.order_number || orderData.id}
           </div>
-          {remainingSeconds !== null &&
-            remainingSeconds > 0 &&
-            !["completed", "cancelled"].includes(statusValue) && (
-              <div className="flex items-center gap-2 text-xs font-semibold text-gray-700">
-                <Clock className="w-4 h-4 text-orange-500" />
-                <span>
-                  Expires in{" "}
-                  <span className="text-orange-500 font-bold">
-                    {formatCountdown(remainingSeconds)}
-                  </span>
-                </span>
-              </div>
-            )}
-          {statusValue === "expired" && (
-            <div className="flex items-center gap-2 text-xs font-semibold text-red-600">
-              <Clock className="w-4 h-4" />
-              <span>Order has expired</span>
-            </div>
-          )}
         </div>
       </div>
 
-      {/* Timeline Section */}
+      {/* Timeline */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-8 mb-8">
         <h3 className="font-bold text-lg mb-6">Order Timeline</h3>
         <div className="relative">
-          {/* Vertical Line */}
-          <div className="absolute left-4 top-2 bottom-2 w-0.5 bg-gray-100"></div>
-
-          {/* Steps */}
+          <div className="absolute left-4 top-2 bottom-2 w-0.5 bg-gray-100" />
           <div className="space-y-8">
-            {/* Step 1: Placed */}
-            <div className="relative flex gap-4">
-              <div
-                className={`w-8 h-8 rounded-full flex items-center justify-center z-10 ${timeline.placed ? "bg-green-100 text-green-600" : "bg-gray-100 text-gray-400"}`}
-              >
-                <CheckCircle className="w-5 h-5" />
-              </div>
-              <div className="flex-1">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <h4
-                      className={`font-semibold ${timeline.placed ? "text-gray-900" : "text-gray-500"}`}
-                    >
-                      Order Placed
-                    </h4>
-                    <p className="text-sm text-gray-500">
-                      Your order has been received
-                    </p>
+            {[
+              {
+                key: "placed",
+                label: "Order Placed",
+                sub: "Your order has been received",
+                icon: CheckCircle,
+                activeClass: "bg-green-100 text-green-600",
+                time: formatDate(orderData.created_at).split(",")[1],
+              },
+              {
+                key: "confirmed",
+                label: "Confirmed",
+                sub: "Restaurant confirmed your order",
+                icon: CheckCircle,
+                activeClass: "bg-green-100 text-green-600",
+                time: timeline.confirmed
+                  ? formatDate(orderData.updated_at).split(",")[1]
+                  : null,
+              },
+              {
+                key: "processing",
+                label: "Processing",
+                sub: "Your order is being prepared",
+                icon: Clock,
+                activeClass: "bg-green-100 text-green-600",
+                time: null,
+              },
+              {
+                key: "ready",
+                label: "Ready",
+                sub: isDelivery ? "Ready for dispatch" : "Ready for pickup",
+                icon: Package,
+                activeClass: "bg-green-100 text-green-600",
+                time: null,
+              },
+              ...(isDelivery
+                ? [
+                    {
+                      key: "dispatched",
+                      label: "Dispatched",
+                      sub: "Your order is on the way",
+                      icon: Truck,
+                      activeClass: "bg-orange-500 text-white",
+                      time: null,
+                    },
+                  ]
+                : []),
+              {
+                key: "completed",
+                label: "Completed",
+                sub: "Order successfully delivered",
+                icon: CheckCircle,
+                activeClass: "bg-green-500 text-white",
+                time: null,
+              },
+            ].map(({ key, label, sub, icon: Icon, activeClass, time }) => {
+              const active = timeline[key];
+              return (
+                <div key={key} className="relative flex gap-4">
+                  <div
+                    className={`w-8 h-8 rounded-full flex items-center justify-center z-10 ${active ? activeClass : "bg-gray-100 text-gray-400"}`}
+                  >
+                    <Icon className="w-5 h-5" />
                   </div>
-                  <span className="text-sm text-gray-400">
-                    {formatDate(orderData.created_at).split(",")[1]}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* Step 2: Confirmed */}
-            <div className="relative flex gap-4">
-              <div
-                className={`w-8 h-8 rounded-full flex items-center justify-center z-10 ${timeline.confirmed ? "bg-green-100 text-green-600" : "bg-gray-100 text-gray-400"}`}
-              >
-                <CheckCircle className="w-5 h-5" />
-              </div>
-              <div className="flex-1">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <h4
-                      className={`font-semibold ${timeline.confirmed ? "text-gray-900" : "text-gray-500"}`}
-                    >
-                      Confirmed
-                    </h4>
-                    <p className="text-sm text-gray-500">
-                      Restaurant confirmed your order
-                    </p>
-                  </div>
-                  {timeline.confirmed && (
-                    <span className="text-sm text-gray-400">
-                      {formatDate(orderData.updated_at).split(",")[1]}
-                    </span>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Step 3: Preparing */}
-            {/* <div className="relative flex gap-4">
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center z-10 ${timeline.preparing ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-400'}`}>
-                <CheckCircle className="w-5 h-5" />
-              </div>
-              <div className="flex-1">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <h4 className={`font-semibold ${timeline.preparing ? 'text-gray-900' : 'text-gray-500'}`}>Preparing</h4>
-                    <p className="text-sm text-gray-500">Chef is preparing your meal</p>
-                  </div>
-                </div>
-              </div>
-            </div> */}
-
-            {/* Step 4: Out for Delivery / Ready */}
-            {/* <div className="relative flex gap-4">
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center z-10 ${timeline.out ? 'bg-orange-500 text-white' : 'bg-gray-100 text-gray-400'}`}>
-                {isDelivery ? <Truck className="w-5 h-5" /> : <Package className="w-5 h-5" />}
-              </div>
-              <div className="flex-1">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <h4 className={`font-semibold ${timeline.out ? 'text-gray-900' : 'text-gray-500'}`}>
-                      {isDelivery ? 'Out for Delivery' : 'Ready for Pickup'}
-                    </h4>
-                    <p className="text-sm text-gray-500">
-                      {isDelivery ? 'Driver is on the way to your location' : 'Your order is ready for pickup'}
-                    </p>
+                  <div className="flex-1">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <h4
+                          className={`font-semibold ${active ? "text-gray-900" : "text-gray-500"}`}
+                        >
+                          {label}
+                        </h4>
+                        <p className="text-sm text-gray-500">{sub}</p>
+                      </div>
+                      {time && (
+                        <span className="text-sm text-gray-400">{time}</span>
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
-            </div> */}
+              );
+            })}
           </div>
         </div>
       </div>
@@ -420,114 +336,172 @@ function TrackOrderContent() {
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-8">
           <h3 className="font-bold text-lg mb-6">Customer Information</h3>
           <div className="space-y-6">
-            <div className="flex items-start gap-4">
-              <Package className="w-5 h-5 text-gray-400 mt-1" />
-              <div>
-                <p className="text-sm text-gray-500">Order Type</p>
-                <p className="font-medium capitalize">{orderData.order_type}</p>
-              </div>
-            </div>
-            <div className="flex items-start gap-4">
-              <Mail className="w-5 h-5 text-gray-400 mt-1" />
-              <div>
-                <p className="text-sm text-gray-500">Email</p>
-                <p className="font-medium">{orderData.customer_email}</p>
-              </div>
-            </div>
-            <div className="flex items-start gap-4">
-              <Phone className="w-5 h-5 text-gray-400 mt-1" />
-              <div>
-                <p className="text-sm text-gray-500">Phone</p>
-                <p className="font-medium">{orderData.customer_phone}</p>
-              </div>
-            </div>
-            <div className="flex items-start gap-4">
-              <Calendar className="w-5 h-5 text-gray-400 mt-1" />
-              <div>
-                <p className="text-sm text-gray-500">Order Date</p>
-                <p className="font-medium">
-                  {formatDate(orderData.created_at)}
-                </p>
-              </div>
-            </div>
-            {isDelivery && (
-              <div className="flex items-start gap-4">
-                <MapPin className="w-5 h-5 text-gray-400 mt-1" />
+            {[
+              {
+                icon: Package,
+                label: "Order Type",
+                value: orderData.order_type,
+                capitalize: true,
+              },
+              ...(orderData.delivery_pin
+                ? [
+                    {
+                      icon: SquareAsteriskIcon,
+                      label: "Delivery PIN",
+                      value: orderData.delivery_pin,
+                    },
+                  ]
+                : []),
+              { icon: Mail, label: "Email", value: orderData.customer_email },
+              { icon: Phone, label: "Phone", value: orderData.customer_phone },
+              {
+                icon: Calendar,
+                label: "Order Date",
+                value: formatDate(orderData.created_at),
+              },
+              ...(isDelivery
+                ? [
+                    {
+                      icon: MapPin,
+                      label: "Delivery Address",
+                      value: [
+                        orderData.delivery_address,
+                        orderData.delivery_city,
+                        orderData.delivery_zip,
+                      ]
+                        .filter(Boolean)
+                        .join(", "),
+                    },
+                  ]
+                : []),
+              ...(!isDelivery && orderData.table_number
+                ? [
+                    {
+                      icon: User,
+                      label: "Table Number",
+                      value: orderData.table_number,
+                    },
+                  ]
+                : []),
+            ].map(({ icon: Icon, label, value, capitalize }) => (
+              <div key={label} className="flex items-start gap-4">
+                <Icon className="w-5 h-5 text-gray-400 mt-1 flex-shrink-0" />
                 <div>
-                  <p className="text-sm text-gray-500">Delivery Address</p>
-                  <p className="font-medium">{orderData.delivery_address}</p>
-                  <p className="text-sm text-gray-500">
-                    {orderData.delivery_city}
-                    {orderData.delivery_zip && (", ", orderData.delivery_zip)}
+                  <p className="text-sm text-gray-500">{label}</p>
+                  <p
+                    className={`font-medium ${capitalize ? "capitalize" : ""}`}
+                  >
+                    {value}
                   </p>
                 </div>
               </div>
-            )}
-            {!isDelivery && orderData.table_number && (
-              <div className="flex items-start gap-4">
-                <User className="w-5 h-5 text-gray-400 mt-1" />
-                <div>
-                  <p className="text-sm text-gray-500">Table Number</p>
-                  <p className="font-medium">{orderData.table_number}</p>
-                </div>
-              </div>
-            )}
+            ))}
           </div>
         </div>
 
         {/* Order Summary */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-8">
           <h3 className="font-bold text-lg mb-6">Order Summary</h3>
+
+          {/* Line items */}
           <div className="space-y-4 mb-6">
-            {items.map((item, index) => (
-              <div key={index} className="flex justify-between items-start">
-                <div>
-                  <p className="font-medium text-gray-900">
-                    {item.quantity}x {item.menu?.name || "Item"}
-                  </p>
-                  {item.menu?.description && (
-                    <p className="text-xs text-gray-500 truncate max-w-[200px]">
-                      {item.menu.description}
+            {items.map((item, index) => {
+              const itemTotal = getItemSubtotal(item);
+              return (
+                <div
+                  key={index}
+                  className="flex justify-between items-start gap-4"
+                >
+                  <div className="min-w-0">
+                    <p className="font-medium text-gray-900">
+                      {item.quantity}× {item.menu?.name || "Item"}
                     </p>
-                  )}
-                  <p className="text-xs text-gray-500">
-                    {item.packaging_price
-                      ? "Packaging Price: " + formatPrice(item.packaging_price)
-                      : ""}
+                    {item.menu?.description && (
+                      <p className="text-xs text-gray-400 truncate max-w-[200px]">
+                        {item.menu.description}
+                      </p>
+                    )}
+                    {/* Packaging line — only when present */}
+                    {Number(item.packaging_price) > 0 && (
+                      <p className="text-xs text-gray-400 mt-0.5">
+                        + Packaging: {ngn(item.packaging_price)} / item
+                      </p>
+                    )}
+                  </div>
+                  {/* Corrected subtotal = (menu price + packaging price) × qty */}
+                  <p className="font-medium text-gray-900 shrink-0">
+                    {ngn(itemTotal)}
                   </p>
                 </div>
-                <p className="font-medium text-gray-900">
-                  {formatPrice(Number(item.price) * item.quantity)}
-                </p>
-              </div>
-            ))}
+              );
+            })}
           </div>
 
-          <div className="border-t border-gray-100 pt-4 space-y-2">
-            <div className="flex justify-between text-gray-500">
-              <span>Subtotal</span>
-              <span>{formatPrice(subtotal)}</span>
+          {/* Totals breakdown */}
+          <div className="border-t border-gray-100 pt-4 space-y-2.5">
+            {/* Items subtotal (menu + packaging) */}
+            <div className="flex justify-between text-gray-600 text-sm">
+              <span>Items Subtotal</span>
+              <span className="font-medium text-gray-800">
+                {ngn(itemsSubtotal)}
+              </span>
             </div>
-            {Number(discount) > 0 && (
-              <div className="flex justify-between text-green-600">
+
+            {/* Discount */}
+            {discountAmount > 0 && (
+              <div className="flex justify-between text-green-600 text-sm">
                 <span>Discount</span>
-                <span>-{formatPrice(discount)}</span>
+                <span className="font-medium">-{ngn(discountAmount)}</span>
               </div>
             )}
+
+            {/* Delivery fee */}
             {isDelivery && (
-              <div className="flex justify-between text-gray-500">
+              <div className="flex justify-between text-gray-600 text-sm">
                 <span>Delivery Fee</span>
-                <span>{formatPrice(deliveryFee)}</span>
+                <span className="font-medium text-gray-800">
+                  {ngn(deliveryFee)}
+                </span>
               </div>
             )}
-            <div className="flex justify-between text-xl font-bold text-orange-600 pt-2 border-t border-gray-100 mt-2">
+
+            {/* Tax rows — per tax type from tax_details when available */}
+            {taxDetails
+              ? Object.entries(taxDetails).map(([taxName, tax]) => (
+                  <div
+                    key={taxName}
+                    className="flex justify-between text-gray-600 text-sm"
+                  >
+                    <span>
+                      {taxName}{" "}
+                      <span className="text-gray-400 text-xs">
+                        ({tax.rate}%)
+                      </span>
+                    </span>
+                    <span className="font-medium text-gray-800">
+                      {ngn(tax.amount)}
+                    </span>
+                  </div>
+                ))
+              : taxAmount > 0 && (
+                  <div className="flex justify-between text-gray-600 text-sm">
+                    <span>Tax</span>
+                    <span className="font-medium text-gray-800">
+                      {ngn(taxAmount)}
+                    </span>
+                  </div>
+                )}
+
+            {/* Total Paid — use API's final_amount as the authoritative figure */}
+            <div className="flex justify-between text-xl font-bold text-orange-600 pt-3 border-t border-gray-100 mt-1">
               <span>Total Paid</span>
-              <span>{formatPrice(finalTotal)}</span>
+              <span>{ngn(orderData.final_amount ?? recalculatedTotal)}</span>
             </div>
           </div>
 
+          {/* Payment method */}
           <div className="mt-6 pt-4 border-t border-gray-100 flex justify-between items-center">
-            <span className="text-gray-500">Payment Method</span>
+            <span className="text-gray-500 text-sm">Payment Method</span>
             <span className="inline-flex items-center gap-1 bg-gray-100 px-3 py-1 rounded-full text-xs font-medium text-gray-700 capitalize">
               {orderData.invoice?.payment_method ||
                 orderData.payment_type ||

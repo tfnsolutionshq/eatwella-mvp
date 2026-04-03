@@ -427,7 +427,7 @@ function TaxAndVat() {
               <h3 className="text-xl font-bold text-gray-900">
                 Tax Calculation Preview
               </h3>
-              <p className="text-gray-500 mt-1">Example order: ₦10000.00</p>
+              <p className="text-gray-500 mt-1">Example order: ₦10000</p>
             </div>
             <span className="bg-green-500 text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-sm">
               Live Preview
@@ -437,17 +437,17 @@ function TaxAndVat() {
           <div className="space-y-4 max-w-2xl ml-auto">
             <div className="flex justify-between text-gray-500 font-medium">
               <span>Subtotal</span>
-              <span className="text-gray-900 font-bold">₦10000.00</span>
+              <span className="text-gray-900 font-bold">₦10000</span>
             </div>
             {/* We could make this dynamic based on the first active tax rule if desired */}
             <div className="flex justify-between text-gray-500 font-medium">
               <span>VAT (Standard) (7.5%)</span>
-              <span className="text-green-600 font-bold">+₦750.00</span>
+              <span className="text-green-600 font-bold">+₦750</span>
             </div>
             <div className="pt-4 border-t border-gray-200 flex justify-between items-center">
               <span className="text-lg font-bold text-gray-900">Total</span>
               <span className="text-2xl font-black text-orange-500">
-                ₦10750.00
+                ₦10750
               </span>
             </div>
           </div>

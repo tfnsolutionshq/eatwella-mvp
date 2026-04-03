@@ -119,7 +119,11 @@ function Menu() {
                   <div className="flex justify-between items-center mb-3">
                     <h3 className="text-xl font-semibold">{item.name}</h3>
                     <span className="text-orange-500 font-black text-xl">
-                      ₦{item.price}
+                      {new Intl.NumberFormat("en-NG", {
+                        style: "currency",
+                        currency: "NGN",
+                        minimumFractionDigits: 0,
+                      }).format(item.price)}
                     </span>
                   </div>
                   <p className="text-gray-600 mb-4 line-clamp-2 flex-grow">
@@ -158,8 +162,12 @@ function Menu() {
                 <div className="p-6 flex flex-col flex-grow">
                   <div className="flex justify-between items-center mb-3">
                     <h3 className="text-xl font-semibold">{item.name}</h3>
-                    <span className="text-orange-500 font-black text-xl">
-                      ₦{item.price}
+                    <span className="text-red-500 font-black text-xl">
+                      {new Intl.NumberFormat("en-NG", {
+                        style: "currency",
+                        currency: "NGN",
+                        minimumFractionDigits: 0,
+                      }).format(item.price)}
                     </span>
                   </div>
                   <p className="text-gray-600 mb-4 line-clamp-2 flex-grow">

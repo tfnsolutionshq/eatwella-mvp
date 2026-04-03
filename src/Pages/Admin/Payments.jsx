@@ -37,14 +37,22 @@ function Payments() {
   const stats = [
     {
       label: "Total Revenue",
-      value: `₦${Number(totals?.total_revenue)?.toFixed(2) || "0.00"}`,
+      value: new Intl.NumberFormat("en-NG", {
+        style: "currency",
+        currency: "NGN",
+        minimumFractionDigits: 0,
+      }).format(Math.ceil(totals?.total_revenue)),
       icon: FiDollarSign,
       color: "bg-green-500",
       trend: "+12%",
     },
     {
       label: "Pending",
-      value: `₦${Number(totals?.total_pending)?.toFixed(2) || "0.00"}`,
+      value: new Intl.NumberFormat("en-NG", {
+        style: "currency",
+        currency: "NGN",
+        minimumFractionDigits: 0,
+      }).format(Math.ceil(totals?.total_pending)),
       icon: FiDollarSign,
       color: "bg-orange-500",
     },
@@ -196,7 +204,11 @@ function Payments() {
                         {payment.order?.customer_name}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">
-                        ₦{payment.amount}
+                        {new Intl.NumberFormat("en-NG", {
+                          style: "currency",
+                          currency: "NGN",
+                          minimumFractionDigits: 0,
+                        }).format(Math.ceil(payment.amount))}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span

@@ -10,10 +10,9 @@ function ReceiptDetails() {
   const { fetchCart, clearCart } = useCart();
   const { orderId } = useParams();
   const [order, setOrder] = useState(location.state?.order || null);
-  const [remainingSeconds, setRemainingSeconds] = useState(null);
-  const [derivedStatus, setDerivedStatus] = useState(null);
   const [isLoading, setIsLoading] = useState(!location.state?.order);
   const [fetchError, setFetchError] = useState(null);
+  const [zones, setZones] = useState([]);
 
   useEffect(() => {
     const clearAndFetch = async () => {
@@ -21,6 +20,25 @@ function ReceiptDetails() {
       await fetchCart();
     };
     clearAndFetch();
+  }, []);
+
+  useEffect(() => {
+    const loadZones = async () => {
+      try {
+        const res = await api.get("/zones");
+        const payload = res.data;
+        const data = Array.isArray(payload)
+          ? payload
+          : Array.isArray(payload?.data)
+            ? payload.data
+            : [];
+        setZones(data);
+      } catch (e) {
+        console.error("Failed to load zones", e);
+      }
+    };
+
+    loadZones();
   }, []);
 
   useEffect(() => {
@@ -45,65 +63,16 @@ function ReceiptDetails() {
     }
   }, [order, orderId]);
 
-  useEffect(() => {
-    if (!order) {
-      setRemainingSeconds(null);
-      setDerivedStatus(null);
-      return;
-    }
-
-    const baseStatus = (order.status || "pending").toLowerCase();
-    setDerivedStatus(baseStatus);
-
-    const createdAt = order.created_at || order.invoice?.created_at;
-    if (!createdAt) {
-      setRemainingSeconds(null);
-      return;
-    }
-
-    const expiryTime = new Date(createdAt).getTime() + 45 * 60 * 1000;
-
-    const updateRemaining = () => {
-      const diffMs = expiryTime - Date.now();
-      const diffSeconds = Math.floor(diffMs / 1000);
-      if (diffSeconds <= 0) {
-        setRemainingSeconds(0);
-        if (!["completed", "cancelled"].includes(baseStatus)) {
-          setDerivedStatus("expired");
-        }
-      } else {
-        setRemainingSeconds(diffSeconds);
-      }
-    };
-
-    updateRemaining();
-    const intervalId = setInterval(updateRemaining, 1000);
-    return () => clearInterval(intervalId);
-  }, [order]);
-
-  const formatTime = (seconds) => {
-    const hrs = Math.floor(seconds / 3600);
-    const mins = Math.floor((seconds % 3600) / 60);
-    const secs = seconds % 60;
-    return `${String(hrs).padStart(2, "0")}:${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
-  };
-
-  const statusValue = (
-    derivedStatus ||
-    order?.status ||
-    "pending"
-  ).toLowerCase();
+  const statusValue = (order?.status || "pending").toLowerCase();
 
   const statusLabel = (() => {
-    if (statusValue === "expired") return "Expired";
     if (!statusValue) return "Pending";
     return statusValue.charAt(0).toUpperCase() + statusValue.slice(1);
   })();
 
   const statusClasses = (() => {
     if (statusValue === "completed") return "bg-green-100 text-green-700";
-    if (statusValue === "cancelled" || statusValue === "expired")
-      return "bg-red-100 text-red-700";
+    if (statusValue === "cancelled") return "bg-red-100 text-red-700";
     return "bg-yellow-100 text-yellow-700";
   })();
 
@@ -203,6 +172,19 @@ function ReceiptDetails() {
     );
   }
 
+  const matchedZone = zones.find(
+    (zone) =>
+      zone.id === order.delivery_zone_id ||
+      zone.id === order.delivery_zone_id?.toString(),
+  );
+  const matchedZoneName = matchedZone?.name || matchedZone?.zone_name || "";
+
+  const receiptAddress = order.delivery_address
+    ? matchedZoneName
+      ? `${matchedZoneName}, ${order.delivery_address}`
+      : order.delivery_address
+    : "N/A";
+
   const items = order.items || order.order_items || [];
   const subtotal =
     order.order_items?.reduce((sum, item) => {
@@ -240,32 +222,29 @@ function ReceiptDetails() {
               >
                 {statusLabel}
               </span>
-              {remainingSeconds !== null &&
-                remainingSeconds > 0 &&
-                !["completed", "cancelled"].includes(statusValue) && (
-                  <span className="flex items-center gap-1 text-xs font-semibold text-gray-700">
-                    <Clock className="w-4 h-4 text-orange-500" />
-                    <span>
-                      Expires in{" "}
-                      <span className="text-orange-500 font-bold">
-                        {formatTime(remainingSeconds)}
-                      </span>
-                    </span>
-                  </span>
-                )}
-              {statusValue === "expired" && (
-                <span className="flex items-center gap-1 text-xs font-semibold text-red-600">
-                  <Clock className="w-4 h-4" />
-                  <span>Order has expired</span>
-                </span>
-              )}
             </div>
           </div>
+          {order.delivery_pin && (
+            <div className="text-center mt-5">
+              <p>
+                Your Delivery PIN:{" "}
+                <span className="font-bold">{order.delivery_pin}</span>
+              </p>
+              <p className="text-gray-500 mt-1 italic">
+                Save and provide this PIN to the delivery agent who will come
+                with your order.
+              </p>
+            </div>
+          )}
         </div>
 
         <div className="mb-6">
           <h3 className="font-semibold mb-4">Order Details</h3>
           <div className="space-y-3 text-sm">
+            <div className="flex justify-between">
+              <span className="text-gray-500">Address</span>
+              <span className="text-gray-900">{receiptAddress}</span>
+            </div>
             <div className="flex justify-between">
               <span className="text-gray-500">Order Type</span>
               <span className="text-gray-900 capitalize">
@@ -296,14 +275,6 @@ function ReceiptDetails() {
                 <span className="text-gray-900">#{order.table_number}</span>
               </div>
             )}
-            {order.delivery_address && (
-              <div className="flex justify-between">
-                <span className="text-gray-500">Address:</span>
-                <span className="text-gray-900 text-right">
-                  {order.delivery_address}, {order.delivery_city}
-                </span>
-              </div>
-            )}
           </div>
         </div>
 
@@ -316,12 +287,21 @@ function ReceiptDetails() {
                   <br />
                   <span className="text-xs text-gray-500">
                     {item.packaging_price
-                      ? "Packaging Price: ₦" + item.packaging_price
+                      ? "Packaging Price: " +
+                        new Intl.NumberFormat("en-NG", {
+                          style: "currency",
+                          currency: "NGN",
+                          minimumFractionDigits: 0,
+                        }).format(item.packaging_price)
                       : ""}
                   </span>
                 </div>
                 <span className="text-gray-900">
-                  ₦{Number(item.menu?.price || item.price || 0).toFixed(2)}
+                  {new Intl.NumberFormat("en-NG", {
+                    style: "currency",
+                    currency: "NGN",
+                    minimumFractionDigits: 0,
+                  }).format(item.menu?.price || item.price || 0)}
                 </span>
               </div>
             ))}
@@ -332,7 +312,11 @@ function ReceiptDetails() {
           <div className="flex justify-between font-semibold mb-2">
             <span>Total Payment:</span>
             <span className="text-orange-500">
-              ₦{Number(subtotal).toFixed(2)}
+              {new Intl.NumberFormat("en-NG", {
+                style: "currency",
+                currency: "NGN",
+                minimumFractionDigits: 0,
+              }).format(subtotal)}
             </span>
           </div>
           <div className="flex justify-between font-semibold">

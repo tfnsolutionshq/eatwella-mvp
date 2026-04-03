@@ -1,4 +1,3 @@
-import React from "react";
 import { FiX } from "react-icons/fi";
 
 const OrderDetailsModal = ({ isOpen, onClose, order }) => {
@@ -173,13 +172,21 @@ const OrderDetailsModal = ({ isOpen, onClose, order }) => {
                                 .toUpperCase()
                                 .slice(0, 1)
                                 .concat(item.packaging.size_name.slice(1)) +
-                              " (₦" +
-                              item.packaging.price +
+                              " (" +
+                              new Intl.NumberFormat("en-NG", {
+                                style: "currency",
+                                currency: "NGN",
+                                minimumFractionDigits: 0,
+                              }).format(item.packaging.price) +
                               ")"}
                         </p>
                       </div>
                       <span className="text-sm font-medium text-gray-900">
-                        ₦{item.subtotal}
+                        {new Intl.NumberFormat("en-NG", {
+                          style: "currency",
+                          currency: "NGN",
+                          minimumFractionDigits: 0,
+                        }).format(item.subtotal)}
                       </span>
                     </div>
                   </div>
@@ -191,14 +198,22 @@ const OrderDetailsModal = ({ isOpen, onClose, order }) => {
               <div className="flex items-center justify-between">
                 <span className="text-sm text-gray-500">Subtotal</span>
                 <span className="text-sm font-medium text-gray-900">
-                  ₦{subtotal}
+                  {new Intl.NumberFormat("en-NG", {
+                    style: "currency",
+                    currency: "NGN",
+                    minimumFractionDigits: 0,
+                  }).format(subtotal)}
                 </span>
               </div>
               {order.discount_amount > 0 && (
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-gray-500">Discount</span>
                   <span className="text-sm font-medium text-green-600">
-                    ₦{order.discount_amount}
+                    {new Intl.NumberFormat("en-NG", {
+                      style: "currency",
+                      currency: "NGN",
+                      minimumFractionDigits: 0,
+                    }).format(order.discount_amount)}
                   </span>
                 </div>
               )}
@@ -207,7 +222,11 @@ const OrderDetailsModal = ({ isOpen, onClose, order }) => {
                   Total Amount
                 </span>
                 <span className="text-xl font-bold text-orange-500">
-                  ₦{order.final_amount}
+                  {new Intl.NumberFormat("en-NG", {
+                    style: "currency",
+                    currency: "NGN",
+                    minimumFractionDigits: 0,
+                  }).format(Math.ceil(order.final_amount))}
                 </span>
               </div>
             </div>
