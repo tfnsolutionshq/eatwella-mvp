@@ -12,6 +12,8 @@ import { ToastProvider } from "./context/ToastContext";
 import AdminGuard from "./Components/RoutingComponents/AdminGuard";
 import StaffGuard from "./Components/RoutingComponents/StaffGuard";
 import PublicRouteGuard from "./Components/RoutingComponents/PublicRouteGuard";
+import FloatingCartButton from "./Components/FloatingCartButton";
+import FloatingWhatsAppButton from "./Components/FloatingWhatsAppButton";
 
 import Dashboard from "./Pages/Admin/Dashboard";
 import AdminMenu from "./Pages/Admin/Menu";
@@ -42,7 +44,6 @@ import LoyaltyBoardPage from "./Pages/LoyaltyBoardPage/LoyaltyBoardPage";
 import TrackOrderPage from "./Pages/TrackOrderPage/TrackOrderPage";
 import VacancyPage from "./Pages/Vacancy/Vacancies";
 import NotFound from "./Pages/NotFound/NotFound";
-import FloatingCartButton from "./Components/FloatingCartButton";
 import ScrollToTop from "./Components/ScrollToTop";
 import ScrollToTopButton from "./Components/ScrollToTopButton";
 import FoodPackaging from "./Pages/Admin/FoodPackaging";
@@ -57,6 +58,7 @@ function App() {
               <ScrollToTop />
               <ScrollToTopButton />
               <FloatingCartButton />
+              <FloatingWhatsAppButton />
               <Routes>
                 {/* Customer Routes */}
                 <Route element={<PublicRouteGuard />}>
