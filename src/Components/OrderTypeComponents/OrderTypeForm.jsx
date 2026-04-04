@@ -189,7 +189,6 @@ function OrderTypeForm() {
   };
 
   const handleSubmit = async () => {
-    console.log("the form data: ", formData);
     if (!formData.fullName || !formData.email || !formData.phone) {
       alert("Please fill in all required fields");
       return;
@@ -222,8 +221,6 @@ function OrderTypeForm() {
         payload.delivery_zip = formData.zipCode;
         payload.delivery_zone_id = selectedLocation.id;
       }
-
-      console.log("The payload: ", payload);
 
       const response = await api.post("/checkout", payload);
 
