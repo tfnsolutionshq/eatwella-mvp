@@ -125,13 +125,13 @@ export default function Sidebar({ isOpen, onToggle }) {
       path: "/admin/discounts",
       roles: ["admin"],
     },
-    // {
-    //   id: "settings",
-    //   label: "Settings",
-    //   icon: FiSettings,
-    //   path: "/admin/settings",
-    //   roles: ["admin"],
-    // },
+    {
+      id: "settings",
+      label: "Settings",
+      icon: FiSettings,
+      path: "/admin/settings",
+      roles: ["admin", "supervisor"],
+    },
   ];
 
   const menuItems = allMenuItems.filter((item) =>

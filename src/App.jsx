@@ -12,6 +12,7 @@ import { ToastProvider } from "./context/ToastContext";
 import AdminGuard from "./Components/RoutingComponents/AdminGuard";
 import StaffGuard from "./Components/RoutingComponents/StaffGuard";
 import PublicRouteGuard from "./Components/RoutingComponents/PublicRouteGuard";
+import AdminOrSupervisorGuard from "./Components/RoutingComponents/AdminOrSupervisorGuard";
 import FloatingCartButton from "./Components/FloatingCartButton";
 import FloatingWhatsAppButton from "./Components/FloatingWhatsAppButton";
 
@@ -47,6 +48,7 @@ import NotFound from "./Pages/NotFound/NotFound";
 import ScrollToTop from "./Components/ScrollToTop";
 import ScrollToTopButton from "./Components/ScrollToTopButton";
 import FoodPackaging from "./Pages/Admin/FoodPackaging";
+import Settings from "./Pages/Admin/Settings";
 
 function App() {
   return (
@@ -115,6 +117,11 @@ function App() {
                     path="/admin/food-packaging"
                     element={<FoodPackaging />}
                   />
+                </Route>
+
+                {/* Admin + Supervisor Routes */}
+                <Route element={<AdminOrSupervisorGuard />}>
+                  <Route path="/admin/settings" element={<Settings />} />
                 </Route>
 
                 {/* Staff Routes */}

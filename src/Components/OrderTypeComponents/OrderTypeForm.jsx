@@ -5,7 +5,8 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { useCart } from "../../context/CartContext";
 import { useAuth } from "../../context/AuthContext";
 import api from "../../utils/api";
-import { del } from "framer-motion/client";
+import { checkWorkingHourAvailability } from "../../utils/checkWorkingHours";
+import WorkingHoursClosedModal from "../Modals/WorkingHoursInfoModal";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // DEV TOGGLE
@@ -71,6 +72,12 @@ function OrderTypeForm() {
   const [isLoadingTax, setIsLoadingTax] = useState(false);
   const [removingDiscount, setRemovingDiscount] = useState(false);
   const [taxList, setTaxList] = useState([]);
+  const [checkingHours, setCheckingHours] = useState(false);
+  const [closedModal, setClosedModal] = useState({
+    open: false,
+    message: "",
+    schedule: [],
+  });
 
   const cartItems = cart?.items || [];
 
@@ -166,8 +173,23 @@ function OrderTypeForm() {
     setLocationDropdownOpen(false);
   };
 
+  const checkThenSubmit = async () => {
+    setCheckingHours(true);
+    try {
+      const { available, message, schedule } =
+        await checkWorkingHourAvailability();
+      if (!available) {
+        setClosedModal({ open: true, message, schedule });
+        return;
+      }
+      await handleSubmit();
+    } finally {
+      setCheckingHours(false);
+    }
+  };
+
   const handleSubmit = async () => {
-    // console.log("Here we are: ", formData);
+    console.log("the form data: ", formData);
     if (!formData.fullName || !formData.email || !formData.phone) {
       alert("Please fill in all required fields");
       return;
@@ -200,6 +222,8 @@ function OrderTypeForm() {
         payload.delivery_zip = formData.zipCode;
         payload.delivery_zone_id = selectedLocation.id;
       }
+
+      console.log("The payload: ", payload);
 
       const response = await api.post("/checkout", payload);
 
@@ -550,15 +574,16 @@ function OrderTypeForm() {
             </div>
 
             <button
-              onClick={handleSubmit}
+              onClick={checkThenSubmit}
               disabled={
                 isSubmitting ||
+                checkingHours ||
                 isLoadingTax ||
                 (orderType === "delivery" && !selectedLocation)
               }
               className="w-full bg-orange-500 hover:bg-orange-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white py-4 rounded-full font-bold transition-colors"
             >
-              {isSubmitting ? "Processing..." : "Pay Now"}
+              {isSubmitting || checkingHours ? "Processing..." : "Pay Now"}
             </button>
 
             {orderType === "delivery" && !selectedLocation && (
@@ -569,6 +594,14 @@ function OrderTypeForm() {
           </div>
         </div>
       </div>
+      <WorkingHoursClosedModal
+        isOpen={closedModal.open}
+        message={closedModal.message}
+        schedule={closedModal.schedule}
+        onClose={() =>
+          setClosedModal({ open: false, message: "", schedule: [] })
+        }
+      />
     </div>
   );
 }
