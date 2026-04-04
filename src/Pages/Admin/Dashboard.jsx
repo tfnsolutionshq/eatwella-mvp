@@ -44,7 +44,11 @@ const Dashboard = () => {
   const stats = [
     {
       label: "Total Revenue",
-      value: `₦${summary?.total_revenue?.toFixed(2) || "0.00"}`,
+      value: new Intl.NumberFormat("en-NG", {
+        style: "currency",
+        currency: "NGN",
+        minimumFractionDigits: 0,
+      }).format(Math.ceil(summary?.total_revenue)),
       icon: FiDollarSign,
       color: "bg-green-500",
     },
@@ -56,7 +60,11 @@ const Dashboard = () => {
     },
     {
       label: "Avg Order Value",
-      value: `₦${summary?.average_order_value?.toFixed(2) || "0.00"}`,
+      value: new Intl.NumberFormat("en-NG", {
+        style: "currency",
+        currency: "NGN",
+        minimumFractionDigits: 0,
+      }).format(Math.ceil(summary?.average_order_value)),
       icon: FiTrendingUp,
       color: "bg-orange-500",
     },
@@ -190,7 +198,11 @@ const Dashboard = () => {
                     </span>
                   </div>
                   <span className="text-sm font-bold text-orange-500">
-                    ₦{item.total_revenue}
+                    {new Intl.NumberFormat("en-NG", {
+                      style: "currency",
+                      currency: "NGN",
+                      minimumFractionDigits: 0,
+                    }).format(Math.ceil(item.total_revenue))}
                   </span>
                 </div>
               ))}

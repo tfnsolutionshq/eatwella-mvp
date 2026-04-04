@@ -17,6 +17,8 @@ const AddStaffModal = ({ isOpen, onClose, onSuccess }) => {
     setError("");
     setLoading(true);
 
+    console.log("Over here: ", formData);
+
     try {
       await api.post("/admin/staff", formData);
       setFormData({ name: "", role: "", email: "", password: "" });
@@ -77,11 +79,14 @@ const AddStaffModal = ({ isOpen, onClose, onSuccess }) => {
             <select
               name="role"
               className="w-full bg-gray-50 border border-gray-200 rounded-xl p-2.5 pr-4 text-sm text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-orange-100 focus:border-orange-500 outline-none"
+              onChange={(e) =>
+                setFormData({ ...formData, role: e.target.value })
+              }
             >
               <option value="">-- Select Role --</option>
-              <option value="admin">Admin</option>
               <option value="supervisor">Supervisor</option>
-              <option value="cashier">Cashier</option>
+              <option value="kitchen">Kitchen</option>
+              <option value="attendant">Attendant</option>
               <option value="delivery_agent">Delivery Agent</option>
             </select>
           </div>
@@ -137,7 +142,7 @@ const AddStaffModal = ({ isOpen, onClose, onSuccess }) => {
               disabled={loading}
               className="flex-1 px-4 py-2.5 bg-orange-500 text-white rounded-xl text-sm font-medium hover:bg-orange-600 transition-colors shadow-sm disabled:opacity-50"
             >
-              {loading ? "Creating..." : "Create Cashier"}
+              {loading ? "Creating..." : "Create Staff"}
             </button>
           </div>
         </form>

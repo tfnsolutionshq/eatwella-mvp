@@ -1,8 +1,9 @@
-"use client"
-
-import { FiSearch, FiUser, FiMenu } from "react-icons/fi"
+import { FiSearch, FiUser, FiMenu } from "react-icons/fi";
+import { useAuth } from "../context/AuthContext";
 
 export default function Header({ onMenuClick }) {
+  const { user } = useAuth();
+
   return (
     <header className="bg-white border-b border-gray-100 px-6 py-4 flex items-center justify-between gap-4">
       {/* Mobile Menu Button */}
@@ -25,7 +26,7 @@ export default function Header({ onMenuClick }) {
         </div>
         {/* Mobile Search Icon */}
         <button className="sm:hidden p-2 hover:bg-gray-100 rounded-lg text-gray-600">
-           <FiSearch className="w-6 h-6" />
+          <FiSearch className="w-6 h-6" />
         </button>
       </div>
 
@@ -33,8 +34,16 @@ export default function Header({ onMenuClick }) {
       <div className="flex items-center gap-4">
         <div className="flex items-center gap-3">
           <div className="text-right hidden sm:block">
-            <p className="text-sm font-semibold text-gray-900 leading-none">John Doe</p>
-            <p className="text-xs text-gray-500 mt-1">Attendant</p>
+            <p className="text-sm font-semibold text-gray-900 leading-none">
+              {user.name}
+            </p>
+            <p className="text-xs text-gray-500 mt-1">
+              {user.role.includes("_")
+                ? user.role
+                    .replace(/_/g, " ")
+                    .replace(/\b\w/g, (c) => c.toUpperCase())
+                : user.role.charAt(0).toUpperCase() + user.role.slice(1)}
+            </p>
           </div>
           <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center flex-shrink-0 text-orange-600">
             <FiUser className="w-5 h-5" />
@@ -42,5 +51,5 @@ export default function Header({ onMenuClick }) {
         </div>
       </div>
     </header>
-  )
+  );
 }

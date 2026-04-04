@@ -8,13 +8,26 @@ function MenuItems() {
   const [activeTab, setActiveTab] = useState("all");
   const [categories, setCategories] = useState([]);
   const [menuItems, setMenuItems] = useState([]);
+  const [page, setPage] = useState(1);
+  const [pagination, setPagination] = useState({
+    current_page: 1,
+    last_page: 1,
+    total: 0,
+    from: 0,
+    to: 0,
+    per_page: 15,
+  });
+  const [isFetching, setIsFetching] = useState(false);
   const { addToCart, loadingItems } = useCart();
   const { showToast } = useToast();
 
   useEffect(() => {
     fetchCategories();
-    fetchMenuItems(activeTab);
-  }, [activeTab]);
+  }, []);
+
+  useEffect(() => {
+    fetchMenuItems(activeTab, page);
+  }, [activeTab, page]);
 
   const fetchCategories = async () => {
     try {
@@ -30,24 +43,55 @@ function MenuItems() {
     }
   };
 
-  const fetchMenuItems = async (categoryId = "all") => {
-    console.log("Hit me");
+  const fetchMenuItems = async (categoryId = "all", pageNumber = 1) => {
+    setIsFetching(true);
     try {
-      const url =
-        categoryId === "all"
-          ? "https://eatwella.tfnsolutions.us/api/menus"
-          : `https://eatwella.tfnsolutions.us/api/menus?category_id=${categoryId}`;
+      const baseUrl = "https://eatwella.tfnsolutions.us/api/menus";
+      const params = new URLSearchParams();
+      params.set("page", pageNumber);
+      if (categoryId !== "all") {
+        params.set("category_id", categoryId);
+      }
+
+      const url = `${baseUrl}?${params.toString()}`;
       const { data } = await axios.get(url, {
         headers: { Accept: "application/json" },
       });
-      console.log("The full data: ", data);
-      setMenuItems(data.data);
-      // if (categoryId === "all") {
-      //   setAllMenus(data.data);
-      // }
+
+      const pageData = data.data ?? [];
+      setMenuItems(pageData);
+      setPagination({
+        current_page: data.current_page ?? pageNumber,
+        last_page: data.last_page ?? 1,
+        total: data.total ?? pageData.length,
+        from: data.from ?? (pageData.length ? 1 : 0),
+        to: data.to ?? pageData.length,
+        per_page: data.per_page ?? pagination.per_page,
+      });
     } catch (err) {
       console.error("Failed to fetch menu items:", err);
+    } finally {
+      setIsFetching(false);
     }
+  };
+
+  const getVisiblePageNumbers = () => {
+    const totalPages = pagination.last_page;
+    if (totalPages <= 7) {
+      return Array.from({ length: totalPages }, (_, idx) => idx + 1);
+    }
+
+    const current = pagination.current_page;
+    const maxPages = 6;
+    let start = Math.max(2, current - Math.floor(maxPages / 2));
+    let end = start + maxPages - 1;
+
+    if (end > totalPages - 1) {
+      end = totalPages - 1;
+      start = Math.max(2, end - maxPages + 1);
+    }
+
+    return Array.from({ length: end - start + 1 }, (_, idx) => start + idx);
   };
 
   const handleAddToCart = async (item) => {
@@ -105,7 +149,11 @@ function MenuItems() {
                 <div className="flex justify-between items-center mb-3">
                   <h3 className="text-xl font-semibold">{item.name}</h3>
                   <span className="text-orange-500 font-black text-xl">
-                    ₦{item.price}
+                    {new Intl.NumberFormat("en-NG", {
+                      style: "currency",
+                      currency: "NGN",
+                      minimumFractionDigits: 0,
+                    }).format(item.price)}
                   </span>
                 </div>
                 <p className="text-gray-600 mb-4 line-clamp-2 flex-grow">
@@ -122,6 +170,62 @@ function MenuItems() {
             </div>
           ))}
         </div>
+
+        {pagination.last_page > 1 && (
+          <div className="mt-8 flex flex-wrap items-center justify-center gap-2">
+            {isFetching ? (
+              <div className="w-full text-center text-sm text-gray-500">
+                Loading pages...
+              </div>
+            ) : (
+              <>
+                <button
+                  disabled={pagination.current_page === 1}
+                  onClick={() => setPage((prev) => Math.max(1, prev - 1))}
+                  className="px-4 py-2 border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Previous
+                </button>
+                <button
+                  disabled={pagination.current_page === 1}
+                  onClick={() => setPage(1)}
+                  className="px-4 py-2 border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  First
+                </button>
+                {getVisiblePageNumbers().map((pageNumber) => (
+                  <button
+                    key={pageNumber}
+                    onClick={() => setPage(pageNumber)}
+                    className={`px-4 py-2 rounded-lg text-sm font-medium border border-gray-200 transition-colors ${
+                      pagination.current_page === pageNumber
+                        ? "bg-orange-500 text-white border-orange-500"
+                        : "text-gray-700 hover:bg-gray-100"
+                    }`}
+                  >
+                    {pageNumber}
+                  </button>
+                ))}
+                <button
+                  disabled={pagination.current_page === pagination.last_page}
+                  onClick={() => setPage(pagination.last_page)}
+                  className="px-4 py-2 border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Last
+                </button>
+                <button
+                  disabled={pagination.current_page === pagination.last_page}
+                  onClick={() =>
+                    setPage((prev) => Math.min(pagination.last_page, prev + 1))
+                  }
+                  className="px-4 py-2 border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Next
+                </button>
+              </>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

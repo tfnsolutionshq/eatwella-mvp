@@ -1,5 +1,3 @@
-"use client";
-
 import {
   FiGrid,
   FiShoppingCart,
@@ -11,21 +9,22 @@ import {
   FiMenu,
   FiLogOut,
   FiUsers,
-  FiMap,
+  FiMapPin,
   FiBriefcase,
   FiAward,
   FiPackage,
 } from "react-icons/fi";
 import { MdRestaurant, MdQrCodeScanner } from "react-icons/md";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useState } from "react";
 import { useAuth } from "../context/AuthContext";
 
 export default function Sidebar({ isOpen, onToggle }) {
   const navigate = useNavigate();
   const { logout, user } = useAuth();
-  const [activeItem, setActiveItem] = useState("dashboard");
   const [isCollapsed, setIsCollapsed] = useState(false);
+
+  const location = useLocation();
 
   const allMenuItems = [
     {
@@ -40,7 +39,7 @@ export default function Sidebar({ isOpen, onToggle }) {
       label: "Orders",
       icon: FiShoppingCart,
       path: "/admin/orders",
-      roles: ["admin", "cashier", "delivery_agent"],
+      roles: ["admin", "supervisor", "attendant", "delivery_agent", "kitchen"],
     },
     {
       id: "menu",
@@ -66,7 +65,7 @@ export default function Sidebar({ isOpen, onToggle }) {
     {
       id: "locations",
       label: "Locations",
-      icon: FiMap,
+      icon: FiMapPin,
       path: "/admin/locations",
       roles: ["admin"],
     },
@@ -91,20 +90,20 @@ export default function Sidebar({ isOpen, onToggle }) {
       path: "/admin/loyalty-settings",
       roles: ["admin"],
     },
-    {
-      id: "meal-plans",
-      label: "Meal Plans",
-      icon: FiCalendar,
-      path: "/admin/meal-plans",
-      roles: ["admin"],
-    },
-    {
-      id: "voucher",
-      label: "Voucher Redemption",
-      icon: MdQrCodeScanner,
-      path: "/admin/voucher-redemption",
-      roles: ["admin"],
-    },
+    // {
+    //   id: "meal-plans",
+    //   label: "Meal Plans",
+    //   icon: FiCalendar,
+    //   path: "/admin/meal-plans",
+    //   roles: ["admin"],
+    // },
+    // {
+    //   id: "voucher",
+    //   label: "Voucher Redemption",
+    //   icon: MdQrCodeScanner,
+    //   path: "/admin/voucher-redemption",
+    //   roles: ["admin"],
+    // },
     {
       id: "payments",
       label: "Payments",
@@ -131,7 +130,7 @@ export default function Sidebar({ isOpen, onToggle }) {
       label: "Settings",
       icon: FiSettings,
       path: "/admin/settings",
-      roles: ["admin"],
+      roles: ["admin", "supervisor"],
     },
   ];
 
@@ -140,7 +139,6 @@ export default function Sidebar({ isOpen, onToggle }) {
   );
 
   const handleNavigation = (item) => {
-    setActiveItem(item.id);
     navigate(item.path);
   };
 
@@ -189,7 +187,7 @@ export default function Sidebar({ isOpen, onToggle }) {
         <nav className="flex-1 px-4 py-4 space-y-2 overflow-y-auto">
           {menuItems.map((item) => {
             const Icon = item.icon;
-            const isActive = activeItem === item.id;
+            const isActive = location.pathname.startsWith(item.path);
 
             return (
               <button

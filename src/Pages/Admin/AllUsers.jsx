@@ -13,6 +13,15 @@ import {
 import { useNavigate } from "react-router-dom";
 import api from "../../utils/api";
 
+// Maps tab key → API role value
+const ROLE_MAP = {
+  customers: "customer",
+  supervisors: "supervisor",
+  "delivery agents": "delivery_agent",
+  attendants: "attendant",
+  kitchen: "kitchen",
+};
+
 const AllUsers = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("all");
@@ -37,12 +46,26 @@ const AllUsers = () => {
   };
 
   const filteredUsers =
-    activeTab === "all" ? users : users.filter((u) => u.role === activeTab);
+    activeTab === "all"
+      ? users
+      : users.filter((u) => u.role === ROLE_MAP[activeTab]);
 
   const getRoleBadge = (role) => {
-    return role === "admin"
-      ? "bg-purple-100 text-purple-600"
-      : "bg-blue-100 text-blue-600";
+    const styles = {
+      admin: "bg-purple-100 text-purple-600",
+      supervisor: "bg-orange-100 text-orange-600",
+      delivery_agent: "bg-green-100 text-green-600",
+      attendant: "bg-yellow-100 text-yellow-600",
+      kitchen: "bg-red-100 text-red-600",
+      customer: "bg-blue-100 text-blue-600",
+    };
+    return styles[role] ?? "bg-gray-100 text-gray-600";
+  };
+
+  const formatRoleLabel = (role) => {
+    return role === "delivery_agent"
+      ? "Delivery Agent"
+      : role.charAt(0).toUpperCase() + role.slice(1);
   };
 
   return (
@@ -80,7 +103,14 @@ const AllUsers = () => {
 
           <div className="bg-white p-2 rounded-xl border border-gray-100 shadow-sm overflow-x-auto">
             <div className="flex items-center gap-2 min-w-max">
-              {["all", "customer", "admin"].map((tab) => (
+              {[
+                "all",
+                "customers",
+                "supervisors",
+                "delivery agents",
+                "attendants",
+                "kitchen",
+              ].map((tab) => (
                 <button
                   key={tab}
                   onClick={() => setActiveTab(tab)}
@@ -92,11 +122,11 @@ const AllUsers = () => {
                 >
                   {tab === "all"
                     ? "All Users"
-                    : tab.charAt(0).toUpperCase() + tab.slice(1)}
+                    : tab.charAt(0).toUpperCase() + tab.slice(1)}{" "}
                   (
                   {tab === "all"
                     ? users.length
-                    : users.filter((u) => u.role === tab).length}
+                    : users.filter((u) => u.role === ROLE_MAP[tab]).length}
                   )
                 </button>
               ))}
@@ -123,8 +153,7 @@ const AllUsers = () => {
                         <span
                           className={`px-2.5 py-1 rounded-full text-xs font-medium ${getRoleBadge(user.role)}`}
                         >
-                          {user.role.charAt(0).toUpperCase() +
-                            user.role.slice(1)}
+                          {formatRoleLabel(user.role)}
                         </span>
                       </div>
                     </div>

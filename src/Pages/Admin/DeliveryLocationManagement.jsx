@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import DashboardLayout from "../../DashboardLayout/DashboardLayout";
 import {
   FiMapPin,
@@ -8,149 +8,58 @@ import {
   FiX,
   FiCheck,
   FiAlertTriangle,
+  FiRefreshCw,
+  FiToggleLeft,
+  FiToggleRight,
 } from "react-icons/fi";
+import api from "../../utils/api";
 
-// ── Dummy Data ───────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// DEV TOGGLE
+// Set to `false` once the real endpoints are ready — nothing else needs to change.
+// ─────────────────────────────────────────────────────────────────────────────
+const USING_DUMMY_DATA = false;
 
 const DUMMY_LOCATIONS = [
   {
     id: 1,
-    name: "Awka Central",
-    state: "Anambra",
-    city: "Awka",
+    name: "Nnamdi Azikiwe University (NAU)",
+    city: { name: "Awka" },
+    city_id: 1,
     delivery_fee: 500,
-    estimated_time: "20–30 mins",
-    is_available: true,
+    is_active: true,
   },
   {
     id: 2,
-    name: "Onitsha Main Market Area",
-    state: "Anambra",
-    city: "Onitsha",
-    delivery_fee: 800,
-    estimated_time: "35–50 mins",
-    is_available: true,
+    name: "Awka Town Centre",
+    city: { name: "Awka" },
+    city_id: 1,
+    delivery_fee: 300,
+    is_active: true,
   },
   {
     id: 3,
-    name: "Nnewi Tech Hub Zone",
-    state: "Anambra",
-    city: "Nnewi",
-    delivery_fee: 1000,
-    estimated_time: "45–60 mins",
-    is_available: false,
-  },
-  {
-    id: 4,
-    name: "Enugu GRA",
-    state: "Enugu",
-    city: "Enugu",
-    delivery_fee: 1200,
-    estimated_time: "50–70 mins",
-    is_available: true,
-  },
-  {
-    id: 5,
-    name: "Asaba Okpanam Road",
-    state: "Delta",
-    city: "Asaba",
-    delivery_fee: 1500,
-    estimated_time: "60–80 mins",
-    is_available: true,
-  },
-  {
-    id: 6,
-    name: "Agbor Express Zone",
-    state: "Delta",
-    city: "Agbor",
-    delivery_fee: 1800,
-    estimated_time: "75–90 mins",
-    is_available: false,
+    name: "Unizik Temporary Site",
+    city: { name: "Awka" },
+    city_id: 1,
+    delivery_fee: 700,
+    is_active: false,
   },
 ];
+// ─────────────────────────────────────────────────────────────────────────────
 
-let nextId = DUMMY_LOCATIONS.length + 1;
+// ── Shared modal shell ────────────────────────────────────────────────────────
 
-// ── Modal ────────────────────────────────────────────────────────────────────
-
-const LocationModal = ({ isOpen, onClose, onSuccess, editingLocation }) => {
-  const isEdit = !!editingLocation;
-  const [form, setForm] = useState({
-    name: "",
-    state: "",
-    city: "",
-    delivery_fee: "",
-    estimated_time: "",
-    is_available: true,
-  });
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
-
-  // Reset form when modal opens
-  const prevOpen = isOpen;
-  if (isOpen && !prevOpen) {
-    // handled via key trick below
-  }
-
-  const resetForm = () => {
-    setError("");
-    if (isEdit) {
-      setForm({
-        name: editingLocation.name || "",
-        state: editingLocation.state || "",
-        city: editingLocation.city || "",
-        delivery_fee: editingLocation.delivery_fee ?? "",
-        estimated_time: editingLocation.estimated_time || "",
-        is_available: editingLocation.is_available ?? true,
-      });
-    } else {
-      setForm({
-        name: "",
-        state: "",
-        city: "",
-        delivery_fee: "",
-        estimated_time: "",
-        is_available: true,
-      });
-    }
-  };
-
-  // Use a flag to initialise form once on open
-  const [lastOpenState, setLastOpenState] = useState(false);
-  if (isOpen !== lastOpenState) {
-    setLastOpenState(isOpen);
-    if (isOpen) {
-      setTimeout(resetForm, 0);
-    }
-  }
-
-  const handleSubmit = () => {
-    if (!form.name.trim() || !form.state.trim() || !form.city.trim()) {
-      setError("Name, state, and city are required.");
-      return;
-    }
-    setSaving(true);
-    setError("");
-
-    // Simulate async save
-    setTimeout(() => {
-      const payload = {
-        ...form,
-        delivery_fee:
-          form.delivery_fee === "" ? null : Number(form.delivery_fee),
-      };
-      if (isEdit) {
-        onSuccess({ type: "edit", data: { ...editingLocation, ...payload } });
-      } else {
-        onSuccess({ type: "add", data: { id: nextId++, ...payload } });
-      }
-      setSaving(false);
-      onClose();
-    }, 400);
-  };
-
+const ModalShell = ({
+  isOpen,
+  onClose,
+  icon: Icon,
+  title,
+  subtitle,
+  children,
+  footer,
+}) => {
   if (!isOpen) return null;
-
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div
@@ -162,11 +71,14 @@ const LocationModal = ({ isOpen, onClose, onSuccess, editingLocation }) => {
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 bg-orange-100 rounded-lg flex items-center justify-center">
-              <FiMapPin className="w-4 h-4 text-orange-500" />
+              <Icon className="w-4 h-4 text-orange-500" />
             </div>
-            <h2 className="text-lg font-bold text-gray-900">
-              {isEdit ? "Edit Location" : "Add Delivery Location"}
-            </h2>
+            <div>
+              <h2 className="text-base font-bold text-gray-900">{title}</h2>
+              {subtitle && (
+                <p className="text-xs text-gray-400 mt-0.5">{subtitle}</p>
+              )}
+            </div>
           </div>
           <button
             onClick={onClose}
@@ -177,101 +89,252 @@ const LocationModal = ({ isOpen, onClose, onSuccess, editingLocation }) => {
         </div>
 
         {/* Body */}
-        <div className="px-6 py-5 space-y-4">
-          {error && (
-            <div className="flex items-center gap-2 px-4 py-3 bg-red-50 border border-red-100 rounded-xl text-sm text-red-600">
-              <FiAlertTriangle className="w-4 h-4 flex-shrink-0" />
-              {error}
-            </div>
-          )}
-
-          <div className="grid grid-cols-2 gap-4">
-            <div className="col-span-2">
-              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
-                Location Name *
-              </label>
-              <input
-                type="text"
-                value={form.name}
-                onChange={(e) => setForm({ ...form, name: e.target.value })}
-                placeholder="e.g. Onitsha Main Market Area"
-                className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent transition"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
-                State *
-              </label>
-              <input
-                type="text"
-                value={form.state}
-                onChange={(e) => setForm({ ...form, state: e.target.value })}
-                placeholder="e.g. Anambra"
-                className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent transition"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
-                City *
-              </label>
-              <input
-                type="text"
-                value={form.city}
-                onChange={(e) => setForm({ ...form, city: e.target.value })}
-                placeholder="e.g. Onitsha"
-                className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent transition"
-              />
-            </div>
-
-            <div className="col-span-2">
-              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
-                Delivery Fee (₦)
-              </label>
-              <input
-                type="number"
-                min={0}
-                value={form.delivery_fee}
-                onChange={(e) =>
-                  setForm({ ...form, delivery_fee: e.target.value })
-                }
-                placeholder="e.g. 500"
-                className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent transition"
-              />
-            </div>
-          </div>
-
-          {/* Availability toggle */}
-          <div className="flex items-center justify-between px-4 py-3 bg-gray-50 rounded-xl border border-gray-100">
-            <div>
-              <p className="text-sm font-semibold text-gray-700">
-                Available for delivery
-              </p>
-              <p className="text-xs text-gray-400 mt-0.5">
-                Customers can select this location at checkout
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={() =>
-                setForm({ ...form, is_available: !form.is_available })
-              }
-              className={`relative w-11 h-6 rounded-full transition-colors duration-200 focus:outline-none ${
-                form.is_available ? "bg-orange-500" : "bg-gray-300"
-              }`}
-            >
-              <span
-                className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ${
-                  form.is_available ? "translate-x-5" : "translate-x-0"
-                }`}
-              />
-            </button>
-          </div>
-        </div>
+        <div className="px-6 py-5 space-y-4">{children}</div>
 
         {/* Footer */}
         <div className="flex items-center justify-end gap-3 px-6 py-4 bg-gray-50 border-t border-gray-100">
+          {footer}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ── Shared helpers ────────────────────────────────────────────────────────────
+
+const ErrorBanner = ({ message }) =>
+  message ? (
+    <div className="flex items-center gap-2 px-4 py-3 bg-red-50 border border-red-100 rounded-xl text-sm text-red-600">
+      <FiAlertTriangle className="w-4 h-4 flex-shrink-0" />
+      {message}
+    </div>
+  ) : null;
+
+const SpinnerBtn = ({
+  saving,
+  savingLabel,
+  defaultLabel,
+  onClick,
+  disabled,
+  icon: Icon = FiCheck,
+}) => (
+  <button
+    onClick={onClick}
+    disabled={saving || disabled}
+    className="flex items-center gap-2 px-5 py-2.5 bg-orange-500 text-white rounded-xl text-sm font-semibold hover:bg-orange-600 disabled:opacity-60 disabled:cursor-not-allowed transition-colors shadow-sm shadow-orange-200"
+  >
+    {saving ? (
+      <>
+        <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+        {savingLabel}
+      </>
+    ) : (
+      <>
+        <Icon className="w-4 h-4" />
+        {defaultLabel}
+      </>
+    )}
+  </button>
+);
+
+// ── Location Modal (Add / Edit) ───────────────────────────────────────────────
+
+const LocationModal = ({ isOpen, onClose, onSuccess, editingLocation }) => {
+  const isEdit = !!editingLocation;
+
+  const blankForm = {
+    name: "",
+    city_id: 1,
+    delivery_fee: "",
+    is_active: true,
+  };
+
+  const [form, setForm] = useState(blankForm);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (!isOpen) return;
+    setError("");
+    if (isEdit) {
+      setForm({
+        name: editingLocation.name ?? "",
+        city_id: editingLocation.city_id ?? 1,
+        delivery_fee: editingLocation.delivery_fee ?? "",
+        is_active: editingLocation.is_active ?? true,
+      });
+    } else {
+      setForm(blankForm);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, editingLocation]);
+
+  const handleSubmit = async () => {
+    if (!form.name.trim()) {
+      setError("Location name is required.");
+      return;
+    }
+    setSaving(true);
+    setError("");
+    try {
+      const payload = {
+        name: form.name.trim(),
+        city_id: form.city_id || undefined,
+        delivery_fee:
+          form.delivery_fee === "" ? null : Number(form.delivery_fee),
+        is_active: form.is_active,
+      };
+
+      if (USING_DUMMY_DATA) {
+        await new Promise((res) => setTimeout(res, 500));
+        const data = isEdit
+          ? { ...editingLocation, ...payload }
+          : { id: Date.now(), ...payload, city: { name: "Awka" } };
+        onSuccess({ type: isEdit ? "edit" : "add", data });
+      } else {
+        if (isEdit) {
+          const { data } = await api.put(
+            `/admin/zones/${editingLocation.id}`,
+            payload,
+          );
+          onSuccess({ type: "edit", data });
+        } else {
+          const { data } = await api.post("/admin/zones", payload);
+          onSuccess({ type: "add", data });
+        }
+      }
+      onClose();
+    } catch (err) {
+      setError(
+        err.response?.data?.message ||
+          "Failed to save location. Please try again.",
+      );
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <ModalShell
+      isOpen={isOpen}
+      onClose={onClose}
+      icon={FiMapPin}
+      title={isEdit ? "Edit Location" : "Add Delivery Location"}
+      subtitle={isEdit ? editingLocation?.name : "Add a new delivery zone"}
+      footer={
+        <>
+          <button
+            onClick={onClose}
+            className="px-4 py-2.5 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-200 transition-colors"
+          >
+            Cancel
+          </button>
+          <SpinnerBtn
+            saving={saving}
+            savingLabel="Saving…"
+            defaultLabel={isEdit ? "Save Changes" : "Add Location"}
+            onClick={handleSubmit}
+          />
+        </>
+      }
+    >
+      <ErrorBanner message={error} />
+
+      <div>
+        <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
+          Location Name *
+        </label>
+        <input
+          type="text"
+          value={form.name}
+          onChange={(e) => setForm({ ...form, name: e.target.value })}
+          placeholder="e.g. Nnamdi Azikiwe University (NAU)"
+          className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent transition"
+          autoFocus
+          onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
+        />
+      </div>
+
+      <div>
+        <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
+          Delivery Fee (₦)
+        </label>
+        <input
+          type="number"
+          min={0}
+          value={form.delivery_fee}
+          onChange={(e) => setForm({ ...form, delivery_fee: e.target.value })}
+          placeholder="e.g. 500"
+          className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent transition"
+          onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
+        />
+      </div>
+
+      {/* Availability toggle */}
+      <div className="flex items-center justify-between px-4 py-3 bg-gray-50 rounded-xl border border-gray-100">
+        <div>
+          <p className="text-sm font-semibold text-gray-700">
+            Available for delivery
+          </p>
+          <p className="text-xs text-gray-400 mt-0.5">
+            Customers can select this location at checkout
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => setForm({ ...form, is_active: !form.is_active })}
+          className={`relative w-11 h-6 rounded-full transition-colors duration-200 focus:outline-none ${
+            form.is_active ? "bg-orange-500" : "bg-gray-300"
+          }`}
+        >
+          <span
+            className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ${
+              form.is_active ? "translate-x-5" : "translate-x-0"
+            }`}
+          />
+        </button>
+      </div>
+    </ModalShell>
+  );
+};
+
+// ── Delete Confirm Modal ──────────────────────────────────────────────────────
+
+const DeleteConfirmModal = ({ isOpen, onClose, onSuccess, location }) => {
+  const [deleting, setDeleting] = useState(false);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (isOpen) setError("");
+  }, [isOpen]);
+
+  const handleDelete = async () => {
+    setDeleting(true);
+    setError("");
+    try {
+      if (USING_DUMMY_DATA) {
+        await new Promise((res) => setTimeout(res, 500));
+      } else {
+        await api.delete(`/admin/zones/${location.id}`);
+      }
+      onSuccess(location.id);
+      onClose();
+    } catch (err) {
+      setError(err.response?.data?.message || "Failed to delete location.");
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  return (
+    <ModalShell
+      isOpen={isOpen}
+      onClose={onClose}
+      icon={FiTrash2}
+      title="Delete Location"
+      subtitle={location?.name}
+      footer={
+        <>
           <button
             onClick={onClose}
             className="px-4 py-2.5 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-200 transition-colors"
@@ -279,163 +342,195 @@ const LocationModal = ({ isOpen, onClose, onSuccess, editingLocation }) => {
             Cancel
           </button>
           <button
-            onClick={handleSubmit}
-            disabled={saving}
-            className="flex items-center gap-2 px-5 py-2.5 bg-orange-500 text-white rounded-xl text-sm font-semibold hover:bg-orange-600 disabled:opacity-60 disabled:cursor-not-allowed transition-colors shadow-sm shadow-orange-200"
+            onClick={handleDelete}
+            disabled={deleting}
+            className="flex items-center gap-2 px-5 py-2.5 bg-red-500 text-white rounded-xl text-sm font-semibold hover:bg-red-600 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
           >
-            {saving ? (
+            {deleting ? (
               <>
                 <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
-                Saving…
+                Deleting…
               </>
             ) : (
               <>
-                <FiCheck className="w-4 h-4" />
-                {isEdit ? "Save Changes" : "Add Location"}
+                <FiTrash2 className="w-4 h-4" />
+                Delete
               </>
             )}
           </button>
-        </div>
-      </div>
-    </div>
+        </>
+      }
+    >
+      <ErrorBanner message={error} />
+      <p className="text-sm text-gray-600">
+        Are you sure you want to delete{" "}
+        <span className="font-semibold">{location?.name}</span>? This action
+        cannot be undone.
+      </p>
+    </ModalShell>
   );
 };
 
-// ── Delete Confirm Modal ─────────────────────────────────────────────────────
+// ── Skeleton Card ─────────────────────────────────────────────────────────────
 
-const DeleteModal = ({ location, onClose, onSuccess }) => {
-  const [deleting, setDeleting] = useState(false);
-
-  const handleDelete = () => {
-    setDeleting(true);
-    setTimeout(() => {
-      onSuccess(location.id);
-      setDeleting(false);
-      onClose();
-    }, 400);
-  };
-
-  if (!location) return null;
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div
-        className="absolute inset-0 bg-black/40 backdrop-blur-sm"
-        onClick={onClose}
-      />
-      <div className="relative w-full max-w-sm bg-white rounded-2xl shadow-2xl overflow-hidden">
-        <div className="p-6 text-center">
-          <div className="w-14 h-14 bg-red-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
-            <FiTrash2 className="w-6 h-6 text-red-500" />
-          </div>
-          <h3 className="text-lg font-bold text-gray-900 mb-1">
-            Delete Location?
-          </h3>
-          <p className="text-sm text-gray-500 mb-6">
-            <span className="font-semibold text-gray-700">{location.name}</span>{" "}
-            will be permanently removed. This cannot be undone.
-          </p>
-          <div className="flex gap-3">
-            <button
-              onClick={onClose}
-              className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={handleDelete}
-              disabled={deleting}
-              className="flex-1 py-2.5 rounded-xl bg-red-500 text-white text-sm font-semibold hover:bg-red-600 disabled:opacity-60 transition-colors"
-            >
-              {deleting ? "Deleting…" : "Delete"}
-            </button>
-          </div>
+const SkeletonCard = () => (
+  <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden animate-pulse">
+    <div className="p-5 border-b border-gray-50">
+      <div className="flex items-center gap-3">
+        <div className="w-10 h-10 bg-gray-100 rounded-xl" />
+        <div className="flex-1 space-y-2">
+          <div className="h-4 bg-gray-100 rounded-lg w-3/4" />
+          <div className="h-3 bg-gray-100 rounded-lg w-1/2" />
         </div>
       </div>
     </div>
-  );
-};
+    <div className="p-5 space-y-3">
+      <div className="h-3 bg-gray-100 rounded-lg w-full" />
+      <div className="h-3 bg-gray-100 rounded-lg w-2/3" />
+    </div>
+    <div className="p-4 bg-gray-50 border-t border-gray-100">
+      <div className="h-9 bg-gray-100 rounded-xl" />
+    </div>
+  </div>
+);
 
-// ── Main Page ────────────────────────────────────────────────────────────────
+// ── Main Page ─────────────────────────────────────────────────────────────────
 
 const DeliveryLocationManagement = () => {
-  const [locations, setLocations] = useState(DUMMY_LOCATIONS);
-  const [search, setSearch] = useState("");
+  const [locations, setLocations] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState("");
   const [filterTab, setFilterTab] = useState("all");
+
+  // Modal visibility
+  const [locationModal, setLocationModal] = useState(false);
+  const [deleteModal, setDeleteModal] = useState(false);
+
+  // Which location is being acted on
+  const [editingLocation, setEditingLocation] = useState(null);
+  const [deletingLocation, setDeletingLocation] = useState(null);
+
+  // Per-card toggling spinner (keyed by location id)
   const [togglingId, setTogglingId] = useState(null);
 
-  // Modal states
-  const [modalOpen, setModalOpen] = useState(false);
-  const [editingLocation, setEditingLocation] = useState(null);
-  const [deleteTarget, setDeleteTarget] = useState(null);
+  // ── Fetch ──────────────────────────────────────────────────────────────────
 
-  const toggleAvailability = (location) => {
-    setTogglingId(location.id);
-    setTimeout(() => {
-      setLocations((prev) =>
-        prev.map((l) =>
-          l.id === location.id ? { ...l, is_available: !l.is_available } : l,
-        ),
+  const fetchLocations = useCallback(async () => {
+    setLoading(true);
+    setFetchError("");
+    try {
+      if (USING_DUMMY_DATA) {
+        await new Promise((res) => setTimeout(res, 400));
+        setLocations(DUMMY_LOCATIONS);
+      } else {
+        const { data } = await api.get("/zones");
+        setLocations(Array.isArray(data) ? data : (data.data ?? []));
+      }
+    } catch (err) {
+      setFetchError(
+        err.response?.data?.message || "Failed to load delivery locations.",
       );
-      setTogglingId(null);
-    }, 300);
-  };
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchLocations();
+  }, [fetchLocations]);
+
+  // ── Handlers ───────────────────────────────────────────────────────────────
 
   const openAdd = () => {
     setEditingLocation(null);
-    setModalOpen(true);
+    setLocationModal(true);
   };
 
   const openEdit = (location) => {
     setEditingLocation(location);
-    setModalOpen(true);
+    setLocationModal(true);
+  };
+
+  const openDelete = (location) => {
+    setDeletingLocation(location);
+    setDeleteModal(true);
   };
 
   const handleModalSuccess = ({ type, data }) => {
-    if (type === "add") {
-      setLocations((prev) => [...prev, data]);
-    } else if (type === "edit") {
-      setLocations((prev) => prev.map((l) => (l.id === data.id ? data : l)));
+    if (USING_DUMMY_DATA) {
+      if (type === "add") {
+        setLocations((prev) => [...prev, data]);
+      } else {
+        setLocations((prev) => prev.map((l) => (l.id === data.id ? data : l)));
+      }
+    } else {
+      fetchLocations();
     }
   };
 
   const handleDeleteSuccess = (id) => {
-    setLocations((prev) => prev.filter((l) => l.id !== id));
+    if (USING_DUMMY_DATA) {
+      setLocations((prev) => prev.filter((l) => l.id !== id));
+    } else {
+      fetchLocations();
+    }
   };
 
-  const filtered = locations
-    .filter((l) => {
-      if (filterTab === "available") return l.is_available;
-      if (filterTab === "unavailable") return !l.is_available;
-      return true;
-    })
-    .filter((l) => {
-      const q = search.toLowerCase();
-      return (
-        l.name?.toLowerCase().includes(q) ||
-        l.city?.toLowerCase().includes(q) ||
-        l.state?.toLowerCase().includes(q)
-      );
-    });
+  const handleToggle = async (location) => {
+    setTogglingId(location.id);
+    try {
+      if (USING_DUMMY_DATA) {
+        await new Promise((res) => setTimeout(res, 400));
+        setLocations((prev) =>
+          prev.map((l) =>
+            l.id === location.id ? { ...l, is_active: !l.is_active } : l,
+          ),
+        );
+      } else {
+        await api.patch(`/admin/zones/${location.id}/toggle`);
+        // Optimistic update
+        setLocations((prev) =>
+          prev.map((l) =>
+            l.id === location.id ? { ...l, is_active: !l.is_active } : l,
+          ),
+        );
+      }
+    } catch (err) {
+      alert(err.response?.data?.message || "Failed to update availability.");
+    } finally {
+      setTogglingId(null);
+    }
+  };
+
+  // ── Filtering ──────────────────────────────────────────────────────────────
+
+  const filtered = locations.filter((l) => {
+    if (filterTab === "available") return l.is_active;
+    if (filterTab === "unavailable") return !l.is_active;
+    return true;
+  });
 
   const stats = {
     total: locations.length,
-    available: locations.filter((l) => l.is_available).length,
-    unavailable: locations.filter((l) => !l.is_available).length,
+    available: locations.filter((l) => l.is_active).length,
+    unavailable: locations.filter((l) => !l.is_active).length,
   };
+
+  // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
     <>
       <LocationModal
-        isOpen={modalOpen}
-        onClose={() => setModalOpen(false)}
+        isOpen={locationModal}
+        onClose={() => setLocationModal(false)}
         onSuccess={handleModalSuccess}
         editingLocation={editingLocation}
       />
-      <DeleteModal
-        location={deleteTarget}
-        onClose={() => setDeleteTarget(null)}
+      <DeleteConfirmModal
+        isOpen={deleteModal}
+        onClose={() => setDeleteModal(false)}
         onSuccess={handleDeleteSuccess}
+        location={deletingLocation}
       />
 
       <DashboardLayout>
@@ -450,18 +545,26 @@ const DeliveryLocationManagement = () => {
                 Manage delivery zones and their availability
               </p>
             </div>
-            <button
-              onClick={openAdd}
-              className="flex items-center gap-2 px-4 py-2 bg-orange-500 text-white rounded-lg text-sm font-medium hover:bg-orange-600 transition-colors shadow-sm shadow-orange-200 self-start sm:self-auto"
-            >
-              <FiPlus className="w-4 h-4" />
-              Add Location
-            </button>
+            <div className="flex items-center gap-3">
+              {USING_DUMMY_DATA && (
+                <div className="bg-amber-50 border border-amber-300 text-amber-700 px-3 py-1.5 rounded-lg text-xs font-medium">
+                  🛠 Dev mode —{" "}
+                  <code className="font-mono">USING_DUMMY_DATA = false</code>{" "}
+                  when ready.
+                </div>
+              )}
+              <button
+                onClick={openAdd}
+                className="flex items-center gap-2 px-4 py-2 bg-orange-500 text-white rounded-lg text-sm font-medium hover:bg-orange-600 transition-colors shadow-sm shadow-orange-200"
+              >
+                <FiPlus className="w-4 h-4" />
+                Add Location
+              </button>
+            </div>
           </div>
 
-          {/* Filter Tabsm */}
-
-          <div className="bg-white p-1.5 rounded-xl border border-gray-100 shadow-sm flex items-center gap-1 overflow-x-auto">
+          {/* Filter Tabs */}
+          <div className="bg-white p-1.5 rounded-xl border border-gray-100 shadow-sm flex items-center gap-1 overflow-x-auto w-full">
             {[
               { key: "all", label: `All (${stats.total})` },
               { key: "available", label: `Available (${stats.available})` },
@@ -484,126 +587,160 @@ const DeliveryLocationManagement = () => {
             ))}
           </div>
 
-          {/* Location Cards */}
-          {filtered.length === 0 ? (
+          {/* Error state */}
+          {fetchError && !loading && (
+            <div className="flex items-center justify-between gap-4 px-5 py-4 bg-red-50 border border-red-100 rounded-2xl">
+              <div className="flex items-center gap-3 text-red-600 text-sm">
+                <FiAlertTriangle className="w-4 h-4 flex-shrink-0" />
+                {fetchError}
+              </div>
+              <button
+                onClick={fetchLocations}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-red-100 rounded-lg text-xs font-medium text-red-500 hover:bg-red-50 transition-colors flex-shrink-0"
+              >
+                <FiRefreshCw className="w-3.5 h-3.5" />
+                Retry
+              </button>
+            </div>
+          )}
+
+          {/* Content */}
+          {loading ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <SkeletonCard key={i} />
+              ))}
+            </div>
+          ) : filtered.length === 0 ? (
             <div className="text-center py-16">
               <div className="w-16 h-16 bg-gray-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
                 <FiMapPin className="w-7 h-7 text-gray-300" />
               </div>
               <p className="text-gray-500 font-medium">No locations found</p>
               <p className="text-sm text-gray-400 mt-1">
-                {search
-                  ? "Try a different search term"
-                  : "Add your first delivery location to get started"}
+                Add your first delivery location to get started
               </p>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-              {filtered.map((location) => (
-                <div
-                  key={location.id}
-                  className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden flex flex-col"
-                >
-                  {/* Card Header */}
-                  <div className="p-5 border-b border-gray-50">
-                    <div className="flex items-start justify-between gap-3">
+              {filtered.map((location) => {
+                const toggling = togglingId === location.id;
+
+                return (
+                  <div
+                    key={location.id}
+                    className={`bg-white rounded-2xl border shadow-sm overflow-hidden flex flex-col transition-opacity ${
+                      location.is_active
+                        ? "border-gray-100"
+                        : "border-gray-100 opacity-60"
+                    }`}
+                  >
+                    {/* Card Header */}
+                    <div className="p-5 border-b border-gray-50 flex items-start justify-between gap-3">
                       <div className="flex items-center gap-3 min-w-0">
                         <div
-                          className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${location.is_available ? "bg-orange-100" : "bg-gray-100"}`}
+                          className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${
+                            location.is_active ? "bg-orange-100" : "bg-gray-100"
+                          }`}
                         >
                           <FiMapPin
-                            className={`w-5 h-5 ${location.is_available ? "text-orange-500" : "text-gray-400"}`}
+                            className={`w-5 h-5 ${
+                              location.is_active
+                                ? "text-orange-500"
+                                : "text-gray-400"
+                            }`}
                           />
                         </div>
                         <div className="min-w-0">
                           <h3 className="font-bold text-gray-900 text-base leading-tight truncate">
                             {location.name}
                           </h3>
-                          <p className="text-sm text-gray-500 mt-0.5 truncate">
-                            {location.city}, {location.state}
-                          </p>
+                          {location.city && (
+                            <p className="text-sm text-gray-500 mt-0.5 truncate">
+                              {location.city.name}
+                            </p>
+                          )}
                         </div>
                       </div>
                       <span
-                        className={`flex-shrink-0 px-2.5 py-1 rounded-full text-xs font-semibold ${location.is_available ? "bg-green-100 text-green-600" : "bg-gray-100 text-gray-500"}`}
-                      >
-                        {location.is_available ? "Available" : "Unavailable"}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Card Body */}
-                  <div className="p-5 flex-1 space-y-3">
-                    {location.delivery_fee !== undefined &&
-                      location.delivery_fee !== null &&
-                      location.delivery_fee !== "" && (
-                        <div className="flex items-center justify-between text-sm">
-                          <span className="text-gray-500">Delivery fee</span>
-                          <span className="font-semibold text-gray-800">
-                            ₦{Number(location.delivery_fee).toLocaleString()}
-                          </span>
-                        </div>
-                      )}
-
-                    {location.estimated_time && (
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-gray-500">
-                          Est. delivery time
-                        </span>
-                        <span className="font-semibold text-gray-800">
-                          {location.estimated_time}
-                        </span>
-                      </div>
-                    )}
-
-                    {/* Toggle Row */}
-                    <div className="pt-3 border-t border-gray-100 flex items-center justify-between">
-                      <span className="text-sm font-medium text-gray-600">
-                        Availability
-                      </span>
-                      <button
-                        onClick={() => toggleAvailability(location)}
-                        disabled={togglingId === location.id}
-                        title={
-                          location.is_available
-                            ? "Click to disable"
-                            : "Click to enable"
-                        }
-                        className={`relative w-11 h-6 rounded-full transition-colors duration-200 focus:outline-none ${
-                          location.is_available
-                            ? "bg-orange-500"
-                            : "bg-gray-300"
+                        className={`flex-shrink-0 px-2.5 py-1 rounded-full text-xs font-semibold ${
+                          location.is_active
+                            ? "bg-green-100 text-green-600"
+                            : "bg-gray-100 text-gray-500"
                         }`}
                       >
-                        <span
-                          className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ${
-                            location.is_available
-                              ? "translate-x-5"
-                              : "translate-x-0"
+                        {location.is_active ? "Active" : "Inactive"}
+                      </span>
+                    </div>
+
+                    {/* Card Body */}
+                    <div className="p-5 flex-1 space-y-3">
+                      {location.delivery_fee !== null &&
+                        location.delivery_fee !== undefined &&
+                        location.delivery_fee !== "" && (
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm text-gray-500">
+                              Delivery Fee
+                            </span>
+                            <span className="text-2xl font-black text-orange-500">
+                              {new Intl.NumberFormat("en-NG", {
+                                style: "currency",
+                                currency: "NGN",
+                                minimumFractionDigits: 0,
+                              }).format(Number(location.delivery_fee))}
+                            </span>
+                          </div>
+                        )}
+
+                      {/* Availability toggle row */}
+                      <div className="flex items-center justify-between pt-2 border-t border-dashed border-gray-100">
+                        <span className="text-sm text-gray-500">Available</span>
+                        <button
+                          onClick={() => handleToggle(location)}
+                          disabled={toggling}
+                          title={
+                            location.is_active
+                              ? "Click to disable"
+                              : "Click to enable"
+                          }
+                          className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full border transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                            location.is_active
+                              ? "bg-green-50 text-green-600 border-green-100 hover:bg-green-100"
+                              : "bg-gray-100 text-gray-500 border-gray-200 hover:bg-gray-200"
                           }`}
-                        />
+                        >
+                          {toggling ? (
+                            <span className="w-3.5 h-3.5 border-2 border-current/30 border-t-current rounded-full animate-spin" />
+                          ) : location.is_active ? (
+                            <FiToggleRight className="w-4 h-4" />
+                          ) : (
+                            <FiToggleLeft className="w-4 h-4" />
+                          )}
+                          {location.is_active ? "Active" : "Inactive"}
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Footer actions */}
+                    <div className="p-4 bg-gray-50 border-t border-gray-100 flex items-center gap-2">
+                      <button
+                        onClick={() => openEdit(location)}
+                        className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-100 transition-colors shadow-sm"
+                      >
+                        <FiEdit2 className="w-4 h-4" />
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => openDelete(location)}
+                        className="flex items-center justify-center gap-2 px-3 py-2.5 bg-white border border-red-100 rounded-xl text-sm font-medium text-red-500 hover:bg-red-50 transition-colors shadow-sm"
+                        title="Delete location"
+                      >
+                        <FiTrash2 className="w-4 h-4" />
                       </button>
                     </div>
                   </div>
-
-                  {/* Card Footer */}
-                  <div className="p-4 bg-gray-50 border-t border-gray-100 flex items-center gap-2">
-                    <button
-                      onClick={() => openEdit(location)}
-                      className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-100 transition-colors shadow-sm"
-                    >
-                      <FiEdit2 className="w-4 h-4" />
-                      Edit
-                    </button>
-                    <button
-                      onClick={() => setDeleteTarget(location)}
-                      className="flex items-center justify-center w-10 h-10 bg-white border border-gray-200 rounded-xl text-gray-400 hover:bg-red-50 hover:text-red-500 hover:border-red-100 transition-colors shadow-sm"
-                    >
-                      <FiTrash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>

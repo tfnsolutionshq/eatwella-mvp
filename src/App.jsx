@@ -8,6 +8,14 @@ import { HelmetProvider } from "react-helmet-async";
 import { AuthProvider } from "./context/AuthContext";
 import { CartProvider } from "./context/CartContext";
 import { ToastProvider } from "./context/ToastContext";
+
+import AdminGuard from "./Components/RoutingComponents/AdminGuard";
+import StaffGuard from "./Components/RoutingComponents/StaffGuard";
+import PublicRouteGuard from "./Components/RoutingComponents/PublicRouteGuard";
+import AdminOrSupervisorGuard from "./Components/RoutingComponents/AdminOrSupervisorGuard";
+import FloatingCartButton from "./Components/FloatingCartButton";
+import FloatingWhatsAppButton from "./Components/FloatingWhatsAppButton";
+
 import Dashboard from "./Pages/Admin/Dashboard";
 import AdminMenu from "./Pages/Admin/Menu";
 import OrderManagement from "./Pages/Admin/OrderManagement";
@@ -37,10 +45,10 @@ import LoyaltyBoardPage from "./Pages/LoyaltyBoardPage/LoyaltyBoardPage";
 import TrackOrderPage from "./Pages/TrackOrderPage/TrackOrderPage";
 import VacancyPage from "./Pages/Vacancy/Vacancies";
 import NotFound from "./Pages/NotFound/NotFound";
-import FloatingCartButton from "./Components/FloatingCartButton";
 import ScrollToTop from "./Components/ScrollToTop";
 import ScrollToTopButton from "./Components/ScrollToTopButton";
 import FoodPackaging from "./Pages/Admin/FoodPackaging";
+import Settings from "./Pages/Admin/Settings";
 
 function App() {
   return (
@@ -52,52 +60,76 @@ function App() {
               <ScrollToTop />
               <ScrollToTopButton />
               <FloatingCartButton />
+              <FloatingWhatsAppButton />
               <Routes>
-                <Route path="/" element={<Homepage />} />
-                <Route path="/menu" element={<MenuPage />} />
-                <Route path="/meal-plans" element={<MealPlansPage />} />
-                <Route path="/loyalty-board" element={<LoyaltyBoardPage />} />
-                <Route path="/cart" element={<CartPage />} />
-                <Route path="/order-type" element={<OrderTypePage />} />
-                <Route path="/receipt" element={<ReceiptPage />} />
-                <Route path="/receipt/:orderId" element={<ReceiptPage />} />
-                <Route path="/track-order" element={<TrackOrderPage />} />
-                <Route path="/account/create" element={<CreateAccount />} />
-                <Route path="/account/login" element={<UserLogin />} />
-                <Route
-                  path="/admin/locations"
-                  element={<DeliveryLocationManagement />}
-                />
-                <Route path="/account/dashboard" element={<UserDashboard />} />
-                <Route path="/account/edit-profile" element={<EditProfile />} />
+                {/* Customer Routes */}
+                <Route element={<PublicRouteGuard />}>
+                  <Route path="/" element={<Homepage />} />
+                  <Route path="/menu" element={<MenuPage />} />
+                  <Route path="/meal-plans" element={<MealPlansPage />} />
+                  <Route path="/loyalty-board" element={<LoyaltyBoardPage />} />
+                  <Route path="/cart" element={<CartPage />} />
+                  <Route path="/order-type" element={<OrderTypePage />} />
+                  <Route path="/receipt" element={<ReceiptPage />} />
+                  <Route path="/receipt/:orderId" element={<ReceiptPage />} />
+                  <Route path="/track-order" element={<TrackOrderPage />} />
+                  <Route path="/account/create" element={<CreateAccount />} />
+                  <Route path="/account/login" element={<UserLogin />} />
+                  <Route
+                    path="/account/dashboard"
+                    element={<UserDashboard />}
+                  />
+                  <Route
+                    path="/account/edit-profile"
+                    element={<EditProfile />}
+                  />
+                  <Route path="/careers" element={<VacancyPage />} />
+                </Route>
+
+                {/* Admin Routes */}
                 <Route path="/admin/login" element={<Login />} />
-                <Route path="/admin/dashboard" element={<Dashboard />} />
-                <Route path="/admin/orders" element={<OrderManagement />} />
-                <Route path="/admin/create-order" element={<CreateOrder />} />
-                <Route
-                  path="/admin/discounts"
-                  element={<DiscountManagement />}
-                />
-                <Route path="/admin/menu" element={<AdminMenu />} />
-                <Route
-                  path="/admin/food-packaging"
-                  element={<FoodPackaging />}
-                />
-                <Route path="/admin/users" element={<AllUsers />} />
-                <Route path="/admin/users/:userId" element={<SingleUser />} />
-                <Route path="/admin/payments" element={<Payments />} />
-                <Route path="/admin/tax-vat" element={<TaxAndVat />} />
-                <Route path="/admin/staff" element={<StaffManagement />} />
-                <Route path="/admin/careers" element={<Vacancies />} />
-                <Route
-                  path="/admin/career-openings"
-                  element={<CareerOpenings />}
-                />
-                <Route
-                  path="/admin/loyalty-settings"
-                  element={<LoyaltySettings />}
-                />
-                <Route path="/careers" element={<VacancyPage />} />
+                <Route element={<AdminGuard />}>
+                  <Route path="/admin/dashboard" element={<Dashboard />} />
+                  <Route path="/admin/menu" element={<AdminMenu />} />
+                  <Route path="/admin/users" element={<AllUsers />} />
+                  <Route path="/admin/users/:userId" element={<SingleUser />} />
+                  <Route path="/admin/payments" element={<Payments />} />
+                  <Route path="/admin/tax-vat" element={<TaxAndVat />} />
+                  <Route path="/admin/staff" element={<StaffManagement />} />
+                  <Route path="/admin/careers" element={<Vacancies />} />
+                  <Route
+                    path="/admin/discounts"
+                    element={<DiscountManagement />}
+                  />
+                  <Route
+                    path="/admin/career-openings"
+                    element={<CareerOpenings />}
+                  />
+                  <Route
+                    path="/admin/loyalty-settings"
+                    element={<LoyaltySettings />}
+                  />
+                  <Route
+                    path="/admin/locations"
+                    element={<DeliveryLocationManagement />}
+                  />
+                  <Route
+                    path="/admin/food-packaging"
+                    element={<FoodPackaging />}
+                  />
+                </Route>
+
+                {/* Admin + Supervisor Routes */}
+                <Route element={<AdminOrSupervisorGuard />}>
+                  <Route path="/admin/settings" element={<Settings />} />
+                </Route>
+
+                {/* Staff Routes */}
+                <Route element={<StaffGuard />}>
+                  <Route path="/admin/create-order" element={<CreateOrder />} />
+                  <Route path="/admin/orders" element={<OrderManagement />} />
+                </Route>
+
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </Router>

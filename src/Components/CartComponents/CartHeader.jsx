@@ -1,5 +1,5 @@
-import React from 'react'
-import Navbar from '../../Components/LandingComponents/Navbar'
+import React from "react";
+import Navbar from "../../Components/LandingComponents/Navbar";
 
 function CartHeader() {
   return (
@@ -9,12 +9,14 @@ function CartHeader() {
       {/* Hero Text */}
       <div className="max-w-6xl mx-auto mt-20 px-6">
         <h1 className="text-6xl md:text-7xl font-bolota font-black text-white mb-4">
-          CART ITEMS
+          YOUR FOOD BASKET
         </h1>
-        <p className="text-xl text-white">View and manage your selected items</p>
+        <p className="text-xl text-white">
+          View and manage your selected items
+        </p>
       </div>
     </div>
-  )
+  );
 }
 
-export default CartHeader
+export default CartHeader;
