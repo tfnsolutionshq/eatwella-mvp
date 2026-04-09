@@ -1,5 +1,13 @@
 import React, { useState, useEffect } from "react";
-import { CheckCircle, Download, User, Clock, Loader2 } from "lucide-react";
+import {
+  CheckCircle,
+  Download,
+  User,
+  Clock,
+  Loader2,
+  Copy,
+  Check,
+} from "lucide-react";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { useCart } from "../../context/CartContext";
 import api from "../../utils/api";
@@ -13,6 +21,9 @@ function ReceiptDetails() {
   const [isLoading, setIsLoading] = useState(!location.state?.order);
   const [fetchError, setFetchError] = useState(null);
   const [zones, setZones] = useState([]);
+  const [copied, setCopied] = useState(false);
+
+  console.log("The order details: ", order);
 
   useEffect(() => {
     const clearAndFetch = async () => {
@@ -69,6 +80,14 @@ function ReceiptDetails() {
     if (!statusValue) return "Pending";
     return statusValue.charAt(0).toUpperCase() + statusValue.slice(1);
   })();
+
+  const handleCopyOrderId = () => {
+    const idToCopy = order.order_number || order.id || "";
+    navigator.clipboard.writeText(idToCopy).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  };
 
   const statusClasses = (() => {
     if (statusValue === "completed") return "bg-green-100 text-green-700";
@@ -212,9 +231,28 @@ function ReceiptDetails() {
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div className="text-center md:text-left">
               <p className="text-xs text-gray-500 mb-1">Order ID</p>
-              <p className="text-xl font-bold mb-1">
-                #{order.order_number || order.id || "PENDING"}
-              </p>
+              <div className="flex items-center gap-2">
+                <p className="text-xl font-bold mb-1">
+                  {order.order_number || order.id || "PENDING"}
+                </p>
+                <button
+                  onClick={handleCopyOrderId}
+                  className="text-gray-400 hover:text-orange-500 transition-colors mt-[-4px]"
+                  title="Copy order ID"
+                >
+                  {copied ? (
+                    <span className="flex items-center justify-center">
+                      <Check className="w-4 h-4 text-green-500" />
+                      <span className="ml-1 text-xs">Copied!</span>
+                    </span>
+                  ) : (
+                    <span className="flex items-center justify-center">
+                      <Copy className="w-4 h-4" />
+                      <span className="ml-1 text-xs">Copy</span>
+                    </span>
+                  )}
+                </button>
+              </div>
             </div>
             <div className="flex flex-col items-center md:items-end gap-2">
               <span
@@ -306,6 +344,17 @@ function ReceiptDetails() {
               </div>
             ))}
           </div>
+          <div className="flex justify-between font-semibold mt-4">
+            <span>Tax Charges:</span>
+            <span>
+              {new Intl.NumberFormat("en-NG", {
+                style: "currency",
+                currency: "NGN",
+                minimumFractionDigits: 0,
+              }).format(order.tax_details.VAT.amount)}{" "}
+              ({order.tax_details.VAT.type})
+            </span>
+          </div>
         </div>
 
         <div className="border-t pt-4 mb-4">
@@ -316,7 +365,7 @@ function ReceiptDetails() {
                 style: "currency",
                 currency: "NGN",
                 minimumFractionDigits: 0,
-              }).format(subtotal)}
+              }).format(subtotal + (order.tax_details?.VAT?.amount ?? 0))}
             </span>
           </div>
           <div className="flex justify-between font-semibold">
