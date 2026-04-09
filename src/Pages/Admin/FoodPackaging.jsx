@@ -550,8 +550,11 @@ const PackagingManagement = () => {
 
           {/* Content */}
           {loading ? (
-            <div className="flex items-center justify-center py-20">
-              <span className="w-7 h-7 border-2 border-orange-200 border-t-orange-500 rounded-full animate-spin" />
+            <div className="flex flex-col items-center justify-center py-32 gap-4">
+              <div className="w-12 h-12 border-4 border-gray-200 border-t-orange-500 rounded-full animate-spin" />
+              <p className="text-gray-500 text-sm font-medium tracking-wide">
+                Loading Packages...
+              </p>
             </div>
           ) : packages.length === 0 ? (
             <div className="text-center py-16 text-gray-400 text-sm">

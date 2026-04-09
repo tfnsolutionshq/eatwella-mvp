@@ -606,10 +606,11 @@ const DeliveryLocationManagement = () => {
 
           {/* Content */}
           {loading ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-              {Array.from({ length: 6 }).map((_, i) => (
-                <SkeletonCard key={i} />
-              ))}
+            <div className="flex flex-col items-center justify-center py-32 gap-4">
+              <div className="w-12 h-12 border-4 border-gray-200 border-t-orange-500 rounded-full animate-spin" />
+              <p className="text-gray-500 text-sm font-medium tracking-wide">
+                Loading Locations...
+              </p>
             </div>
           ) : filtered.length === 0 ? (
             <div className="text-center py-16">
