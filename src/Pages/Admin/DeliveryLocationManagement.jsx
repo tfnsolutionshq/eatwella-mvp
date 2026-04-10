@@ -565,26 +565,38 @@ const DeliveryLocationManagement = () => {
 
           {/* Filter Tabs */}
           <div className="bg-white p-1.5 rounded-xl border border-gray-100 shadow-sm flex items-center gap-1 overflow-x-auto w-full">
-            {[
-              { key: "all", label: `All (${stats.total})` },
-              { key: "available", label: `Available (${stats.available})` },
-              {
-                key: "unavailable",
-                label: `Unavailable (${stats.unavailable})`,
-              },
-            ].map((tab) => (
-              <button
-                key={tab.key}
-                onClick={() => setFilterTab(tab.key)}
-                className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
-                  filterTab === tab.key
-                    ? "bg-gray-200 text-gray-900 font-semibold shadow-sm"
-                    : "text-gray-500 hover:bg-gray-100"
-                }`}
-              >
-                {tab.label}
-              </button>
-            ))}
+            <div className="flex items-center gap-2 min-w-max">
+              {[
+                { key: "all", label: "All", value: stats.total },
+                {
+                  key: "available",
+                  label: "Available",
+                  value: stats.available,
+                },
+                {
+                  key: "unavailable",
+                  label: "Unavailable",
+                  value: stats.unavailable,
+                },
+              ].map((tab) => (
+                <button
+                  key={tab.key}
+                  onClick={() => setFilterTab(tab.key)}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    filterTab === tab.key
+                      ? "bg-gray-200 text-gray-900 shadow-sm font-semibold"
+                      : "text-gray-600 hover:bg-gray-100"
+                  }`}
+                >
+                  {tab.label}{" "}
+                  {loading ? (
+                    <span className="inline-block w-5 h-3.5 bg-gray-200 rounded animate-pulse align-middle" />
+                  ) : (
+                    <span>({tab.value})</span>
+                  )}
+                </button>
+              ))}
+            </div>
           </div>
 
           {/* Error state */}

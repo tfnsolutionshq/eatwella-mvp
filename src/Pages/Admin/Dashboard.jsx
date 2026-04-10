@@ -79,23 +79,32 @@ const Dashboard = () => {
 
   return (
     <DashboardLayout>
-      <div className="p-6 space-y-6 bg-gray-50/50 min-h-full">
+      <div className="flex flex-col p-6 space-y-6 bg-gray-50/50 min-h-full">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <h1 className="text-2xl font-bold text-gray-900">Welcome back!</h1>
         </div>
 
-        {isLoading ? (
-          <div className="flex flex-col items-center justify-center py-32 gap-4">
-            <div className="w-12 h-12 border-4 border-gray-200 border-t-orange-500 rounded-full animate-spin" />
-            <p className="text-gray-500 text-sm font-medium tracking-wide">
-              Loading Dashboard...
-            </p>
-          </div>
-        ) : (
-          <>
-            {/* ── Stat Cards ── */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {stats.map((stat, index) => (
+        {/* ── Stat Cards ── */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {isLoading
+            ? stats.map((stat, index) => (
+                <div
+                  key={index}
+                  className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm"
+                >
+                  {/* Colored icon skeleton */}
+                  <div
+                    className={`w-12 h-12 rounded-xl ${stat.color} opacity-20 animate-pulse`}
+                  />
+
+                  {/* Value skeleton */}
+                  <div className="mt-4 h-6 w-24 bg-gray-200 rounded animate-pulse" />
+
+                  {/* Label skeleton */}
+                  <div className="mt-2 h-4 w-20 bg-gray-100 rounded animate-pulse" />
+                </div>
+              ))
+            : stats.map((stat, index) => (
                 <div
                   key={index}
                   className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm"
@@ -113,118 +122,125 @@ const Dashboard = () => {
                   </div>
                 </div>
               ))}
-            </div>
+        </div>
 
-            {/* ── Charts ── */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {/* Daily Sales Chart */}
-              <div className="lg:col-span-2 bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
-                <div className="flex items-center justify-between mb-6">
-                  <div>
-                    <h2 className="text-lg font-bold text-gray-900">
-                      Daily Sales
-                    </h2>
-                    <p className="text-sm text-gray-500">
-                      Revenue and orders over time
-                    </p>
-                  </div>
-                </div>
-                <div className="h-80">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={chartData}>
-                      <CartesianGrid
-                        strokeDasharray="3 3"
-                        vertical={false}
-                        stroke="#f3f4f6"
-                      />
-                      <XAxis
-                        dataKey="name"
-                        axisLine={false}
-                        tickLine={false}
-                        tick={{ fill: "#9ca3af", fontSize: 12 }}
-                        dy={10}
-                      />
-                      <YAxis
-                        axisLine={false}
-                        tickLine={false}
-                        tick={{ fill: "#9ca3af", fontSize: 12 }}
-                      />
-                      <Tooltip
-                        contentStyle={{
-                          borderRadius: "12px",
-                          border: "none",
-                          boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)",
-                        }}
-                      />
-                      <Line
-                        type="monotone"
-                        dataKey="revenue"
-                        stroke="#10b981"
-                        strokeWidth={3}
-                        dot={{ r: 4, fill: "#10b981", strokeWidth: 0 }}
-                        activeDot={{ r: 6 }}
-                      />
-                      <Line
-                        type="monotone"
-                        dataKey="orders"
-                        stroke="#f97316"
-                        strokeWidth={3}
-                        dot={{ r: 4, fill: "#f97316", strokeWidth: 0 }}
-                        activeDot={{ r: 6 }}
-                      />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </div>
-                <div className="flex items-center justify-center gap-6 mt-4">
-                  <div className="flex items-center gap-2">
-                    <span className="w-3 h-3 rounded-full bg-orange-500" />
-                    <span className="text-sm text-gray-600">Orders</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="w-3 h-3 rounded-full bg-emerald-500" />
-                    <span className="text-sm text-gray-600">Revenue</span>
-                  </div>
+        {/* ── Charts ── */}
+        {isLoading ? (
+          <div className="flex flex-col items-center justify-center py-32 gap-4">
+            <div className="w-12 h-12 border-4 border-gray-200 border-t-orange-500 rounded-full animate-spin" />
+            <p className="text-gray-500 text-sm font-medium tracking-wide">
+              Loading Analytics...
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Daily Sales Chart */}
+            <div className="lg:col-span-2 bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
+              <div className="flex items-center justify-between mb-6">
+                <div>
+                  <h2 className="text-lg font-bold text-gray-900">
+                    Daily Sales
+                  </h2>
+                  <p className="text-sm text-gray-500">
+                    Revenue and orders over time
+                  </p>
                 </div>
               </div>
+              <div className="h-80">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={chartData}>
+                    <CartesianGrid
+                      strokeDasharray="3 3"
+                      vertical={false}
+                      stroke="#f3f4f6"
+                    />
+                    <XAxis
+                      dataKey="name"
+                      axisLine={false}
+                      tickLine={false}
+                      tick={{ fill: "#9ca3af", fontSize: 12 }}
+                      dy={10}
+                    />
+                    <YAxis
+                      axisLine={false}
+                      tickLine={false}
+                      tick={{ fill: "#9ca3af", fontSize: 12 }}
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        borderRadius: "12px",
+                        border: "none",
+                        boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)",
+                      }}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="revenue"
+                      stroke="#10b981"
+                      strokeWidth={3}
+                      dot={{ r: 4, fill: "#10b981", strokeWidth: 0 }}
+                      activeDot={{ r: 6 }}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="orders"
+                      stroke="#f97316"
+                      strokeWidth={3}
+                      dot={{ r: 4, fill: "#f97316", strokeWidth: 0 }}
+                      activeDot={{ r: 6 }}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+              <div className="flex items-center justify-center gap-6 mt-4">
+                <div className="flex items-center gap-2">
+                  <span className="w-3 h-3 rounded-full bg-orange-500" />
+                  <span className="text-sm text-gray-600">Orders</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="w-3 h-3 rounded-full bg-emerald-500" />
+                  <span className="text-sm text-gray-600">Revenue</span>
+                </div>
+              </div>
+            </div>
 
-              {/* Top Selling Items */}
-              <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
-                <h2 className="text-lg font-bold text-gray-900 mb-6">
-                  Top Selling Items
-                </h2>
-                <div className="space-y-6">
-                  {topMenus.map((item, index) => (
-                    <div key={item.menu_id} className="flex items-center gap-4">
-                      <span
-                        className={`w-8 h-8 flex items-center justify-center rounded-lg text-sm font-bold ${
-                          index < 3
-                            ? "bg-orange-50 text-orange-600"
-                            : "bg-gray-50 text-gray-600"
-                        }`}
-                      >
-                        {index + 1}
-                      </span>
-                      <div className="flex-1 min-w-0">
-                        <h4 className="text-sm font-medium text-gray-900 truncate">
-                          {item.menu?.name}
-                        </h4>
-                        <span className="text-xs text-gray-500">
-                          {item.total_sold} sold
-                        </span>
-                      </div>
-                      <span className="text-sm font-bold text-orange-500">
-                        {new Intl.NumberFormat("en-NG", {
-                          style: "currency",
-                          currency: "NGN",
-                          minimumFractionDigits: 0,
-                        }).format(Math.ceil(item.total_revenue))}
+            {/* Top Selling Items */}
+            <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
+              <h2 className="text-lg font-bold text-gray-900 mb-6">
+                Top Selling Items
+              </h2>
+              <div className="space-y-6">
+                {topMenus.map((item, index) => (
+                  <div key={item.menu_id} className="flex items-center gap-4">
+                    <span
+                      className={`w-8 h-8 flex items-center justify-center rounded-lg text-sm font-bold ${
+                        index < 3
+                          ? "bg-orange-50 text-orange-600"
+                          : "bg-gray-50 text-gray-600"
+                      }`}
+                    >
+                      {index + 1}
+                    </span>
+                    <div className="flex-1 min-w-0">
+                      <h4 className="text-sm font-medium text-gray-900 truncate">
+                        {item.menu?.name}
+                      </h4>
+                      <span className="text-xs text-gray-500">
+                        {item.total_sold} sold
                       </span>
                     </div>
-                  ))}
-                </div>
+                    <span className="text-sm font-bold text-orange-500">
+                      {new Intl.NumberFormat("en-NG", {
+                        style: "currency",
+                        currency: "NGN",
+                        minimumFractionDigits: 0,
+                      }).format(Math.ceil(item.total_revenue))}
+                    </span>
+                  </div>
+                ))}
               </div>
             </div>
-          </>
+          </div>
         )}
       </div>
     </DashboardLayout>
