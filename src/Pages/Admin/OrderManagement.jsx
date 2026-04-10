@@ -255,17 +255,12 @@ const OrderManagement = () => {
               new Date(a.created_at).getTime(),
           );
 
-        if (rawOrders.length === 0) {
-          const response = await api.get("/kitchen/orders/confirmed");
-          const payload = response?.data;
-          const data = payload?.data ?? payload ?? [];
-          rawOrders = Array.isArray(data) ? data : [];
-          rawOrders = sortDescending(rawOrders);
-          setAllKitchenOrders(rawOrders);
-        } else {
-          rawOrders = sortDescending(rawOrders);
-          setAllKitchenOrders(rawOrders);
-        }
+        const response = await api.get("/kitchen/orders/confirmed");
+        const payload = response?.data;
+        const data = payload?.data ?? payload ?? [];
+        rawOrders = Array.isArray(data) ? data : [];
+        rawOrders = sortDescending(rawOrders);
+        setAllKitchenOrders(rawOrders);
 
         const tabFiltered =
           activeTab === "all"
