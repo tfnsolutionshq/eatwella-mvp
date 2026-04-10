@@ -231,7 +231,7 @@ function ReceiptDetails() {
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div className="text-center md:text-left">
               <p className="text-xs text-gray-500 mb-1">Order ID</p>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center justify-center gap-2">
                 <p className="text-xl font-bold mb-1">
                   {order.order_number || order.id || "PENDING"}
                 </p>
