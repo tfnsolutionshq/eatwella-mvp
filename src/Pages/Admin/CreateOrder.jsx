@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import DashboardLayout from "../../DashboardLayout/DashboardLayout";
 import {
   FiArrowLeft,
@@ -30,20 +30,27 @@ const CreateOrder = () => {
     deliveryZip: "",
   });
   const [loading, setLoading] = useState(false);
+  const [menuLoading, setMenuLoading] = useState(false);
+
+  // Pagination state
+  const [pagination, setPagination] = useState({
+    current_page: 1,
+    last_page: 1,
+    total: 0,
+    per_page: 15,
+  });
 
   // Packaging state
   const [packagingOptions, setPackagingOptions] = useState([]);
   const [loadingPackaging, setLoadingPackaging] = useState(false);
-  // Tracks which cart item's packaging dropdown is open: keyed by menu.id
   const [openPackagingDropdown, setOpenPackagingDropdown] = useState(null);
 
   useEffect(() => {
-    fetchMenus();
     fetchCategories();
     fetchPackagingOptions();
+    fetchMenus("all", 1);
   }, []);
 
-  // Close packaging dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (!e.target.closest("[data-packaging-dropdown]")) {
@@ -63,21 +70,35 @@ const CreateOrder = () => {
     }
   };
 
-  const fetchMenus = async () => {
+  const fetchMenus = useCallback(async (categoryId = "all", pageNumber = 1) => {
+    setMenuLoading(true);
     try {
-      const { data } = await api.get("/menus");
-      setMenus(data.data);
+      const params = new URLSearchParams();
+      params.set("page", pageNumber);
+      if (categoryId !== "all") {
+        params.set("category_id", categoryId);
+      }
+
+      const { data } = await api.get(`/menus?${params.toString()}`);
+      const pageData = data.data ?? [];
+      setMenus(pageData);
+      setPagination({
+        current_page: data.current_page ?? pageNumber,
+        last_page: data.last_page ?? 1,
+        total: data.total ?? pageData.length,
+        per_page: data.per_page ?? 15,
+      });
     } catch (err) {
       console.error("Failed to fetch menus:", err);
+    } finally {
+      setMenuLoading(false);
     }
-  };
+  }, []);
 
   const fetchPackagingOptions = async () => {
     setLoadingPackaging(true);
     try {
       const { data } = await api.get("/packagings");
-      // Adjust the accessor below to match the actual response shape, e.g.
-      // data.data, data, data.items, etc.
       setPackagingOptions(Array.isArray(data) ? data : (data.data ?? []));
     } catch (err) {
       console.error("Failed to fetch packaging options:", err);
@@ -86,10 +107,36 @@ const CreateOrder = () => {
     }
   };
 
-  const filteredMenus =
-    selectedCategory === "all"
-      ? menus
-      : menus.filter((menu) => menu.category_id === selectedCategory);
+  const handleCategoryChange = (categoryId) => {
+    setSelectedCategory(categoryId);
+    fetchMenus(categoryId, 1);
+  };
+
+  const handlePageChange = (pageNumber) => {
+    fetchMenus(selectedCategory, pageNumber);
+  };
+
+  const getVisiblePageNumbers = () => {
+    const { last_page, current_page } = pagination;
+
+    // Always exclude first and last — they have their own dedicated buttons
+    if (last_page <= 2) return [];
+
+    const inner = Array.from({ length: last_page - 2 }, (_, i) => i + 2); // [2 .. last_page-1]
+
+    if (inner.length <= 5) return inner;
+
+    const maxVisible = 4;
+    let start = Math.max(2, current_page - Math.floor(maxVisible / 2));
+    let end = start + maxVisible - 1;
+
+    if (end > last_page - 1) {
+      end = last_page - 1;
+      start = Math.max(2, end - maxVisible + 1);
+    }
+
+    return Array.from({ length: end - start + 1 }, (_, i) => start + i);
+  };
 
   // ── Cart helpers ────────────────────────────────────────────────────────────
 
@@ -104,7 +151,6 @@ const CreateOrder = () => {
         ),
       );
     } else {
-      // New cart items start with no packaging selected
       setCart([
         ...cart,
         { menu, quantity: 1, packaging_id: null, packaging: null },
@@ -128,7 +174,6 @@ const CreateOrder = () => {
     setCart(cart.filter((item) => item.menu.id !== menuId));
   };
 
-  /** Attach the selected packaging to a specific cart item. */
   const selectPackaging = (menuId, packaging) => {
     setCart(
       cart.map((item) =>
@@ -140,7 +185,6 @@ const CreateOrder = () => {
     setOpenPackagingDropdown(null);
   };
 
-  /** Clear packaging from a specific cart item. */
   const clearPackaging = (menuId) => {
     setCart(
       cart.map((item) =>
@@ -170,9 +214,7 @@ const CreateOrder = () => {
 
     if (
       orderType === "delivery" &&
-      (!formData.customerPhone ||
-        !formData.deliveryAddress ||
-        !formData.deliveryCity)
+      (!formData.customerPhone || !formData.deliveryAddress)
     ) {
       showToast("Please fill in delivery details", "error");
       return;
@@ -193,8 +235,6 @@ const CreateOrder = () => {
         items: cart.map((item) => ({
           menu_id: item.menu.id,
           quantity: item.quantity,
-          // packaging_id is null when the attendant skips packaging — the
-          // backend should treat null / absence as "no packaging".
           packaging_id: item.packaging_id ?? null,
         })),
       };
@@ -208,8 +248,6 @@ const CreateOrder = () => {
         orderData.delivery_zip = formData.deliveryZip;
         orderData.delivery_zone_id = 1;
       }
-
-      console.log("The order is here: ", orderData);
 
       await api.post("/checkout", orderData);
       showToast("Order created successfully!");
@@ -252,9 +290,10 @@ const CreateOrder = () => {
                 Menu Items
               </h2>
 
+              {/* Category tabs */}
               <div className="mb-4 flex gap-2 overflow-x-auto pb-2">
                 <button
-                  onClick={() => setSelectedCategory("all")}
+                  onClick={() => handleCategoryChange("all")}
                   className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
                     selectedCategory === "all"
                       ? "bg-orange-500 text-white"
@@ -266,7 +305,7 @@ const CreateOrder = () => {
                 {categories.map((category) => (
                   <button
                     key={category.id}
-                    onClick={() => setSelectedCategory(category.id)}
+                    onClick={() => handleCategoryChange(category.id)}
                     className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
                       selectedCategory === category.id
                         ? "bg-orange-500 text-white"
@@ -278,46 +317,152 @@ const CreateOrder = () => {
                 ))}
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {filteredMenus.map((menu) => (
-                  <div
-                    key={menu.id}
-                    className="border border-gray-200 rounded-xl hover:border-orange-500 transition-colors"
-                  >
-                    <div className="flex gap-3 p-3">
-                      {menu.images && menu.images.length > 0 && (
-                        <img
-                          src={menu.images[0]}
-                          alt={menu.name}
-                          className="w-20 h-20 object-cover rounded-lg flex-shrink-0"
-                          onError={(e) => {
-                            e.target.src = "https://via.placeholder.com/80x80";
-                          }}
-                        />
-                      )}
-                      <div className="flex-1 min-w-0">
-                        <div className="flex justify-between items-start gap-2 mb-1">
-                          <h3 className="font-bold text-gray-900 text-sm">
-                            {menu.name}
-                          </h3>
-                          <span className="text-sm font-bold text-orange-500 whitespace-nowrap">
-                            ₦{menu.price}
-                          </span>
+              {/* Menu grid */}
+              {menuLoading ? (
+                <div className="flex flex-col items-center justify-center py-16 gap-3">
+                  <div className="w-10 h-10 border-4 border-gray-200 border-t-orange-500 rounded-full animate-spin" />
+                  <p className="text-sm text-gray-400 font-medium">
+                    Loading Menu...
+                  </p>
+                </div>
+              ) : menus.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-16">
+                  <p className="text-sm text-gray-400">
+                    No items found in this category.
+                  </p>
+                </div>
+              ) : (
+                <>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {menus.map((menu) => (
+                      <div
+                        key={menu.id}
+                        className="border border-gray-200 rounded-xl hover:border-orange-500 transition-colors"
+                      >
+                        <div className="flex gap-3 p-3">
+                          {menu.images && menu.images.length > 0 && (
+                            <img
+                              src={menu.images[0]}
+                              alt={menu.name}
+                              className="w-20 h-20 object-cover rounded-lg flex-shrink-0"
+                              onError={(e) => {
+                                e.target.src =
+                                  "https://via.placeholder.com/80x80";
+                              }}
+                            />
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex justify-between items-start gap-2 mb-1">
+                              <h3 className="font-bold text-gray-900 text-sm">
+                                {menu.name}
+                              </h3>
+                              <span className="text-sm font-bold text-orange-500 whitespace-nowrap">
+                                ₦{Number(menu.price).toLocaleString()}
+                              </span>
+                            </div>
+                            <p className="text-xs text-gray-500 line-clamp-2 mb-2">
+                              {menu.description}
+                            </p>
+                            <button
+                              onClick={() => addToCart(menu)}
+                              className="w-full px-3 py-1.5 bg-orange-500 text-white rounded-lg text-xs font-medium hover:bg-orange-600 transition-colors"
+                            >
+                              Add to Cart
+                            </button>
+                          </div>
                         </div>
-                        <p className="text-xs text-gray-500 line-clamp-2 mb-2">
-                          {menu.description}
-                        </p>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Pagination */}
+                  {pagination.last_page > 1 && (
+                    <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
+                      <p className="text-xs text-gray-400">
+                        Page {pagination.current_page} of {pagination.last_page}{" "}
+                        &mdash; {pagination.total} items
+                      </p>
+                      <div className="flex items-center gap-1.5 flex-wrap">
                         <button
-                          onClick={() => addToCart(menu)}
-                          className="w-full px-3 py-1.5 bg-orange-500 text-white rounded-lg text-xs font-medium hover:bg-orange-600 transition-colors"
+                          disabled={pagination.current_page === 1}
+                          onClick={() =>
+                            handlePageChange(pagination.current_page - 1)
+                          }
+                          className="px-3 py-1.5 border border-gray-200 rounded-lg text-xs font-medium text-gray-600 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed"
                         >
-                          Add to Cart
+                          Prev
+                        </button>
+
+                        {/* First page */}
+                        <button
+                          onClick={() => handlePageChange(1)}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
+                            pagination.current_page === 1
+                              ? "bg-orange-500 text-white border-orange-500"
+                              : "border-gray-200 text-gray-600 hover:bg-gray-100"
+                          }`}
+                        >
+                          1
+                        </button>
+
+                        {/* Left ellipsis */}
+                        {getVisiblePageNumbers()[0] > 2 && (
+                          <span className="px-1 text-xs text-gray-400">…</span>
+                        )}
+
+                        {/* Middle pages */}
+                        {getVisiblePageNumbers().map((pageNum) => (
+                          <button
+                            key={pageNum}
+                            onClick={() => handlePageChange(pageNum)}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
+                              pagination.current_page === pageNum
+                                ? "bg-orange-500 text-white border-orange-500"
+                                : "border-gray-200 text-gray-600 hover:bg-gray-100"
+                            }`}
+                          >
+                            {pageNum}
+                          </button>
+                        ))}
+
+                        {/* Right ellipsis */}
+                        {getVisiblePageNumbers().slice(-1)[0] <
+                          pagination.last_page - 1 && (
+                          <span className="px-1 text-xs text-gray-400">…</span>
+                        )}
+
+                        {/* Last page */}
+                        {pagination.last_page > 1 && (
+                          <button
+                            onClick={() =>
+                              handlePageChange(pagination.last_page)
+                            }
+                            className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
+                              pagination.current_page === pagination.last_page
+                                ? "bg-orange-500 text-white border-orange-500"
+                                : "border-gray-200 text-gray-600 hover:bg-gray-100"
+                            }`}
+                          >
+                            {pagination.last_page}
+                          </button>
+                        )}
+
+                        <button
+                          disabled={
+                            pagination.current_page === pagination.last_page
+                          }
+                          onClick={() =>
+                            handlePageChange(pagination.current_page + 1)
+                          }
+                          className="px-3 py-1.5 border border-gray-200 rounded-lg text-xs font-medium text-gray-600 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed"
+                        >
+                          Next
                         </button>
                       </div>
                     </div>
-                  </div>
-                ))}
-              </div>
+                  )}
+                </>
+              )}
             </div>
           </div>
 
@@ -348,7 +493,7 @@ const CreateOrder = () => {
                             {item.menu.name}
                           </p>
                           <p className="text-xs text-gray-500">
-                            ₦{item.menu.price}
+                            ₦{Number(item.menu.price).toLocaleString()}
                           </p>
                         </div>
                         <div className="flex items-center gap-1.5 shrink-0">
@@ -416,21 +561,6 @@ const CreateOrder = () => {
 
                         {openPackagingDropdown === item.menu.id && (
                           <div className="absolute z-20 mt-1 w-full bg-white border border-gray-100 rounded-xl shadow-xl overflow-hidden max-h-48 overflow-y-auto">
-                            {/* "No packaging" option */}
-                            <button
-                              type="button"
-                              onClick={() => clearPackaging(item.menu.id)}
-                              className={`w-full px-3 py-2.5 text-left text-xs hover:bg-gray-50 transition-colors ${
-                                !item.packaging
-                                  ? "bg-gray-50 font-semibold text-gray-700"
-                                  : "text-gray-500"
-                              }`}
-                            >
-                              No packaging
-                            </button>
-
-                            <div className="border-t border-gray-100" />
-
                             {packagingOptions.length === 0 ? (
                               <p className="px-3 py-3 text-xs text-gray-400 text-center">
                                 No packaging options available.
@@ -557,25 +687,6 @@ const CreateOrder = () => {
                   </div>
                 )}
 
-                {/* {orderType === "dine" && (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Table Number
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.tableNumber}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          tableNumber: e.target.value,
-                        })
-                      }
-                      className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2.5 px-4 text-sm text-gray-900 focus:ring-2 focus:ring-orange-100 focus:border-orange-500 outline-none"
-                    />
-                  </div>
-                )} */}
-
                 {orderType === "delivery" && (
                   <>
                     <div>
@@ -589,38 +700,6 @@ const CreateOrder = () => {
                           setFormData({
                             ...formData,
                             deliveryAddress: e.target.value,
-                          })
-                        }
-                        className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2.5 px-4 text-sm text-gray-900 focus:ring-2 focus:ring-orange-100 focus:border-orange-500 outline-none"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        City
-                      </label>
-                      <input
-                        type="text"
-                        value={formData.deliveryCity}
-                        onChange={(e) =>
-                          setFormData({
-                            ...formData,
-                            deliveryCity: e.target.value,
-                          })
-                        }
-                        className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2.5 px-4 text-sm text-gray-900 focus:ring-2 focus:ring-orange-100 focus:border-orange-500 outline-none"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        ZIP
-                      </label>
-                      <input
-                        type="text"
-                        value={formData.deliveryZip}
-                        onChange={(e) =>
-                          setFormData({
-                            ...formData,
-                            deliveryZip: e.target.value,
                           })
                         }
                         className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2.5 px-4 text-sm text-gray-900 focus:ring-2 focus:ring-orange-100 focus:border-orange-500 outline-none"
