@@ -110,32 +110,42 @@ const AllUsers = () => {
                 "delivery agents",
                 "attendants",
                 "kitchen",
-              ].map((tab) => (
-                <button
-                  key={tab}
-                  onClick={() => setActiveTab(tab)}
-                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                    activeTab === tab
-                      ? "bg-gray-200 text-gray-900 shadow-sm font-semibold"
-                      : "text-gray-600 hover:bg-gray-100"
-                  }`}
-                >
-                  {tab === "all"
-                    ? "All Users"
-                    : tab.charAt(0).toUpperCase() + tab.slice(1)}{" "}
-                  (
-                  {tab === "all"
+              ].map((tab) => {
+                const count =
+                  tab === "all"
                     ? users.length
-                    : users.filter((u) => u.role === ROLE_MAP[tab]).length}
-                  )
-                </button>
-              ))}
+                    : users.filter((u) => u.role === ROLE_MAP[tab]).length;
+
+                return (
+                  <button
+                    key={tab}
+                    onClick={() => setActiveTab(tab)}
+                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                      activeTab === tab
+                        ? "bg-gray-200 text-gray-900 shadow-sm font-semibold"
+                        : "text-gray-600 hover:bg-gray-100"
+                    }`}
+                  >
+                    {tab === "all"
+                      ? "All Users"
+                      : tab.charAt(0).toUpperCase() + tab.slice(1)}{" "}
+                    {loading ? (
+                      <span className="inline-block w-5 h-3.5 bg-gray-200 rounded animate-pulse align-middle" />
+                    ) : (
+                      <span>({count})</span>
+                    )}
+                  </button>
+                );
+              })}
             </div>
           </div>
 
           {loading ? (
-            <div className="text-center py-12 text-gray-500">
-              Loading users...
+            <div className="flex flex-col items-center justify-center py-32 gap-4">
+              <div className="w-12 h-12 border-4 border-gray-200 border-t-orange-500 rounded-full animate-spin" />
+              <p className="text-gray-500 text-sm font-medium tracking-wide">
+                Loading Users...
+              </p>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">

@@ -19,14 +19,9 @@ import {
 import { useAuth } from "../../context/AuthContext";
 import api from "../../utils/api";
 
-// ── Per-item subtotal: menu subtotal + (packaging price × quantity) ──────────
-// `item.subtotal` from the API = item.price × item.quantity (no packaging).
-// `item.packaging_price` is the per-unit packaging cost.
 const getItemSubtotal = (item) =>
   Number(item.subtotal) + Number(item.packaging_price ?? 0) * item.quantity;
 
-// ── Order-level total: sum of all corrected item subtotals ───────────────────
-// This replaces the API's `total_amount` which also excludes packaging.
 const getOrderItemsTotal = (orderItems = []) =>
   orderItems.reduce((sum, item) => sum + getItemSubtotal(item), 0);
 
@@ -37,6 +32,7 @@ function DashboardContent() {
   const [profile, setProfile] = useState(null);
   const [overview, setOverview] = useState(null);
   const [orders, setOrders] = useState([]);
+  const [addresses, setAddresses] = useState([]);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [passwordData, setPasswordData] = useState({
@@ -47,49 +43,59 @@ function DashboardContent() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
+  // Single loading flag for initial data (profile + overview + orders)
+  const [isLoading, setIsLoading] = useState(true);
+  // Separate flag for the addresses tab so it doesn't blank the whole page
+  const [isAddressesLoading, setIsAddressesLoading] = useState(false);
+
+  const [editingAddress, setEditingAddress] = useState(null);
+  const [showAddressModal, setShowAddressModal] = useState(false);
+  const [addressForm, setAddressForm] = useState({
+    street_address: "",
+    state: "",
+    closest_landmark: "",
+    postal_code: "",
+  });
+  const [showOrderModal, setShowOrderModal] = useState(false);
+  const [selectedOrder, setSelectedOrder] = useState(null);
+
+  // Fetches profile, overview, and orders all at once on mount
   useEffect(() => {
-    const fetchProfile = async () => {
+    const fetchInitialData = async () => {
+      setIsLoading(true);
       try {
-        const { data } = await api.get("/customer/profile");
-        setProfile(data);
+        const [profileRes, overviewRes, ordersRes] = await Promise.all([
+          api.get("/customer/profile"),
+          api.get("/customer/overview"),
+          api.get("/customer/orders"),
+        ]);
+        setProfile(profileRes.data);
+        setOverview(overviewRes.data);
+        setOrders(ordersRes.data.data || []);
       } catch (err) {
-        console.error("Failed to fetch profile:", err);
+        console.error("Failed to fetch dashboard data:", err);
+      } finally {
+        setIsLoading(false);
       }
     };
-    const fetchOverview = async () => {
-      try {
-        const { data } = await api.get("/customer/overview");
-        setOverview(data);
-      } catch (err) {
-        console.error("Failed to fetch overview:", err);
-      }
-    };
-    const fetchOrders = async () => {
-      try {
-        const { data } = await api.get("/customer/orders");
-        console.log("Here is the data: ", data.data);
-        setOrders(data.data || []);
-      } catch (err) {
-        console.error("Failed to fetch orders:", err);
-      }
-    };
-    fetchProfile();
-    fetchOverview();
-    fetchOrders();
+    fetchInitialData();
   }, []);
 
+  // Fetches addresses only when the profile tab is opened
   useEffect(() => {
+    if (activeTab !== "profile") return;
     const fetchAddresses = async () => {
+      setIsAddressesLoading(true);
       try {
         const { data } = await api.get("/customer/addresses");
         setAddresses(Array.isArray(data) ? data : []);
       } catch (err) {
         console.error("Failed to fetch addresses:", err);
+      } finally {
+        setIsAddressesLoading(false);
       }
     };
-    if (activeTab === "profile") {
-      fetchAddresses();
-    }
+    fetchAddresses();
   }, [activeTab]);
 
   const personal = {
@@ -103,18 +109,6 @@ function DashboardContent() {
         })
       : "",
   };
-
-  const [addresses, setAddresses] = useState([]);
-  const [editingAddress, setEditingAddress] = useState(null);
-  const [showAddressModal, setShowAddressModal] = useState(false);
-  const [addressForm, setAddressForm] = useState({
-    street_address: "",
-    state: "",
-    closest_landmark: "",
-    postal_code: "",
-  });
-  const [showOrderModal, setShowOrderModal] = useState(false);
-  const [selectedOrder, setSelectedOrder] = useState(null);
 
   const handleChangePassword = async (e) => {
     e.preventDefault();
@@ -191,7 +185,6 @@ function DashboardContent() {
     }
   };
 
-  // ── Shared currency formatter ──────────────────────────────────────────────
   const ngn = (amount) =>
     new Intl.NumberFormat("en-NG", {
       style: "currency",
@@ -237,272 +230,311 @@ function DashboardContent() {
           </aside>
 
           <section className="lg:col-span-9 space-y-6">
-            {/* ── Overview ── */}
-            {activeTab === "overview" && (
-              <>
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-                  {[
-                    {
-                      icon: FiPackage,
-                      bg: "bg-orange-50 text-orange-600",
-                      value: overview?.total_orders || 0,
-                      label: "Total Orders",
-                    },
-                    {
-                      icon: FiTrendingUp,
-                      bg: "bg-emerald-50 text-emerald-600",
-                      value: ngn(overview?.total_spent || 0),
-                      label: "Total Spent",
-                    },
-                    {
-                      icon: FiStar,
-                      bg: "bg-gray-50 text-gray-600",
-                      value: overview?.loyalty_points || 0,
-                      label: "Loyalty Points",
-                    },
-                    {
-                      icon: FiAward,
-                      bg: "bg-indigo-50 text-indigo-600",
-                      value: overview?.member_tier || "None",
-                      label: "Member Tier",
-                    },
-                  ].map(({ icon: Icon, bg, value, label }) => (
-                    <div
-                      key={label}
-                      className="bg-white rounded-3xl border border-gray-100 shadow-sm p-5"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className={`p-3 rounded-xl ${bg}`}>
-                          <Icon className="w-6 h-6" />
-                        </div>
-                        <div>
-                          <h3 className="text-xl font-bold">{value}</h3>
-                          <p className="text-xs text-gray-500">{label}</p>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="bg-white rounded-3xl border border-gray-100 shadow-sm">
-                  <div className="p-6 flex items-center justify-between">
-                    <h2 className="text-lg font-semibold">Recent Orders</h2>
-                    <button
-                      onClick={() => setActiveTab("orders")}
-                      className="text-sm text-gray-600 hover:text-gray-900 flex items-center gap-1"
-                    >
-                      <span>View All</span>
-                      <FiChevronRight className="w-4 h-4" />
-                    </button>
-                  </div>
-                  <div className="px-6 pb-6 space-y-3">
-                    {orders.slice(0, 3).map((o) => (
-                      <OrderCard
-                        key={o.id}
-                        order={o}
-                        ngn={ngn}
-                        onView={() => {
-                          setSelectedOrder(o);
-                          setShowOrderModal(true);
-                        }}
-                      />
-                    ))}
-                  </div>
-                </div>
-
-                <div className="bg-white rounded-3xl border border-gray-100 shadow-sm">
-                  <div className="p-6">
-                    <h2 className="text-lg font-semibold">Quick Actions</h2>
-                  </div>
-                  <div className="px-6 pb-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <Link
-                      to="/menu"
-                      className="flex items-center gap-3 rounded-2xl border border-gray-100 p-4 hover:bg-gray-50"
-                    >
-                      <div className="w-10 h-10 rounded-xl bg-gray-50 text-gray-700 flex items-center justify-center">
-                        <FiShoppingBag className="w-5 h-5" />
-                      </div>
-                      <div>
-                        <div className="text-sm font-semibold">Order Again</div>
-                        <div className="text-xs text-gray-500">
-                          Browse our menu
-                        </div>
-                      </div>
-                    </Link>
-                    <Link
-                      to="/loyalty-board"
-                      className="flex items-center gap-3 rounded-2xl border border-gray-100 p-4 hover:bg-gray-50"
-                    >
-                      <div className="w-10 h-10 rounded-xl bg-gray-50 text-gray-700 flex items-center justify-center">
-                        <FiGift className="w-5 h-5" />
-                      </div>
-                      <div>
-                        <div className="text-sm font-semibold">Rewards</div>
-                        <div className="text-xs text-gray-500">
-                          View your points
-                        </div>
-                      </div>
-                    </Link>
-                  </div>
-                </div>
-              </>
-            )}
-
-            {/* ── Orders ── */}
-            {activeTab === "orders" && (
-              <div className="bg-white rounded-3xl border border-gray-100 shadow-sm">
-                <div className="p-6">
-                  <h2 className="text-lg font-semibold">Order History</h2>
-                </div>
-                <div className="px-6 pb-6 space-y-4">
-                  {orders.map((o) => (
-                    <OrderCard
-                      key={o.id}
-                      order={o}
-                      ngn={ngn}
-                      onView={() => {
-                        setSelectedOrder(o);
-                        setShowOrderModal(true);
-                      }}
-                    />
-                  ))}
-                </div>
+            {/* ── Global initial load spinner ── */}
+            {isLoading ? (
+              <div className="flex flex-col items-center justify-center py-32 gap-4">
+                <div className="w-12 h-12 border-4 border-gray-200 border-t-orange-500 rounded-full animate-spin" />
+                <p className="text-gray-500 text-sm font-medium tracking-wide">
+                  Loading Dashboard...
+                </p>
               </div>
-            )}
-
-            {/* ── Profile ── */}
-            {activeTab === "profile" && (
+            ) : (
               <>
-                <div className="bg-white rounded-3xl border border-gray-100 shadow-sm">
-                  <div className="p-6 flex items-center justify-between">
-                    <h2 className="text-lg font-semibold">
-                      Personal Information
-                    </h2>
-                    <button
-                      onClick={() => navigate("/account/edit-profile")}
-                      className="px-3 py-1.5 rounded-full border border-gray-200 text-gray-700 text-xs hover:bg-gray-50"
-                    >
-                      Edit
-                    </button>
-                  </div>
-                  <div className="px-6 pb-6 space-y-4">
-                    {[
-                      { icon: FiMail, label: "Email", value: personal.email },
-                      { icon: FiPhone, label: "Phone", value: personal.phone },
-                      {
-                        icon: FiCalendar,
-                        label: "Birthday",
-                        value: personal.birthday,
-                      },
-                    ].map(({ icon: Icon, label, value }) => (
-                      <div
-                        key={label}
-                        className="bg-gray-100 rounded-xl p-4 flex items-center gap-3"
-                      >
-                        <Icon className="w-5 h-5 text-gray-600" />
-                        <div>
-                          <div className="text-xs text-gray-500">{label}</div>
-                          <div className="text-sm text-gray-900">
-                            {value || "Not provided"}
+                {/* ── Overview ── */}
+                {activeTab === "overview" && (
+                  <>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+                      {[
+                        {
+                          icon: FiPackage,
+                          bg: "bg-orange-50 text-orange-600",
+                          value: overview?.total_orders || 0,
+                          label: "Total Orders",
+                        },
+                        {
+                          icon: FiTrendingUp,
+                          bg: "bg-emerald-50 text-emerald-600",
+                          value: ngn(overview?.total_spent || 0),
+                          label: "Total Spent",
+                        },
+                        {
+                          icon: FiStar,
+                          bg: "bg-gray-50 text-gray-600",
+                          value: overview?.loyalty_points || 0,
+                          label: "Loyalty Points",
+                        },
+                        {
+                          icon: FiAward,
+                          bg: "bg-indigo-50 text-indigo-600",
+                          value: overview?.member_tier || "None",
+                          label: "Member Tier",
+                        },
+                      ].map(({ icon: Icon, bg, value, label }) => (
+                        <div
+                          key={label}
+                          className="bg-white rounded-3xl border border-gray-100 shadow-sm p-5"
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className={`p-3 rounded-xl ${bg}`}>
+                              <Icon className="w-6 h-6" />
+                            </div>
+                            <div>
+                              <h3 className="text-xl font-bold">{value}</h3>
+                              <p className="text-xs text-gray-500">{label}</p>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
+                      ))}
+                    </div>
 
-                <div className="bg-white rounded-3xl border border-gray-100 shadow-sm">
-                  <div className="p-6 flex items-center justify-between">
-                    <h2 className="text-lg font-semibold">Saved Addresses</h2>
-                    <button
-                      onClick={() => {
-                        setShowAddressModal(true);
-                        setEditingAddress(null);
-                        setAddressForm({
-                          street_address: "",
-                          state: "",
-                          closest_landmark: "",
-                          postal_code: "",
-                        });
-                      }}
-                      className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-orange-500 text-white text-xs hover:bg-orange-600"
-                    >
-                      <FiMapPin className="w-4 h-4" />
-                      <span>Add New</span>
-                    </button>
-                  </div>
-                  <div className="px-6 pb-6 space-y-3">
-                    {addresses.length === 0 && (
-                      <p className="text-sm text-gray-500">
-                        No addresses saved yet.
-                      </p>
-                    )}
-                    {addresses.map((addr) => (
-                      <div
-                        key={addr.id}
-                        className="rounded-2xl border border-gray-100 p-5 relative"
-                      >
-                        <div className="flex items-center gap-3 mb-4">
-                          <div className="text-sm font-semibold">Address</div>
-                        </div>
-                        <div className="flex gap-2 absolute top-5 right-5">
-                          <button
-                            onClick={() => {
-                              setEditingAddress(addr);
-                              setAddressForm(addr);
-                              setShowAddressModal(true);
+                    <div className="bg-white rounded-3xl border border-gray-100 shadow-sm">
+                      <div className="p-6 flex items-center justify-between">
+                        <h2 className="text-lg font-semibold">Recent Orders</h2>
+                        <button
+                          onClick={() => setActiveTab("orders")}
+                          className="text-sm text-gray-600 hover:text-gray-900 flex items-center gap-1"
+                        >
+                          <span>View All</span>
+                          <FiChevronRight className="w-4 h-4" />
+                        </button>
+                      </div>
+                      <div className="px-6 pb-6 space-y-3">
+                        {orders.slice(0, 3).map((o) => (
+                          <OrderCard
+                            key={o.id}
+                            order={o}
+                            ngn={ngn}
+                            onView={() => {
+                              setSelectedOrder(o);
+                              setShowOrderModal(true);
                             }}
-                            className="text-gray-600 hover:text-gray-900"
-                          >
-                            <FiEdit2 className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => handleDeleteAddress(addr.id)}
-                            className="text-red-600 hover:text-red-700"
-                          >
-                            <FiTrash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                        <div className="text-sm text-gray-700 leading-6">
-                          <div>{addr.street_address}</div>
-                          <div>{addr.state}</div>
-                          <div>{addr.closest_landmark}</div>
-                          <div>{addr.postal_code}</div>
-                        </div>
+                          />
+                        ))}
                       </div>
-                    ))}
-                  </div>
-                </div>
-              </>
-            )}
+                    </div>
 
-            {/* ── Settings ── */}
-            {activeTab === "settings" && (
-              <div className="bg-white rounded-3xl border border-gray-100 shadow-sm">
-                <div className="p-6">
-                  <h2 className="text-lg font-semibold">Account Settings</h2>
-                </div>
-                <div className="px-6 pb-6 space-y-3">
-                  <button
-                    onClick={() => setShowPasswordModal(true)}
-                    className="w-full bg-gray-100 hover:bg-gray-200 rounded-xl px-4 py-3 text-sm text-gray-900 transition-colors"
-                  >
-                    Change Password
-                  </button>
-                  <button
-                    onClick={() => setShowDeleteModal(true)}
-                    className="w-full bg-red-50 hover:bg-red-100 rounded-xl px-4 py-3 text-sm text-red-600 transition-colors"
-                  >
-                    Delete Account
-                  </button>
-                </div>
-              </div>
+                    <div className="bg-white rounded-3xl border border-gray-100 shadow-sm">
+                      <div className="p-6">
+                        <h2 className="text-lg font-semibold">Quick Actions</h2>
+                      </div>
+                      <div className="px-6 pb-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <Link
+                          to="/menu"
+                          className="flex items-center gap-3 rounded-2xl border border-gray-100 p-4 hover:bg-gray-50"
+                        >
+                          <div className="w-10 h-10 rounded-xl bg-gray-50 text-gray-700 flex items-center justify-center">
+                            <FiShoppingBag className="w-5 h-5" />
+                          </div>
+                          <div>
+                            <div className="text-sm font-semibold">
+                              Order Again
+                            </div>
+                            <div className="text-xs text-gray-500">
+                              Browse our menu
+                            </div>
+                          </div>
+                        </Link>
+                        <Link
+                          to="/loyalty-board"
+                          className="flex items-center gap-3 rounded-2xl border border-gray-100 p-4 hover:bg-gray-50"
+                        >
+                          <div className="w-10 h-10 rounded-xl bg-gray-50 text-gray-700 flex items-center justify-center">
+                            <FiGift className="w-5 h-5" />
+                          </div>
+                          <div>
+                            <div className="text-sm font-semibold">Rewards</div>
+                            <div className="text-xs text-gray-500">
+                              View your points
+                            </div>
+                          </div>
+                        </Link>
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                {/* ── Orders ── */}
+                {activeTab === "orders" && (
+                  <div className="bg-white rounded-3xl border border-gray-100 shadow-sm">
+                    <div className="p-6">
+                      <h2 className="text-lg font-semibold">Order History</h2>
+                    </div>
+                    <div className="px-6 pb-6 space-y-4">
+                      {orders.map((o) => (
+                        <OrderCard
+                          key={o.id}
+                          order={o}
+                          ngn={ngn}
+                          onView={() => {
+                            setSelectedOrder(o);
+                            setShowOrderModal(true);
+                          }}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* ── Profile ── */}
+                {activeTab === "profile" && (
+                  <>
+                    <div className="bg-white rounded-3xl border border-gray-100 shadow-sm">
+                      <div className="p-6 flex items-center justify-between">
+                        <h2 className="text-lg font-semibold">
+                          Personal Information
+                        </h2>
+                        <button
+                          onClick={() => navigate("/account/edit-profile")}
+                          className="px-3 py-1.5 rounded-full border border-gray-200 text-gray-700 text-xs hover:bg-gray-50"
+                        >
+                          Edit
+                        </button>
+                      </div>
+                      <div className="px-6 pb-6 space-y-4">
+                        {[
+                          {
+                            icon: FiMail,
+                            label: "Email",
+                            value: personal.email,
+                          },
+                          {
+                            icon: FiPhone,
+                            label: "Phone",
+                            value: personal.phone,
+                          },
+                          {
+                            icon: FiCalendar,
+                            label: "Birthday",
+                            value: personal.birthday,
+                          },
+                        ].map(({ icon: Icon, label, value }) => (
+                          <div
+                            key={label}
+                            className="bg-gray-100 rounded-xl p-4 flex items-center gap-3"
+                          >
+                            <Icon className="w-5 h-5 text-gray-600" />
+                            <div>
+                              <div className="text-xs text-gray-500">
+                                {label}
+                              </div>
+                              <div className="text-sm text-gray-900">
+                                {value || "Not provided"}
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="bg-white rounded-3xl border border-gray-100 shadow-sm">
+                      <div className="p-6 flex items-center justify-between">
+                        <h2 className="text-lg font-semibold">
+                          Saved Addresses
+                        </h2>
+                        <button
+                          onClick={() => {
+                            setShowAddressModal(true);
+                            setEditingAddress(null);
+                            setAddressForm({
+                              street_address: "",
+                              state: "",
+                              closest_landmark: "",
+                              postal_code: "",
+                            });
+                          }}
+                          className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-orange-500 text-white text-xs hover:bg-orange-600"
+                        >
+                          <FiMapPin className="w-4 h-4" />
+                          <span>Add New</span>
+                        </button>
+                      </div>
+                      <div className="px-6 pb-6 space-y-3">
+                        {/* Spinner scoped to the addresses section only */}
+                        {isAddressesLoading ? (
+                          <div className="flex flex-col items-center justify-center py-10 gap-3">
+                            <div className="w-8 h-8 border-4 border-gray-200 border-t-orange-500 rounded-full animate-spin" />
+                            <p className="text-gray-400 text-xs font-medium tracking-wide">
+                              Loading Addresses...
+                            </p>
+                          </div>
+                        ) : addresses.length === 0 ? (
+                          <p className="text-sm text-gray-500">
+                            No addresses saved yet.
+                          </p>
+                        ) : (
+                          addresses.map((addr) => (
+                            <div
+                              key={addr.id}
+                              className="rounded-2xl border border-gray-100 p-5 relative"
+                            >
+                              <div className="flex items-center gap-3 mb-4">
+                                <div className="text-sm font-semibold">
+                                  Address
+                                </div>
+                              </div>
+                              <div className="flex gap-2 absolute top-5 right-5">
+                                <button
+                                  onClick={() => {
+                                    setEditingAddress(addr);
+                                    setAddressForm(addr);
+                                    setShowAddressModal(true);
+                                  }}
+                                  className="text-gray-600 hover:text-gray-900"
+                                >
+                                  <FiEdit2 className="w-4 h-4" />
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteAddress(addr.id)}
+                                  className="text-red-600 hover:text-red-700"
+                                >
+                                  <FiTrash2 className="w-4 h-4" />
+                                </button>
+                              </div>
+                              <div className="text-sm text-gray-700 leading-6">
+                                <div>{addr.street_address}</div>
+                                <div>{addr.state}</div>
+                                <div>{addr.closest_landmark}</div>
+                                <div>{addr.postal_code}</div>
+                              </div>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                {/* ── Settings ── */}
+                {activeTab === "settings" && (
+                  <div className="bg-white rounded-3xl border border-gray-100 shadow-sm">
+                    <div className="p-6">
+                      <h2 className="text-lg font-semibold">
+                        Account Settings
+                      </h2>
+                    </div>
+                    <div className="px-6 pb-6 space-y-3">
+                      <button
+                        onClick={() => setShowPasswordModal(true)}
+                        className="w-full bg-gray-100 hover:bg-gray-200 rounded-xl px-4 py-3 text-sm text-gray-900 transition-colors"
+                      >
+                        Change Password
+                      </button>
+                      <button
+                        onClick={() => setShowDeleteModal(true)}
+                        className="w-full bg-red-50 hover:bg-red-100 rounded-xl px-4 py-3 text-sm text-red-600 transition-colors"
+                      >
+                        Delete Account
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </>
             )}
           </section>
         </div>
       </main>
 
-      {/* ── Change Password Modal ── */}
+      {/* ── Modals (unchanged) ── */}
       {showPasswordModal && (
         <ModalWrapper
           onClose={() => {
@@ -564,7 +596,6 @@ function DashboardContent() {
         </ModalWrapper>
       )}
 
-      {/* ── Delete Account Modal ── */}
       {showDeleteModal && (
         <ModalWrapper
           onClose={() => {
@@ -620,7 +651,6 @@ function DashboardContent() {
         </ModalWrapper>
       )}
 
-      {/* ── Address Modal ── */}
       {showAddressModal && (
         <ModalWrapper
           onClose={() => {
@@ -703,7 +733,6 @@ function DashboardContent() {
         </ModalWrapper>
       )}
 
-      {/* ── Order Details Modal ── */}
       {showOrderModal && selectedOrder && (
         <OrderDetailsModal
           order={selectedOrder}
@@ -718,11 +747,8 @@ function DashboardContent() {
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Sub-components
-// ─────────────────────────────────────────────────────────────────────────────
+// ── Sub-components (unchanged) ────────────────────────────────────────────────
 
-// ── Generic modal backdrop + card ─────────────────────────────────────────────
 const ModalWrapper = ({ onClose, children, wide = false }) => (
   <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
     <div
@@ -733,14 +759,12 @@ const ModalWrapper = ({ onClose, children, wide = false }) => (
   </div>
 );
 
-// ── Inline error banner ────────────────────────────────────────────────────────
 const ErrorBanner = ({ message }) => (
   <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-2 rounded-xl text-sm">
     {message}
   </div>
 );
 
-// ── Reusable order card (used in both overview and orders tab) ────────────────
 const OrderCard = ({ order: o, ngn, onView }) => (
   <div className="rounded-2xl border border-gray-100 p-4">
     <div className="flex items-start justify-between">
@@ -788,9 +812,7 @@ const OrderCard = ({ order: o, ngn, onView }) => (
   </div>
 );
 
-// ── Order Details Modal ───────────────────────────────────────────────────────
 const OrderDetailsModal = ({ order: o, ngn, onClose }) => {
-  // Corrected totals using the helper functions defined at the top of the file
   const itemsTotal = getOrderItemsTotal(o.order_items);
   const discountAmt = Number(o.discount_amount || 0);
   const deliveryFee = Number(o.delivery_fee || 0);
@@ -799,7 +821,6 @@ const OrderDetailsModal = ({ order: o, ngn, onClose }) => {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
       <div className="bg-white rounded-3xl w-full max-w-2xl shadow-xl max-h-[90vh] overflow-y-auto">
-        {/* Header */}
         <div className="p-6 border-b border-gray-100 sticky top-0 bg-white z-10 flex items-center justify-between">
           <h3 className="text-lg font-bold">Order Details</h3>
           <button
@@ -809,9 +830,7 @@ const OrderDetailsModal = ({ order: o, ngn, onClose }) => {
             <FiX className="w-4 h-4" />
           </button>
         </div>
-
         <div className="p-6 space-y-6">
-          {/* Meta grid */}
           <div className="grid grid-cols-2 gap-4">
             {[
               { label: "Order Number", value: o.order_number },
@@ -850,7 +869,6 @@ const OrderDetailsModal = ({ order: o, ngn, onClose }) => {
             </div>
           </div>
 
-          {/* Delivery address */}
           {o.delivery_address && (
             <div>
               <p className="text-xs text-gray-500 mb-2">Delivery Address</p>
@@ -867,7 +885,6 @@ const OrderDetailsModal = ({ order: o, ngn, onClose }) => {
             </div>
           )}
 
-          {/* Order items */}
           <div>
             <p className="text-sm font-semibold mb-3">Order Items</p>
             <div className="space-y-3">
@@ -889,11 +906,9 @@ const OrderDetailsModal = ({ order: o, ngn, onClose }) => {
                     />
                     <div className="flex-1 min-w-0">
                       <p className="font-semibold text-sm">{item.menu?.name}</p>
-                      {/* Unit price × qty */}
                       <p className="text-xs text-gray-500 mt-0.5">
                         {ngn(item.price)} × {item.quantity}
                       </p>
-                      {/* Packaging line — only when packaging exists */}
                       {item.packaging && packagingPrice > 0 && (
                         <p className="text-xs text-gray-400 mt-0.5 capitalize">
                           Packaging: {item.packaging.size_name} (+
@@ -901,7 +916,6 @@ const OrderDetailsModal = ({ order: o, ngn, onClose }) => {
                         </p>
                       )}
                     </div>
-                    {/* Corrected subtotal = (menu price + packaging price) × qty */}
                     <p className="font-bold text-orange-500 shrink-0">
                       {ngn(itemSubtotal)}
                     </p>
@@ -911,31 +925,23 @@ const OrderDetailsModal = ({ order: o, ngn, onClose }) => {
             </div>
           </div>
 
-          {/* Totals breakdown */}
           <div className="border-t pt-4 space-y-2">
-            {/* Items total (menu + packaging) */}
             <div className="flex justify-between text-sm">
               <span className="text-gray-600">Items Total</span>
               <span className="font-semibold">{ngn(itemsTotal)}</span>
             </div>
-
-            {/* Discount */}
             {discountAmt > 0 && (
               <div className="flex justify-between text-sm text-green-600">
                 <span>Discount</span>
                 <span className="font-semibold">-{ngn(discountAmt)}</span>
               </div>
             )}
-
-            {/* Delivery fee */}
             {deliveryFee > 0 && (
               <div className="flex justify-between text-sm">
                 <span className="text-gray-600">Delivery Fee</span>
                 <span className="font-semibold">{ngn(deliveryFee)}</span>
               </div>
             )}
-
-            {/* Tax details — rendered per-tax-type from tax_details object */}
             {o.tax_details &&
               Object.entries(o.tax_details).map(([taxName, tax]) => (
                 <div key={taxName} className="flex justify-between text-sm">
@@ -946,23 +952,18 @@ const OrderDetailsModal = ({ order: o, ngn, onClose }) => {
                   <span className="font-semibold">{ngn(tax.amount)}</span>
                 </div>
               ))}
-
-            {/* Fallback: if tax_details is absent but tax_amount exists */}
             {!o.tax_details && taxAmount > 0 && (
               <div className="flex justify-between text-sm">
                 <span className="text-gray-600">Tax</span>
                 <span className="font-semibold">{ngn(taxAmount)}</span>
               </div>
             )}
-
-            {/* Final amount — always use the server value */}
             <div className="flex justify-between text-lg font-bold pt-3 border-t">
               <span>Final Amount</span>
               <span className="text-orange-500">{ngn(o.final_amount)}</span>
             </div>
           </div>
 
-          {/* Invoice */}
           {o.invoice && (
             <div className="bg-gray-50 rounded-xl p-4">
               <p className="text-xs text-gray-500 mb-2">Invoice Details</p>

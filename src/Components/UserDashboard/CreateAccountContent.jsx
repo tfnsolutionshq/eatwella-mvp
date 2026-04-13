@@ -33,7 +33,8 @@ function CreateAccountContent() {
           : Array.isArray(payload?.data)
             ? payload.data
             : [];
-        setZones(data);
+        const activeZones = data.filter((zone) => zone.is_active);
+        setZones(activeZones);
         if (data.length > 0 && !zoneId) {
           setZoneId(String(data[0].id));
         }
@@ -45,7 +46,7 @@ function CreateAccountContent() {
     };
 
     loadZones();
-  }, [zoneId]);
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();

@@ -87,9 +87,11 @@ const LoyaltySettings = () => {
         </div>
 
         {loading ? (
-          <div className="text-center py-10">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500 mx-auto mb-2"></div>
-            <p className="text-gray-500">Loading settings...</p>
+          <div className="flex flex-col items-center justify-center py-32 gap-4">
+            <div className="w-12 h-12 border-4 border-gray-200 border-t-orange-500 rounded-full animate-spin" />
+            <p className="text-gray-500 text-sm font-medium tracking-wide">
+              Loading Loyalty Settings...
+            </p>
           </div>
         ) : (
           <div className="grid lg:grid-cols-3 gap-6">

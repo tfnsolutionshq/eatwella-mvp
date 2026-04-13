@@ -6,7 +6,6 @@ import {
   FiLayout,
   FiSearch,
   FiFilter,
-  FiDownload,
   FiTrendingUp,
 } from "react-icons/fi";
 import api from "../../utils/api";
@@ -18,21 +17,20 @@ function Payments() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    const fetchPayments = async () => {
+      setLoading(true);
+      try {
+        const { data } = await api.get("/admin/payments");
+        setTotals(data.totals);
+        setPayments(data.payments.data);
+      } catch (err) {
+        console.error("Failed to fetch payments:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
     fetchPayments();
   }, []);
-
-  const fetchPayments = async () => {
-    try {
-      setLoading(true);
-      const { data } = await api.get("/admin/payments");
-      setTotals(data.totals);
-      setPayments(data.payments.data);
-    } catch (err) {
-      console.error("Failed to fetch payments:", err);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const stats = [
     {
@@ -41,7 +39,7 @@ function Payments() {
         style: "currency",
         currency: "NGN",
         minimumFractionDigits: 0,
-      }).format(Math.ceil(totals?.total_revenue)),
+      }).format(Math.ceil(totals?.total_revenue ?? 0)),
       icon: FiDollarSign,
       color: "bg-green-500",
       trend: "+12%",
@@ -52,22 +50,29 @@ function Payments() {
         style: "currency",
         currency: "NGN",
         minimumFractionDigits: 0,
-      }).format(Math.ceil(totals?.total_pending)),
+      }).format(Math.ceil(totals?.total_pending ?? 0)),
       icon: FiDollarSign,
       color: "bg-orange-500",
     },
     {
       label: "Completed",
-      value: totals?.total_completed || "0",
+      value: totals?.total_completed ?? 0,
       icon: FiCreditCard,
       color: "bg-blue-500",
     },
     {
       label: "Transactions",
-      value: totals?.total_transactions || "0",
+      value: totals?.total_transactions ?? 0,
       icon: FiLayout,
       color: "bg-purple-500",
     },
+  ];
+
+  const statColors = [
+    "bg-green-500",
+    "bg-orange-500",
+    "bg-blue-500",
+    "bg-purple-500",
   ];
 
   const getStatusColor = (status) => {
@@ -97,6 +102,7 @@ function Payments() {
   return (
     <DashboardLayout>
       <div className="p-8 max-w-7xl mx-auto space-y-8">
+        {/* Page heading — always visible */}
         <div className="flex flex-col gap-1">
           <h1 className="text-3xl font-bold text-gray-900">Payments</h1>
           <p className="text-gray-500">
@@ -104,37 +110,55 @@ function Payments() {
           </p>
         </div>
 
+        {/* Stat cards — skeletons while loading, real values after */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {stats.map((stat, index) => (
-            <div
-              key={index}
-              className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow"
-            >
-              <div className="flex items-start justify-between mb-4">
+          {loading
+            ? statColors.map((color, i) => (
                 <div
-                  className={`p-3 rounded-xl ${stat.color} text-white shadow-sm`}
+                  key={i}
+                  className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100"
                 >
-                  <stat.icon size={24} />
+                  {/* Icon placeholder */}
+                  <div
+                    className={`w-12 h-12 rounded-xl ${color} opacity-20 mb-4 animate-pulse`}
+                  />
+                  {/* Value placeholder */}
+                  <div className="h-7 w-32 bg-gray-200 rounded-lg animate-pulse mb-2" />
+                  {/* Label placeholder */}
+                  <div className="h-4 w-20 bg-gray-100 rounded animate-pulse" />
                 </div>
-                {stat.trend && (
-                  <span className="bg-green-100 text-green-700 text-xs font-bold px-2 py-1 rounded-full flex items-center gap-1">
-                    <FiTrendingUp size={12} />
-                    {stat.trend}
-                  </span>
-                )}
-              </div>
-              <div>
-                <h3 className="text-2xl font-bold text-gray-900 mb-1">
-                  {stat.value}
-                </h3>
-                <p className="text-gray-500 text-sm font-medium">
-                  {stat.label}
-                </p>
-              </div>
-            </div>
-          ))}
+              ))
+            : stats.map((stat, index) => (
+                <div
+                  key={index}
+                  className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow"
+                >
+                  <div className="flex items-start justify-between mb-4">
+                    <div
+                      className={`p-3 rounded-xl ${stat.color} text-white shadow-sm`}
+                    >
+                      <stat.icon size={24} />
+                    </div>
+                    {stat.trend && (
+                      <span className="bg-green-100 text-green-700 text-xs font-bold px-2 py-1 rounded-full flex items-center gap-1">
+                        <FiTrendingUp size={12} />
+                        {stat.trend}
+                      </span>
+                    )}
+                  </div>
+                  <div>
+                    <h3 className="text-2xl font-bold text-gray-900 mb-1">
+                      {stat.value}
+                    </h3>
+                    <p className="text-gray-500 text-sm font-medium">
+                      {stat.label}
+                    </p>
+                  </div>
+                </div>
+              ))}
         </div>
 
+        {/* Search & filter — always visible */}
         <div className="flex flex-col md:flex-row gap-4">
           <div className="relative flex-grow">
             <FiSearch
@@ -155,9 +179,13 @@ function Payments() {
           </button>
         </div>
 
+        {/* Payments table — spinner while loading, table after */}
         {loading ? (
-          <div className="text-center py-12 text-gray-500">
-            Loading payments...
+          <div className="flex flex-col items-center justify-center py-32 gap-4">
+            <div className="w-12 h-12 border-4 border-gray-200 border-t-orange-500 rounded-full animate-spin" />
+            <p className="text-gray-500 text-sm font-medium tracking-wide">
+              Loading Payments...
+            </p>
           </div>
         ) : (
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
@@ -165,73 +193,83 @@ function Payments() {
               <table className="w-full text-left">
                 <thead>
                   <tr className="bg-gray-50/50 border-b border-gray-100">
-                    <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">
-                      Invoice
-                    </th>
-                    <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">
-                      Order
-                    </th>
-                    <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">
-                      Customer
-                    </th>
-                    <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">
-                      Amount
-                    </th>
-                    <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">
-                      Method
-                    </th>
-                    <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">
-                      Status
-                    </th>
-                    <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">
-                      Date
-                    </th>
+                    {[
+                      "Invoice",
+                      "Order",
+                      "Customer",
+                      "Amount",
+                      "Method",
+                      "Status",
+                      "Date",
+                    ].map((col) => (
+                      <th
+                        key={col}
+                        className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider"
+                      >
+                        {col}
+                      </th>
+                    ))}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
-                  {payments.map((payment) => (
-                    <tr
-                      key={payment.id}
-                      className="hover:bg-gray-50/50 transition-colors"
-                    >
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-600">
-                        {payment.invoice_number}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">
-                        {payment.order?.order_number}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 font-medium">
-                        {payment.order?.customer_name}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">
-                        {new Intl.NumberFormat("en-NG", {
-                          style: "currency",
-                          currency: "NGN",
-                          minimumFractionDigits: 0,
-                        }).format(Math.ceil(payment.amount))}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span
-                          className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium border ${getMethodColor(payment.payment_method)}`}
-                        >
-                          {payment.payment_method}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span
-                          className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold border ${getStatusColor(payment.payment_status)}`}
-                        >
-                          {payment.payment_status}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                        {new Date(payment.created_at).toLocaleDateString(
-                          "en-US",
-                          { year: "numeric", month: "short", day: "numeric" },
-                        )}
+                  {payments.length === 0 ? (
+                    <tr>
+                      <td
+                        colSpan={7}
+                        className="px-6 py-16 text-center text-sm text-gray-400"
+                      >
+                        No payments found.
                       </td>
                     </tr>
-                  ))}
+                  ) : (
+                    payments.map((payment) => (
+                      <tr
+                        key={payment.id}
+                        className="hover:bg-gray-50/50 transition-colors"
+                      >
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-600">
+                          {payment.invoice_number}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">
+                          {payment.order?.order_number}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 font-medium">
+                          {payment.order?.customer_name}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">
+                          {new Intl.NumberFormat("en-NG", {
+                            style: "currency",
+                            currency: "NGN",
+                            minimumFractionDigits: 0,
+                          }).format(Math.ceil(payment.amount))}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span
+                            className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium border ${getMethodColor(payment.payment_method)}`}
+                          >
+                            {payment.payment_method}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span
+                            className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold border ${getStatusColor(payment.payment_status)}`}
+                          >
+                            {payment.payment_status}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                          {new Date(payment.created_at).toLocaleDateString(
+                            "en-US",
+                            {
+                              year: "numeric",
+                              month: "short",
+                              day: "numeric",
+                            },
+                          )}
+                        </td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>

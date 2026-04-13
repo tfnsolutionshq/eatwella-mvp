@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import DashboardLayout from "../../DashboardLayout/DashboardLayout";
 import OrderDetailsModal from "../../Components/Modals/OrderDetailsModal";
 import DeliveryPhotoModal from "../../Components/Modals/DeliveryPhotoModal";
@@ -17,18 +17,8 @@ import {
 import { useNavigate } from "react-router-dom";
 import api from "../../utils/api";
 import { useAuth } from "../../context/AuthContext";
+import { useToast } from "../../context/ToastContext";
 
-// ---------------------------------------------------------------------------
-// Delivery-agent data source
-// ---------------------------------------------------------------------------
-// DUMMY DATA — replace `fetchDeliveryAgents` body with a real API call once
-// the endpoint is available:
-//
-//   const response = await api.get("/admin/delivery-agents");
-//   return response.data.data; // or whatever the shape is
-//
-// Each agent object must have at least: { id, name, email }
-// ---------------------------------------------------------------------------
 const DUMMY_DELIVERY_AGENTS = [
   { id: 1, name: "Chidi Okafor", email: "chidi.okafor@dispatch.com" },
   { id: 2, name: "Amaka Eze", email: "amaka.eze@dispatch.com" },
@@ -37,24 +27,11 @@ const DUMMY_DELIVERY_AGENTS = [
   { id: 5, name: "Tunde Obi", email: "tunde.obi@dispatch.com" },
 ];
 
-/**
- * Fetch delivery agents.
- * Swap the body of this function for a real API call when the endpoint lands.
- */
 const fetchDeliveryAgents = async () => {
   const { data } = await api.get("/supervisor/delivery-agents");
   return data;
-  // return DUMMY_DELIVERY_AGENTS;
 };
 
-// ---------------------------------------------------------------------------
-// Status helpers
-// ---------------------------------------------------------------------------
-
-/**
- * Single source of truth for all order statuses.
- * Add/remove entries here and tabs + badge colours update everywhere.
- */
 const STATUS_CONFIG = {
   pending: { label: "Pending", color: "bg-gray-100 text-gray-600" },
   confirmed: { label: "Confirmed", color: "bg-blue-100 text-blue-600" },
@@ -77,9 +54,6 @@ const getStatusIcon = (status) => {
   return null;
 };
 
-// ---------------------------------------------------------------------------
-// Per-role tab definitions
-// ---------------------------------------------------------------------------
 const TABS_BY_ROLE = {
   admin: [
     "all",
@@ -99,8 +73,6 @@ const TABS_BY_ROLE = {
     "dispatched",
     "completed",
   ],
-  // "all" is first so kitchen lands on it by default — orders that are marked
-  // ready remain in view instead of disappearing off the active tab.
   kitchen: ["all", "confirmed", "processing"],
   delivery_agent: ["all", "dispatched", "completed"],
   attendant: ["all", "pending", "confirmed", "ready", "completed"],
@@ -228,8 +200,8 @@ const AssignAgentModal = ({
 const OrderManagement = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { showToast } = useToast();
 
-  // Each role starts on its own default tab
   const roleTabs = TABS_BY_ROLE[user.role] ?? [
     "all",
     ...Object.keys(STATUS_CONFIG),
@@ -247,26 +219,33 @@ const OrderManagement = () => {
     per_page: 15,
   });
   const [page, setPage] = useState(1);
-  const [isLoadingOrders, setIsLoadingOrders] = useState(false);
+  const [isLoadingOrders, setIsLoadingOrders] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
-  const [changingStatusId, setChangingStatusId] = useState(null);
+  const [changingIds, setChangingIds] = useState(new Set());
   const [loadingOrderDetails, setLoadingOrderDetails] = useState(null);
   const [isDeliveryPhotoOpen, setIsDeliveryPhotoOpen] = useState(false);
   const [pendingStatusUpdate, setPendingStatusUpdate] = useState(null);
 
-  // Delivery PIN modal
   const [isPinModalOpen, setIsPinModalOpen] = useState(false);
   const [pinError, setPinError] = useState(null);
   const [isVerifyingPin, setIsVerifyingPin] = useState(false);
   const [pendingPinOrder, setPendingPinOrder] = useState(null);
 
-  // Assign-agent modal
   const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
   const [assignTargetOrder, setAssignTargetOrder] = useState(null);
   const [deliveryAgents, setDeliveryAgents] = useState([]);
   const [loadingAgents, setLoadingAgents] = useState(false);
   const [isAssigning, setIsAssigning] = useState(false);
+
+  const setChanging = (id) => setChangingIds((prev) => new Set(prev).add(id));
+  const clearChanging = (id) =>
+    setChangingIds((prev) => {
+      const next = new Set(prev);
+      next.delete(id);
+      return next;
+    });
 
   useEffect(() => {
     fetchOrders();
@@ -274,8 +253,12 @@ const OrderManagement = () => {
 
   // ── Data fetching ──────────────────────────────────────────────────────────
 
-  const fetchOrders = async () => {
-    setIsLoadingOrders(true);
+  const fetchOrders = async (silent = false) => {
+    if (silent) {
+      setIsRefreshing(true);
+    } else {
+      setIsLoadingOrders(true);
+    }
     try {
       if (user.role === "kitchen") {
         let rawOrders = allKitchenOrders;
@@ -287,17 +270,12 @@ const OrderManagement = () => {
               new Date(a.created_at).getTime(),
           );
 
-        if (rawOrders.length === 0) {
-          const response = await api.get("/kitchen/orders/confirmed");
-          const payload = response?.data;
-          const data = payload?.data ?? payload ?? [];
-          rawOrders = Array.isArray(data) ? data : [];
-          rawOrders = sortDescending(rawOrders);
-          setAllKitchenOrders(rawOrders);
-        } else {
-          rawOrders = sortDescending(rawOrders);
-          setAllKitchenOrders(rawOrders);
-        }
+        const response = await api.get("/kitchen/orders/confirmed");
+        const payload = response?.data;
+        const data = payload?.data ?? payload ?? [];
+        rawOrders = Array.isArray(data) ? data : [];
+        rawOrders = sortDescending(rawOrders);
+        setAllKitchenOrders(rawOrders);
 
         const tabFiltered =
           activeTab === "all"
@@ -308,7 +286,6 @@ const OrderManagement = () => {
         const perPage = pagination.per_page;
         const lastPage = Math.max(1, Math.ceil(total / perPage));
         const currentPage = Math.min(page, lastPage);
-
         const from = total === 0 ? 0 : (currentPage - 1) * perPage + 1;
         const to = Math.min(total, currentPage * perPage);
         const pageOrders = tabFiltered.slice(
@@ -325,26 +302,18 @@ const OrderManagement = () => {
           from,
           to,
         }));
-
-        if (currentPage !== page) {
-          setPage(currentPage);
-        }
-
+        if (currentPage !== page) setPage(currentPage);
         return;
       }
 
-      const params = {
-        page,
-        per_page: pagination.per_page,
-      };
-
+      const params = { page, per_page: pagination.per_page };
       let response;
+
       if (user.role === "admin") {
         response = await api.get("/admin/orders", { params });
       } else if (user.role === "supervisor") {
         response = await api.get("/supervisor/orders", { params });
       } else if (user.role === "delivery_agent") {
-        // Delivery agent sees only orders assigned to them
         response = await api.get("/delivery-agent/orders", { params });
       } else if (user.role === "attendant") {
         response = await api.get("/attendant/orders", { params });
@@ -363,11 +332,14 @@ const OrderManagement = () => {
         to: rawData?.to ?? pageOrders.length,
         per_page: rawData?.per_page ?? pagination.per_page,
       });
-      console.log("fetched orders:", rawData);
     } catch (err) {
       console.error("Failed to fetch orders:", err);
     } finally {
-      setIsLoadingOrders(false);
+      if (silent) {
+        setIsRefreshing(false);
+      } else {
+        setIsLoadingOrders(false);
+      }
     }
   };
 
@@ -376,7 +348,6 @@ const OrderManagement = () => {
     const current = pagination.current_page;
 
     if (totalPages <= 7) {
-      // For small number of pages, show from 2 to total-1
       if (totalPages <= 1) return [];
       return Array.from(
         { length: Math.max(0, totalPages - 2) },
@@ -386,12 +357,10 @@ const OrderManagement = () => {
 
     let start = Math.max(2, current + 1);
     let end = start + 5;
-
     if (end > totalPages - 1) {
       end = totalPages - 1;
       start = Math.max(2, end - 5);
     }
-
     return Array.from({ length: end - start + 1 }, (_, i) => start + i);
   };
 
@@ -405,20 +374,22 @@ const OrderManagement = () => {
     };
     const endpoint = endpointByRole[user.role];
     if (!endpoint) return;
-
     try {
       setLoadingOrderDetails(orderId);
       const { data } = await api.get(endpoint);
       setSelectedOrder(data);
       setIsDetailsOpen(true);
     } catch (err) {
-      alert(err.response?.data?.message || "Failed to load order details");
+      showToast(
+        err.response?.data?.message || "Failed to load order details",
+        "error",
+      );
     } finally {
       setLoadingOrderDetails(null);
     }
   };
 
-  // ── Assign agent (supervisor / admin) ──────────────────────────────────────
+  // ── Assign agent ───────────────────────────────────────────────────────────
 
   const openAssignModal = async (order) => {
     setAssignTargetOrder(order);
@@ -444,23 +415,26 @@ const OrderManagement = () => {
         `/supervisor/orders/${assignTargetOrder.id}/assign-delivery-agent`,
         { delivery_agent_id: agentId },
       );
-      // Optimistic update: the order moves to "dispatched" after assignment
       setOrders((prev) =>
         prev.map((o) =>
           o.id === assignTargetOrder.id ? { ...o, status: "dispatched" } : o,
         ),
       );
+      showToast("Delivery agent assigned successfully", "success");
       setIsAssignModalOpen(false);
       setAssignTargetOrder(null);
-      fetchOrders();
+      fetchOrders(true);
     } catch (err) {
-      alert(err.response?.data?.message || "Failed to assign delivery agent.");
+      showToast(
+        err.response?.data?.message || "Failed to assign delivery agent",
+        "error",
+      );
     } finally {
       setIsAssigning(false);
     }
   };
 
-  // ── PIN flow (delivery completion) ─────────────────────────────────────────
+  // ── PIN flow ───────────────────────────────────────────────────────────────
 
   const openPinModal = (orderId) => {
     setPendingPinOrder({ orderId });
@@ -473,17 +447,15 @@ const OrderManagement = () => {
     setIsVerifyingPin(true);
     setPinError(null);
     try {
-      // Supervisors and delivery agents share the same completion flow;
-      // point each to the appropriate endpoint.
       const endpoint =
         user.role === "supervisor"
           ? `/supervisor/orders/${orderId}/complete`
           : `/delivery-agent/orders/${orderId}/complete`;
-
       await api.post(endpoint, { delivery_pin: pin });
+      showToast("Delivery completed successfully", "success");
       setIsPinModalOpen(false);
       setPendingPinOrder(null);
-      fetchOrders();
+      fetchOrders(true);
       if (selectedOrder?.id === orderId) {
         const { data } = await api.get(`/admin/orders/${orderId}`);
         setSelectedOrder(data);
@@ -492,48 +464,53 @@ const OrderManagement = () => {
       setPinError(
         err.response?.data?.message || "Incorrect PIN. Please try again.",
       );
+      // Note: PIN errors stay in the modal via setPinError, no toast needed here
     } finally {
       setIsVerifyingPin(false);
     }
   };
 
-  // ── Status update helpers ──────────────────────────────────────────────────
+  // ── Status updates ─────────────────────────────────────────────────────────
 
-  /** Advance an order through its status lifecycle for kitchen / admin roles. */
   const handleStatusUpdate = async (order) => {
     const { id: orderId, status } = order;
-    setChangingStatusId(orderId);
-
+    setChanging(orderId);
     try {
       if (user.role === "kitchen") {
         if (status === "confirmed") {
           await api.post(`/kitchen/orders/preparing`, { order_ids: [orderId] });
+          showToast("Order is now being processed", "success");
         } else if (status === "processing") {
           await api.post(`/kitchen/orders/ready`, { order_ids: [orderId] });
+          showToast("Order marked as ready", "success");
         }
       } else if (user.role === "admin") {
         const nextStatus = status === "confirmed" ? "processing" : "ready";
         await api.put(`/admin/orders/${orderId}`, { status: nextStatus });
+        showToast(
+          nextStatus === "processing"
+            ? "Order is now being processed"
+            : "Order is ready for pickup",
+          "success",
+        );
       }
-
-      fetchOrders();
+      fetchOrders(true);
       if (selectedOrder?.id === orderId) {
         const { data } = await api.get(`/admin/orders/${orderId}`);
         setSelectedOrder(data);
       }
     } catch (err) {
-      alert(err.response?.data?.message || "Failed to update order status");
+      showToast(
+        err.response?.data?.message || "Failed to update order status",
+        "error",
+      );
     } finally {
-      setChangingStatusId(null);
+      clearChanging(orderId);
     }
   };
 
-  /**
-   * Mark a ready non-delivery order as completed.
-   * Used by attendants, supervisors, and admins — each hits their own endpoint.
-   */
   const handleNonDeliveryComplete = async (orderId) => {
-    setChangingStatusId(orderId);
+    setChanging(orderId);
     const endpointByRole = {
       attendant: `/admin/orders/${orderId}`,
       supervisor: `/admin/orders/${orderId}`,
@@ -543,41 +520,40 @@ const OrderManagement = () => {
     if (!endpoint) return;
     try {
       await api.put(endpoint, { status: "completed" });
-      fetchOrders();
+      showToast("Order marked as completed", "success");
+      fetchOrders(true);
     } catch (err) {
-      alert(err.response?.data?.message || "Failed to complete order");
+      showToast(
+        err.response?.data?.message || "Failed to complete order",
+        "error",
+      );
     } finally {
-      setChangingStatusId(null);
+      clearChanging(orderId);
     }
   };
 
-  /**
-   * Attendant confirms cash payment for a pending order, moving it to "confirmed".
-   * Update the endpoint below to match the actual route when confirmed with the backend.
-   */
   const handleConfirmPayment = async (orderId) => {
-    setChangingStatusId(orderId);
+    setChanging(orderId);
     try {
       await api.put(`/admin/orders/${orderId}`, { status: "confirmed" });
-      fetchOrders();
+      showToast("Payment confirmed successfully", "success");
+      fetchOrders(true);
     } catch (err) {
-      alert(err.response?.data?.message || "Failed to confirm payment");
+      showToast(
+        err.response?.data?.message || "Failed to confirm payment",
+        "error",
+      );
     } finally {
-      setChangingStatusId(null);
+      clearChanging(orderId);
     }
   };
 
   // ── Action button renderer ─────────────────────────────────────────────────
 
-  /**
-   * Returns the single primary action button for each order card.
-   * All role + status combinations live here — one place to update.
-   */
   const renderActionButton = (order) => {
     const { id, status, order_type } = order;
-    const busy = changingStatusId === id;
+    const busy = changingIds.has(id);
 
-    // Convenience wrapper for the common orange button
     const OrangeBtn = ({ label, onClick }) => (
       <button
         onClick={onClick}
@@ -598,9 +574,6 @@ const OrderManagement = () => {
       </button>
     );
 
-    // ── Kitchen ──────────────────────────────────────────────────────────────
-    // Only kitchen staff may move an order into "processing" or "ready".
-    // No other role sees these buttons.
     if (user.role === "kitchen") {
       if (status === "confirmed")
         return (
@@ -618,7 +591,6 @@ const OrderManagement = () => {
         );
     }
 
-    // ── Delivery agent ────────────────────────────────────────────────────────
     if (user.role === "delivery_agent") {
       if (status === "dispatched")
         return (
@@ -629,12 +601,9 @@ const OrderManagement = () => {
         );
     }
 
-    // ── Supervisor ────────────────────────────────────────────────────────────
     if (user.role === "supervisor") {
-      // Delivery orders that are ready need an agent assigned (→ dispatched)
       if (status === "ready" && order_type === "delivery")
         return <AssignBtn onClickFn={() => openAssignModal(order)} />;
-      // Non-delivery ready orders can be completed directly
       if (status === "ready" && order_type !== "delivery")
         return (
           <OrangeBtn
@@ -642,7 +611,6 @@ const OrderManagement = () => {
             onClick={() => handleNonDeliveryComplete(id)}
           />
         );
-      // Supervisor can step in and complete a dispatched delivery via PIN
       if (status === "dispatched")
         return (
           <OrangeBtn
@@ -652,9 +620,7 @@ const OrderManagement = () => {
         );
     }
 
-    // ── Attendant ─────────────────────────────────────────────────────────────
     if (user.role === "attendant") {
-      // Pending orders: attendant confirms cash payment on the spot
       if (status === "pending")
         return (
           <OrangeBtn
@@ -662,7 +628,6 @@ const OrderManagement = () => {
             onClick={() => handleConfirmPayment(id)}
           />
         );
-      // Attendants can mark non-delivery ready orders as completed (customer picked up)
       if (status === "ready" && order_type !== "delivery")
         return (
           <OrangeBtn
@@ -672,10 +637,7 @@ const OrderManagement = () => {
         );
     }
 
-    // ── Admin ─────────────────────────────────────────────────────────────────
     if (user.role === "admin") {
-      // Admin does NOT assign delivery agents anymore
-
       if (status === "ready" && order_type !== "delivery")
         return (
           <OrangeBtn
@@ -774,7 +736,7 @@ const OrderManagement = () => {
             </div>
           </div>
 
-          {/* Status tabs — each role sees only its relevant tabs */}
+          {/* Status tabs — counts show skeletons while loading, real numbers after */}
           <div className="bg-white p-2 rounded-xl border border-gray-100 shadow-sm overflow-x-auto">
             <div className="flex items-center gap-2 min-w-max">
               {roleTabs.map((tab) => {
@@ -795,148 +757,154 @@ const OrderManagement = () => {
                         : "text-gray-600 hover:bg-gray-100"
                     }`}
                   >
-                    {tab === "all" ? "All Orders" : getStatusLabel(tab)} (
-                    {count})
+                    {tab === "all" ? "All Orders" : getStatusLabel(tab)}{" "}
+                    {isLoadingOrders ? (
+                      <span className="inline-block w-5 h-3.5 bg-gray-200 rounded animate-pulse align-middle" />
+                    ) : (
+                      <span>({count})</span>
+                    )}
                   </button>
                 );
               })}
             </div>
           </div>
 
-          {/* Orders grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-            {filteredOrders.length === 0 ? (
-              <div className="col-span-full text-center py-16 text-gray-400 text-sm">
-                No orders found.
-              </div>
-            ) : (
-              filteredOrders.map((order) => (
-                <div
-                  key={order.id}
-                  className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden flex flex-col"
-                >
-                  {/* Card header */}
-                  <div className="p-5 border-b border-gray-50 flex items-start justify-between">
-                    <div>
-                      <span className="font-bold text-gray-900 text-lg">
-                        #{order.order_number}
-                      </span>
-                      <div className="text-sm text-gray-500 mt-0.5">
-                        {order.customer_email}
-                      </div>
-                      <div className="text-xs text-gray-400 mt-0.5">
-                        {new Date(order.created_at).toLocaleDateString(
-                          "en-US",
-                          {
-                            month: "short",
-                            day: "numeric",
-                            year: "numeric",
-                          },
-                        )}{" "}
-                        at{" "}
-                        {new Date(order.created_at).toLocaleTimeString(
-                          "en-US",
-                          {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          },
-                        )}
-                      </div>
-                    </div>
-                    <span
-                      className={`px-2.5 py-1 rounded-full text-xs font-medium flex items-center gap-1 ${getStatusColor(order.status)}`}
-                    >
-                      {getStatusIcon(order.status)}
-                      {getStatusLabel(order.status)}
-                    </span>
+          {/* Orders grid — spinner while loading, grid after */}
+          {isLoadingOrders && !isRefreshing ? (
+            <div className="flex flex-col items-center justify-center py-32 gap-4">
+              <div className="w-12 h-12 border-4 border-gray-200 border-t-orange-500 rounded-full animate-spin" />
+              <p className="text-gray-500 text-sm font-medium tracking-wide">
+                Loading Orders...
+              </p>
+            </div>
+          ) : (
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                {filteredOrders.length === 0 ? (
+                  <div className="col-span-full text-center py-16 text-gray-400 text-sm">
+                    No orders found.
                   </div>
-
-                  {/* Order items */}
-                  <div className="p-5 flex-1">
-                    <div className="space-y-3 mb-6">
-                      {order.order_items?.map((item) => (
-                        <div key={item.id}>
-                          <div className="flex justify-between text-sm">
-                            <span className="text-gray-600">
-                              <span className="text-gray-400 mr-2">
-                                {item.quantity}x
-                              </span>
-                              {item.menu?.name}
-                            </span>
-                            <span className="font-medium text-gray-900">
-                              {new Intl.NumberFormat("en-NG", {
-                                style: "currency",
-                                currency: "NGN",
-                                minimumFractionDigits: 0,
-                              }).format(item.subtotal)}
-                            </span>
+                ) : (
+                  filteredOrders.map((order) => (
+                    <div
+                      key={order.id}
+                      className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden flex flex-col"
+                    >
+                      {/* Card header */}
+                      <div className="p-5 border-b border-gray-50 flex items-start justify-between">
+                        <div>
+                          <span className="font-bold text-gray-900 text-lg">
+                            #{order.order_number}
+                          </span>
+                          <div className="text-sm text-gray-500 mt-0.5">
+                            {order.customer_email}
                           </div>
-                          {item.packaging && (
-                            <div className="flex justify-between text-xs text-gray-500 mt-1">
-                              <span>
-                                Packaging:{" "}
-                                {item.packaging.size_name
-                                  .charAt(0)
-                                  .toUpperCase() +
-                                  item.packaging.size_name.slice(1)}
-                              </span>
-                              <span>
-                                {new Intl.NumberFormat("en-NG", {
-                                  style: "currency",
-                                  currency: "NGN",
-                                  minimumFractionDigits: 0,
-                                }).format(item.packaging.price)}
-                              </span>
-                            </div>
-                          )}
+                          <div className="text-xs text-gray-400 mt-0.5">
+                            {new Date(order.created_at).toLocaleDateString(
+                              "en-US",
+                              {
+                                month: "short",
+                                day: "numeric",
+                                year: "numeric",
+                              },
+                            )}{" "}
+                            at{" "}
+                            {new Date(order.created_at).toLocaleTimeString(
+                              "en-US",
+                              {
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              },
+                            )}
+                          </div>
                         </div>
-                      ))}
+                        <span
+                          className={`px-2.5 py-1 rounded-full text-xs font-medium flex items-center gap-1 ${getStatusColor(order.status)}`}
+                        >
+                          {getStatusIcon(order.status)}
+                          {getStatusLabel(order.status)}
+                        </span>
+                      </div>
+
+                      {/* Order items */}
+                      <div className="p-5 flex-1">
+                        <div className="space-y-3 mb-6">
+                          {order.order_items?.map((item) => (
+                            <div key={item.id}>
+                              <div className="flex justify-between text-sm">
+                                <span className="text-gray-600">
+                                  <span className="text-gray-400 mr-2">
+                                    {item.quantity}x
+                                  </span>
+                                  {item.menu?.name}
+                                </span>
+                                <span className="font-medium text-gray-900">
+                                  {new Intl.NumberFormat("en-NG", {
+                                    style: "currency",
+                                    currency: "NGN",
+                                    minimumFractionDigits: 0,
+                                  }).format(item.subtotal)}
+                                </span>
+                              </div>
+                              {item.packaging && (
+                                <div className="flex justify-between text-xs text-gray-500 mt-1">
+                                  <span>
+                                    Packaging:{" "}
+                                    {item.packaging.size_name
+                                      .charAt(0)
+                                      .toUpperCase() +
+                                      item.packaging.size_name.slice(1)}
+                                  </span>
+                                  <span>
+                                    {new Intl.NumberFormat("en-NG", {
+                                      style: "currency",
+                                      currency: "NGN",
+                                      minimumFractionDigits: 0,
+                                    }).format(item.packaging.price)}
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                        <div className="pt-4 border-t border-dashed border-gray-200 flex items-end justify-between">
+                          <span className="font-bold text-gray-900">Total</span>
+                          <span className="text-xl font-bold text-orange-500">
+                            {new Intl.NumberFormat("en-NG", {
+                              style: "currency",
+                              currency: "NGN",
+                              minimumFractionDigits: 0,
+                            }).format(Math.ceil(order.final_amount))}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Card footer */}
+                      <div className="p-4 bg-gray-50 border-t border-gray-100 flex items-center gap-3">
+                        <button
+                          onClick={() => loadOrderDetails(order.id)}
+                          disabled={loadingOrderDetails === order.id}
+                          className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-100 transition-colors shadow-sm disabled:bg-white/50 disabled:cursor-not-allowed"
+                        >
+                          {loadingOrderDetails === order.id ? (
+                            "Loading..."
+                          ) : (
+                            <>
+                              <FiEye className="w-4 h-4" />
+                              Details
+                            </>
+                          )}
+                        </button>
+                        {renderActionButton(order)}
+                      </div>
                     </div>
+                  ))
+                )}
+              </div>
 
-                    <div className="pt-4 border-t border-dashed border-gray-200 flex items-end justify-between">
-                      <span className="font-bold text-gray-900">Total</span>
-                      <span className="text-xl font-bold text-orange-500">
-                        {new Intl.NumberFormat("en-NG", {
-                          style: "currency",
-                          currency: "NGN",
-                          minimumFractionDigits: 0,
-                        }).format(Math.ceil(order.final_amount))}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Card footer / actions */}
-                  <div className="p-4 bg-gray-50 border-t border-gray-100 flex items-center gap-3">
-                    <button
-                      onClick={() => loadOrderDetails(order.id)}
-                      disabled={loadingOrderDetails === order.id}
-                      className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-100 transition-colors shadow-sm disabled:bg-white/50 disabled:cursor-not-allowed"
-                    >
-                      {loadingOrderDetails === order.id ? (
-                        "Loading..."
-                      ) : (
-                        <>
-                          <FiEye className="w-4 h-4" />
-                          Details
-                        </>
-                      )}
-                    </button>
-
-                    {renderActionButton(order)}
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-
-          {pagination.last_page > 1 && (
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-6 border-t border-gray-200 pt-6">
-              {isLoadingOrders ? (
-                <div className="text-sm text-gray-500 w-full text-center">
-                  Loading Page…
-                </div>
-              ) : (
-                <>
+              {/* Pagination */}
+              {pagination.last_page > 1 && (
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-6 border-t border-gray-200 pt-6">
                   <div className="text-sm text-gray-500">
                     Showing {pagination.from} to {pagination.to} of{" "}
                     {pagination.total} orders
@@ -949,7 +917,6 @@ const OrderManagement = () => {
                     >
                       Previous
                     </button>
-
                     <button
                       disabled={pagination.current_page === 1}
                       onClick={() => setPage(1)}
@@ -957,7 +924,6 @@ const OrderManagement = () => {
                     >
                       First
                     </button>
-
                     {getVisiblePageNumbers().map((pageNumber) => (
                       <button
                         key={pageNumber}
@@ -971,7 +937,6 @@ const OrderManagement = () => {
                         {pageNumber}
                       </button>
                     ))}
-
                     <button
                       disabled={
                         pagination.current_page === pagination.last_page
@@ -981,7 +946,6 @@ const OrderManagement = () => {
                     >
                       Last
                     </button>
-
                     <button
                       disabled={
                         pagination.current_page === pagination.last_page
@@ -996,9 +960,9 @@ const OrderManagement = () => {
                       Next
                     </button>
                   </div>
-                </>
+                </div>
               )}
-            </div>
+            </>
           )}
         </div>
       </DashboardLayout>

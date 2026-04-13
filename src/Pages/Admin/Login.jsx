@@ -1,34 +1,40 @@
-import React, { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { MdRestaurant } from 'react-icons/md'
-import { FiMail, FiLock } from 'react-icons/fi'
-import { useAuth } from '../../context/AuthContext'
-import api from '../../utils/api'
+import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { MdRestaurant } from "react-icons/md";
+import { FiMail, FiLock } from "react-icons/fi";
+import { useAuth } from "../../context/AuthContext";
+import api from "../../utils/api";
 
 const Login = () => {
-  const navigate = useNavigate()
-  const { login } = useAuth()
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [error, setError] = useState('')
-  const [loading, setLoading] = useState(false)
+  const navigate = useNavigate();
+  const { login } = useAuth();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const handleLogin = async (e) => {
-    e.preventDefault()
-    setError('')
-    setLoading(true)
-    
+    e.preventDefault();
+    setError("");
+    setLoading(true);
+
     try {
-      const { data } = await api.post('/login', { email, password })
-      login(data.token, data.user)
-      navigate(data.user?.role === 'cashier' ? '/admin/orders' : '/admin/dashboard')
+      const { data } = await api.post("/login", { email, password });
+      login(data.token, data.user);
+      navigate(
+        data.user?.role === "cashier" ? "/admin/orders" : "/admin/dashboard",
+      );
     } catch (err) {
-      console.error('Login error:', err)
-      setError(err.response?.data?.message || err.message || 'Login failed. Please try again.')
+      console.error("Login error:", err);
+      setError(
+        err.response?.data?.message ||
+          err.message ||
+          "Login failed. Please try again.",
+      );
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
@@ -51,7 +57,9 @@ const Login = () => {
               </div>
             )}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Email
+              </label>
               <div className="relative">
                 <FiMail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                 <input
@@ -65,7 +73,9 @@ const Login = () => {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Password</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Password
+              </label>
               <div className="relative">
                 <FiLock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                 <input
@@ -83,13 +93,13 @@ const Login = () => {
               disabled={loading}
               className="w-full px-4 py-3 bg-orange-500 text-white rounded-xl text-sm font-medium hover:bg-orange-600 transition-colors shadow-sm shadow-orange-200 mt-6 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading ? 'Logging in...' : 'Login'}
+              {loading ? "Logging in..." : "Login"}
             </button>
           </form>
         </div>
       </div>
     </div>
-  )
-}
+  );
+};
 
-export default Login
+export default Login;

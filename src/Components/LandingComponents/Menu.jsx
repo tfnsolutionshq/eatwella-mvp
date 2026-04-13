@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import axios from "axios";
 import { useCart } from "../../context/CartContext";
 import { useToast } from "../../context/ToastContext";
@@ -8,33 +8,35 @@ function Menu() {
   const [activeTab, setActiveTab] = useState("all");
   const [categories, setCategories] = useState([]);
   const [menuItems, setMenuItems] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
+
   const { addToCart, loadingItems } = useCart();
   const { showToast } = useToast();
 
-  useEffect(() => {
-    fetchCategories();
-    fetchMenuItems();
-  }, []);
-
-  useEffect(() => {
-    fetchMenuItems(activeTab);
-  }, [activeTab]);
-
-  const fetchCategories = async () => {
+  const fetchInitialData = async () => {
+    setIsLoading(true);
     try {
-      const { data } = await axios.get(
-        "https://eatwella.tfnsolutions.us/api/categories",
-        {
+      const [categoriesRes, menuRes] = await Promise.all([
+        axios.get("https://eatwella.tfnsolutions.us/api/categories", {
           headers: { Accept: "application/json" },
-        },
-      );
-      setCategories(data.data);
+        }),
+        axios.get("https://eatwella.tfnsolutions.us/api/menus", {
+          headers: { Accept: "application/json" },
+        }),
+      ]);
+      setCategories(categoriesRes.data.data);
+      setMenuItems(menuRes.data.data);
     } catch (err) {
-      console.error("Failed to fetch categories:", err);
+      console.error("Failed to fetch initial data:", err);
+    } finally {
+      setIsLoading(false);
+      setIsInitialLoad(false);
     }
   };
 
-  const fetchMenuItems = async (categoryId = "all") => {
+  const fetchMenuByCategory = useCallback(async (categoryId) => {
+    setIsLoading(true);
     try {
       const url =
         categoryId === "all"
@@ -44,32 +46,29 @@ function Menu() {
         headers: { Accept: "application/json" },
       });
       setMenuItems(data.data);
-      if (categoryId === "all") {
-        setAllMenus(data.data);
-      }
     } catch (err) {
       console.error("Failed to fetch menu items:", err);
+    } finally {
+      setIsLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    fetchInitialData();
+  }, []);
+
+  useEffect(() => {
+    if (isInitialLoad) return;
+    fetchMenuByCategory(activeTab);
+  }, [activeTab]);
 
   const handleAddToCart = async (item) => {
     const result = await addToCart(item.id, 1);
     if (result) {
       showToast(`${item.name} added to cart!`, "success");
-      setSelectedItem(item);
     } else {
       showToast("Failed to add to cart", "error");
     }
-  };
-
-  const handleAddExtra = async (item) => {
-    const result = await addToCart(item.id, 1);
-    if (result) {
-      showToast(`${item.name} added to cart!`, "success");
-    } else {
-      showToast("Failed to add to cart", "error");
-    }
-    return result;
   };
 
   return (
@@ -81,26 +80,54 @@ function Menu() {
           POCKET
         </h2>
 
+        {/* Category tabs — hidden until fully loaded */}
         <div className="flex gap-3 mb-12 flex-wrap">
-          <button
-            onClick={() => setActiveTab("all")}
-            className={`px-6 py-1 rounded-full font-medium transition-colors ${activeTab === "all" ? "bg-orange-500 text-white" : "bg-white text-black hover:bg-gray-200"}`}
-          >
-            All
-          </button>
-          {categories.map((cat) => (
-            <button
-              key={cat.id}
-              onClick={() => setActiveTab(cat.id)}
-              className={`px-6 py-1 rounded-full font-medium transition-colors ${activeTab === cat.id ? "bg-orange-500 text-white" : "bg-white text-black hover:bg-gray-200"}`}
-            >
-              {cat.name}
-            </button>
-          ))}
+          {isLoading ? (
+            // Skeleton pills while loading
+            [...Array(5)].map((_, i) => (
+              <div
+                key={i}
+                className="h-8 w-20 bg-gray-700 rounded-full animate-pulse"
+              />
+            ))
+          ) : (
+            <>
+              <button
+                onClick={() => setActiveTab("all")}
+                className={`px-6 py-1 rounded-full font-medium transition-colors ${
+                  activeTab === "all"
+                    ? "bg-orange-500 text-white"
+                    : "bg-white text-black hover:bg-gray-200"
+                }`}
+              >
+                All
+              </button>
+              {categories.map((cat) => (
+                <button
+                  key={cat.id}
+                  onClick={() => setActiveTab(cat.id)}
+                  className={`px-6 py-1 rounded-full font-medium transition-colors ${
+                    activeTab === cat.id
+                      ? "bg-orange-500 text-white"
+                      : "bg-white text-black hover:bg-gray-200"
+                  }`}
+                >
+                  {cat.name}
+                </button>
+              ))}
+            </>
+          )}
         </div>
       </div>
 
-      {menuItems.length > 3 ? (
+      {isLoading ? (
+        <div className="flex flex-col items-center justify-center py-20 gap-4">
+          <div className="w-12 h-12 border-4 border-white border-t-orange-500 rounded-full animate-spin" />
+          <p className="text-white text-sm font-medium tracking-wide">
+            Loading Menu...
+          </p>
+        </div>
+      ) : menuItems.length > 3 ? (
         <div className="relative mb-8 overflow-hidden w-full">
           <div className="flex gap-6 animate-marquee">
             {[...menuItems, ...menuItems].map((item, idx) => (
@@ -162,7 +189,7 @@ function Menu() {
                 <div className="p-6 flex flex-col flex-grow">
                   <div className="flex justify-between items-center mb-3">
                     <h3 className="text-xl font-semibold">{item.name}</h3>
-                    <span className="text-red-500 font-black text-xl">
+                    <span className="text-orange-500 font-black text-xl">
                       {new Intl.NumberFormat("en-NG", {
                         style: "currency",
                         currency: "NGN",
@@ -200,7 +227,6 @@ function Menu() {
         </div>
       </div>
 
-      {/* Repeating Background Pattern */}
       <div className="absolute bottom-0 left-0 right-0 h-8 flex overflow-hidden opacity-50">
         {[...Array(20)].map((_, i) => (
           <img
