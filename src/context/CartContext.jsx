@@ -50,7 +50,6 @@ export const CartProvider = ({ children }) => {
 
   const updateItemPackaging = (cartItemId, packagingOption) => {
     // packagingOption is the full packaging object, or null to clear
-    console.log("Siuuu: ", packagingOption);
     setItemPackaging((prev) => ({ ...prev, [cartItemId]: packagingOption }));
   };
 
@@ -84,9 +83,7 @@ export const CartProvider = ({ children }) => {
   const fetchCart = async () => {
     try {
       const { data } = await cartApi.get("/cart");
-      console.log("✅ Fetched cart:", data);
       if (!data.items || data.items.length === 0) {
-        console.log("ℹ️ Server cart empty. Clearing local cart for sync.");
         clearCart();
       } else {
         setCart(data);
@@ -109,7 +106,6 @@ export const CartProvider = ({ children }) => {
         menu_id: menuId,
         quantity,
       });
-      console.log("✅ Added to cart:", data);
       if (data && data.items) {
         setCart(data);
       } else {
@@ -129,20 +125,11 @@ export const CartProvider = ({ children }) => {
     quantity = null,
     packageId = null,
   ) => {
-    console.log(
-      "cart item ID: ",
-      cartItemId,
-      "quantity: ",
-      quantity,
-      "package ID: ",
-      packageId,
-    );
     try {
       const { data } = await cartApi.put(`/cart/${cartItemId}`, {
         quantity,
         packaging_id: packageId,
       });
-      console.log("✅ Updated cart item:", data);
       if (data && data.items) {
         setCart(data);
       } else {
@@ -159,7 +146,6 @@ export const CartProvider = ({ children }) => {
   const removeFromCart = async (cartItemId) => {
     try {
       const { data } = await cartApi.delete(`/cart/${cartItemId}`);
-      console.log("✅ Removed from cart:", data);
       // Clean up this item's packaging selection when it's removed
       removePackagingForItem(cartItemId);
       if (data && data.items) {
@@ -178,7 +164,6 @@ export const CartProvider = ({ children }) => {
   const applyDiscount = async (code) => {
     try {
       const { data } = await cartApi.post("/cart/apply-discount", { code });
-      console.log("✅ Discount applied:", data);
       if (data && data.cart && data.cart.items) {
         setCart(data.cart);
       } else if (data && data.items) {
@@ -202,7 +187,6 @@ export const CartProvider = ({ children }) => {
   const removeDiscount = async () => {
     try {
       const { data } = await cartApi.delete("/cart/remove-discount");
-      console.log("✅ Discount removed:", data);
       if (data && data.items) {
         setCart(data);
       } else if (data && data.cart && data.cart.items) {
@@ -233,7 +217,6 @@ export const CartProvider = ({ children }) => {
         await Promise.all(
           itemsToRemove.map((item) => cartApi.delete(`/cart/${item.id}`)),
         );
-        console.log("✅ All cart items removed from server");
       }
     } catch (err) {
       console.error("Failed to clear cart from server:", err);
@@ -247,8 +230,6 @@ export const CartProvider = ({ children }) => {
       console.error("Failed to clear cart from local storage:", err);
     }
   };
-
-  console.log("🛍️ Current cart item count:", cartItemCount, cart);
 
   return (
     <CartContext.Provider

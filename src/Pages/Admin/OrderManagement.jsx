@@ -251,6 +251,14 @@ const OrderManagement = () => {
     fetchOrders();
   }, [page, activeTab]);
 
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetchOrders(true); // silent refresh (no big spinner)
+    }, 60000); // 60 seconds
+
+    return () => clearInterval(interval); // cleanup
+  }, [page, activeTab, user.role]);
+
   // ── Data fetching ──────────────────────────────────────────────────────────
 
   const fetchOrders = async (silent = false) => {
@@ -720,9 +728,22 @@ const OrderManagement = () => {
               </p>
             </div>
             <div className="flex items-center gap-3">
-              <button className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors shadow-sm">
-                <FiFilter className="w-4 h-4" />
-                Filter
+              <button
+                onClick={() => fetchOrders(true)}
+                disabled={isRefreshing}
+                className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors shadow-sm disabled:opacity-50"
+              >
+                {isRefreshing ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin" />
+                    Refreshing...
+                  </>
+                ) : (
+                  <>
+                    <FiClock className="w-4 h-4" />
+                    Refresh
+                  </>
+                )}
               </button>
               {user?.role === "attendant" && (
                 <button

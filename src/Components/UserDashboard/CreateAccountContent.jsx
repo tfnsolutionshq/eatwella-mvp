@@ -116,11 +116,6 @@ function CreateAccountContent() {
     <div className="bg-gray-50 py-12 px-4 md:px-6 min-h-[60vh]">
       <div className="max-w-md mx-auto">
         <div className="bg-white rounded-3xl shadow-sm border border-gray-100 px-8 py-10 flex flex-col items-stretch text-center">
-          <div className="w-14 h-14 rounded-full bg-orange-50 flex items-center justify-center mx-auto mb-4">
-            <span className="w-7 h-7 rounded-full border-2 border-orange-500 flex items-center justify-center text-orange-500 text-lg">
-              U
-            </span>
-          </div>
           <h2 className="text-2xl font-bold mb-1">Create Your Account</h2>
           <p className="text-sm text-gray-500 mb-8">
             One last step to track your orders and earn rewards.

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   CheckCircle,
   Download,
@@ -10,7 +10,54 @@ import {
 } from "lucide-react";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { useCart } from "../../context/CartContext";
+import { PDFDownloadLink, pdf } from "@react-pdf/renderer";
+import ReceiptPDF from "../ReceiptPDF";
 import api from "../../utils/api";
+
+// ── Device detection ──────────────────────────────────────────────────────────
+// POS machines typically have narrow screens (≤ 480px), touch interfaces,
+// and may identify themselves via user-agent strings common in embedded browsers.
+function useDeviceType() {
+  const [deviceType, setDeviceType] = useState("desktop");
+
+  useEffect(() => {
+    const detectDevice = () => {
+      const width = window.screen.width;
+      const ua = navigator.userAgent.toLowerCase();
+
+      const isPOSByWidth = width <= 600;
+      const isPOSByUA =
+        /pos|terminal|sunmi|ingenico|pax |verifone|newland|epson|star\s?micronics/i.test(
+          ua,
+        );
+      // Touch-only narrow devices are almost always POS in a food-service context
+      const isPOSByTouch =
+        width <= 600 &&
+        navigator.maxTouchPoints > 0 &&
+        !/iphone|ipad|android/i.test(ua);
+
+      if (isPOSByUA || isPOSByWidth || isPOSByTouch) {
+        setDeviceType("pos");
+      } else {
+        setDeviceType("desktop");
+      }
+    };
+
+    detectDevice();
+    window.addEventListener("resize", detectDevice);
+    return () => window.removeEventListener("resize", detectDevice);
+  }, []);
+
+  return deviceType;
+}
+
+// Paper size config per device
+const PAPER_SIZE_MAP = {
+  pos: "58mm", // Standard thermal receipt width; swap to "80mm" if your POS uses 80mm rolls
+  desktop: "A5",
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 function ReceiptDetails() {
   const location = useLocation();
@@ -23,7 +70,11 @@ function ReceiptDetails() {
   const [zones, setZones] = useState([]);
   const [copied, setCopied] = useState(false);
 
+  const deviceType = useDeviceType();
+  const paperSize = PAPER_SIZE_MAP[deviceType];
+
   console.log("The order details: ", order);
+  console.log("Detected device type:", deviceType, "→ paper size:", paperSize);
 
   useEffect(() => {
     const clearAndFetch = async () => {
@@ -48,7 +99,6 @@ function ReceiptDetails() {
         console.error("Failed to load zones", e);
       }
     };
-
     loadZones();
   }, []);
 
@@ -74,12 +124,29 @@ function ReceiptDetails() {
     }
   }, [order, orderId]);
 
-  const statusValue = (order?.status || "pending").toLowerCase();
+  // Generates a PDF blob and opens the browser/OS print dialog
+  const handlePrint = useCallback(async () => {
+    if (!order) return;
+    try {
+      const blob = await pdf(
+        <ReceiptPDF order={order} paperSize={paperSize} />,
+      ).toBlob();
+      const url = URL.createObjectURL(blob);
+      const printWindow = window.open(url, "_blank");
+      if (printWindow) {
+        printWindow.onload = () => {
+          printWindow.focus();
+          printWindow.print();
+        };
+      }
+    } catch (err) {
+      console.error("Print failed:", err);
+    }
+  }, [order, paperSize]);
 
-  const statusLabel = (() => {
-    if (!statusValue) return "Pending";
-    return statusValue.charAt(0).toUpperCase() + statusValue.slice(1);
-  })();
+  const statusValue = (order?.status || "pending").toLowerCase();
+  const statusLabel =
+    statusValue.charAt(0).toUpperCase() + statusValue.slice(1);
 
   const handleCopyOrderId = () => {
     const idToCopy = order.order_number || order.id || "";
@@ -94,12 +161,6 @@ function ReceiptDetails() {
     if (statusValue === "cancelled") return "bg-red-100 text-red-700";
     return "bg-yellow-100 text-yellow-700";
   })();
-
-  // const subtotal =
-  //   order.order_items?.reduce((sum, item) => {
-  //     const packagingPrice = item.packaging?.price ?? 0;
-  //     return sum + (item.subtotal ?? 0) + packagingPrice * (item.quantity ?? 1);
-  //   }, 0) ?? 0;
 
   // ── Loading state ──
   if (isLoading) {
@@ -129,7 +190,6 @@ function ReceiptDetails() {
   // ── Error state ──
   if (fetchError) {
     const isNotFound = fetchError === "not_found";
-
     return (
       <div className="max-w-2xl mx-auto px-6 py-12">
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8">
@@ -165,7 +225,11 @@ function ReceiptDetails() {
               )}
               <button
                 onClick={() => navigate("/menu")}
-                className={`flex-1 font-bold px-6 py-3 rounded-full transition-colors ${isNotFound ? "bg-orange-500 text-white hover:bg-orange-600" : "border border-gray-200 text-gray-700 hover:bg-gray-50"}`}
+                className={`flex-1 font-bold px-6 py-3 rounded-full transition-colors ${
+                  isNotFound
+                    ? "bg-orange-500 text-white hover:bg-orange-600"
+                    : "border border-gray-200 text-gray-700 hover:bg-gray-50"
+                }`}
               >
                 Return to Menu
               </button>
@@ -325,7 +389,7 @@ function ReceiptDetails() {
                   <br />
                   <span className="text-xs text-gray-500">
                     {item.packaging_price
-                      ? "Packaging Price: " +
+                      ? "Packaging: " +
                         new Intl.NumberFormat("en-NG", {
                           style: "currency",
                           currency: "NGN",
@@ -386,6 +450,22 @@ function ReceiptDetails() {
               Create Account
             </button>
           </Link>
+        </div>
+
+        {/* Download / Print button — fires print dialog on click */}
+        <div className="mt-4">
+          <button
+            onClick={handlePrint}
+            className="w-full bg-orange-500 text-white py-3 rounded-full flex flex-col lg:flex-row items-center justify-center gap-2 hover:bg-orange-600 transition-colors"
+          >
+            <div className="flex items-center">
+              <Download className="w-4 h-4 mr-3" />
+              <span>Download / Print Receipt</span>
+            </div>
+            <span className="text-xs opacity-75 ml-1">
+              ({deviceType === "pos" ? "POS thermal" : "A5 PDF"})
+            </span>
+          </button>
         </div>
 
         <button

@@ -48,16 +48,23 @@ function TrackOrderContent() {
       return;
     }
 
+    fetchOrderById(formData.orderId);
+  };
+
+  const fetchOrderById = async (orderId) => {
+    if (!orderId) return;
+
     setLoading(true);
     setError("");
+
     try {
-      const response = await api.get(`/orders/track/${formData.orderId}`);
+      const response = await api.get(`/orders/track/${orderId}`);
       setOrderData(response.data);
       setStep("details");
     } catch (err) {
       setError(
         err.response?.data?.message ||
-          "Order not found. Please check your details and try again.",
+          "Failed to refresh order. Please try again.",
       );
     } finally {
       setLoading(false);
@@ -85,6 +92,16 @@ function TrackOrderContent() {
       return;
     }
   }, [orderData]);
+
+  useEffect(() => {
+    if (step !== "details" || !formData.orderId) return;
+
+    const interval = setInterval(() => {
+      fetchOrderById(formData.orderId);
+    }, 60000);
+
+    return () => clearInterval(interval);
+  }, [step, formData.orderId]);
 
   const getTimelineStatus = (currentStatus) => {
     const s = (currentStatus || "").toLowerCase();
@@ -343,15 +360,6 @@ function TrackOrderContent() {
                 value: orderData.order_type,
                 capitalize: true,
               },
-              ...(orderData.delivery_pin
-                ? [
-                    {
-                      icon: SquareAsteriskIcon,
-                      label: "Delivery PIN",
-                      value: orderData.delivery_pin,
-                    },
-                  ]
-                : []),
               { icon: Mail, label: "Email", value: orderData.customer_email },
               { icon: Phone, label: "Phone", value: orderData.customer_phone },
               {
@@ -518,6 +526,13 @@ function TrackOrderContent() {
           className="flex-1 bg-white border border-gray-200 text-gray-700 font-bold py-4 rounded-full hover:bg-gray-50 transition-colors"
         >
           Track Another Order
+        </button>
+        <button
+          onClick={() => fetchOrderById(formData.orderId)}
+          disabled={loading}
+          className="flex-1 bg-white border border-gray-200 text-gray-700 font-bold py-4 rounded-full hover:bg-gray-50 transition-colors disabled:opacity-70"
+        >
+          {loading ? "Refreshing..." : "Refresh Order Status"}
         </button>
         <button className="flex-1 bg-orange-500 text-white font-bold py-4 rounded-full hover:bg-orange-600 transition-colors">
           Contact Support

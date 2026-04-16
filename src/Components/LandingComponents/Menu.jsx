@@ -3,6 +3,8 @@ import axios from "axios";
 import { useCart } from "../../context/CartContext";
 import { useToast } from "../../context/ToastContext";
 import { Link } from "react-router-dom";
+import { checkWorkingHourAvailability } from "../../utils/checkWorkingHours";
+import WorkingHoursClosedModal from "../Modals/WorkingHoursInfoModal";
 
 function Menu() {
   const [activeTab, setActiveTab] = useState("all");
@@ -10,6 +12,11 @@ function Menu() {
   const [menuItems, setMenuItems] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
+  const [closedModal, setClosedModal] = useState({
+    open: false,
+    message: "",
+    schedule: [],
+  });
 
   const { addToCart, loadingItems } = useCart();
   const { showToast } = useToast();
@@ -63,6 +70,14 @@ function Menu() {
   }, [activeTab]);
 
   const handleAddToCart = async (item) => {
+    const { available, message, schedule } =
+      await checkWorkingHourAvailability();
+
+    if (!available) {
+      setClosedModal({ open: true, message, schedule });
+      return;
+    }
+
     const result = await addToCart(item.id, 1);
     if (result) {
       showToast(`${item.name} added to cart!`, "success");
@@ -237,6 +252,15 @@ function Menu() {
           />
         ))}
       </div>
+
+      <WorkingHoursClosedModal
+        isOpen={closedModal.open}
+        message={closedModal.message}
+        schedule={closedModal.schedule}
+        onClose={() =>
+          setClosedModal({ open: false, message: "", schedule: [] })
+        }
+      />
     </div>
   );
 }

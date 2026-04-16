@@ -2,6 +2,8 @@ import { useState, useEffect, useCallback } from "react";
 import axios from "axios";
 import { useCart } from "../../context/CartContext";
 import { useToast } from "../../context/ToastContext";
+import { checkWorkingHourAvailability } from "../../utils/checkWorkingHours";
+import WorkingHoursClosedModal from "../Modals/WorkingHoursInfoModal";
 
 function MenuItems() {
   const [activeTab, setActiveTab] = useState("all");
@@ -17,6 +19,11 @@ function MenuItems() {
     from: 0,
     to: 0,
     per_page: 15,
+  });
+  const [closedModal, setClosedModal] = useState({
+    open: false,
+    message: "",
+    schedule: [],
   });
 
   const { addToCart, loadingItems } = useCart();
@@ -127,6 +134,14 @@ function MenuItems() {
   };
 
   const handleAddToCart = async (item) => {
+    const { available, message, schedule } =
+      await checkWorkingHourAvailability();
+
+    if (!available) {
+      setClosedModal({ open: true, message, schedule });
+      return;
+    }
+
     const result = await addToCart(item.id, 1);
     if (result) {
       showToast(`${item.name} added to cart!`, "success");
@@ -275,6 +290,15 @@ function MenuItems() {
           </>
         )}
       </div>
+
+      <WorkingHoursClosedModal
+        isOpen={closedModal.open}
+        message={closedModal.message}
+        schedule={closedModal.schedule}
+        onClose={() =>
+          setClosedModal({ open: false, message: "", schedule: [] })
+        }
+      />
     </div>
   );
 }

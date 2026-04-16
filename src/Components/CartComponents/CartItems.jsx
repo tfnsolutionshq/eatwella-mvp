@@ -281,16 +281,23 @@ function CartItems() {
         0,
       );
 
-  // totalPackagingFee is computed inside context and stays stable
   const totalPackagingFee = cartItems.reduce(
     (sum, item) => sum + (item.packaging?.price ?? 0) * item.quantity,
     0,
   );
+
+  // The true subtotal — what the customer actually owes before any discount
   const subtotal = baseSubtotal + totalPackagingFee;
-  const discountAmount = Number(cart?.discount_amount || 0);
+
+  // Discount rate from the server (e.g. 0.15 for 15%), then apply to full subtotal
+  const serverDiscountAmount = Number(cart?.discount_amount || 0);
+  const discountRate =
+    baseSubtotal > 0 ? serverDiscountAmount / baseSubtotal : 0;
+  const discountAmount = subtotal * discountRate; // ← now applies to full subtotal
+
+  const discountPercent = Math.round(discountRate * 100); // e.g. 15
+
   const finalTotal = subtotal - discountAmount;
-  const discountPercent =
-    baseSubtotal > 0 ? Math.round((discountAmount / baseSubtotal) * 100) : 0;
   // ─────────────────────────────────────────────────────────────────────────────
 
   if (cartItems.length === 0) {
@@ -633,11 +640,31 @@ function CartItems() {
                   </span>
                 </div>
 
+                <div className="flex justify-between text-sm mt-6">
+                  <span className="text-gray-600">Packaging Fee</span>
+                  {packagingLoading ? (
+                    <span>Loading packaging fee…</span>
+                  ) : (
+                    <span className="font-bold">
+                      {new Intl.NumberFormat("en-NG", {
+                        style: "currency",
+                        currency: "NGN",
+                        minimumFractionDigits: 0,
+                      }).format(totalPackagingFee)}
+                    </span>
+                  )}
+                </div>
+
                 {discountAmount > 0 && (
                   <div className="flex justify-between text-sm text-green-600">
                     <span>{`Discount (${discountPercent}%)`}</span>
                     <span className="font-bold flex items-center gap-2">
-                      -₦{discountAmount.toFixed(2)}
+                      -
+                      {new Intl.NumberFormat("en-NG", {
+                        style: "currency",
+                        currency: "NGN",
+                        minimumFractionDigits: 0,
+                      }).format(discountAmount)}
                       <button
                         onClick={handleRemoveDiscount}
                         disabled={removingDiscount}

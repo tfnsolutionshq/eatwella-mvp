@@ -13,6 +13,7 @@ import {
   FiBriefcase,
   FiAward,
   FiPackage,
+  FiBell,
 } from "react-icons/fi";
 import { MdRestaurant, MdQrCodeScanner } from "react-icons/md";
 import { useNavigate, useLocation } from "react-router-dom";
@@ -68,6 +69,13 @@ export default function Sidebar({ isOpen, onToggle }) {
       icon: FiMapPin,
       path: "/admin/locations",
       roles: ["admin"],
+    },
+    {
+      id: "campaigns",
+      label: "Campaigns",
+      icon: FiBell,
+      path: "/admin/campaigns",
+      roles: ["admin", "supervisor"],
     },
     {
       id: "vacancies",

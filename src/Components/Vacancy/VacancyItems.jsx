@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import api from "../../utils/api";
 import {
   FiUpload,
@@ -9,6 +9,7 @@ import {
   FiBriefcase,
   FiX,
 } from "react-icons/fi";
+import { Link } from "react-router-dom";
 
 function VacancyItems() {
   const [openings, setOpenings] = useState([]);
@@ -210,12 +211,20 @@ function VacancyItems() {
                     <span className="text-sm font-medium text-gray-400">
                       Posted recently
                     </span>
-                    <button
-                      onClick={() => openApplicationModal(opening)}
-                      className="px-8 py-3 rounded-full bg-gray-900 text-white font-bold hover:bg-orange-500 transition-all duration-300 shadow-lg hover:shadow-orange-500/30 transform active:scale-95"
-                    >
-                      Apply Now
-                    </button>
+                    <div className="flex items-center gap-3">
+                      <Link
+                        to={`/careers/${opening.id}`}
+                        className="px-6 py-3 rounded-full border-2 border-gray-900 text-gray-900 font-bold hover:border-orange-500 hover:text-orange-500 transition-all duration-300"
+                      >
+                        View Details
+                      </Link>
+                      <button
+                        onClick={() => openApplicationModal(opening)}
+                        className="px-8 py-3 rounded-full bg-gray-900 text-white font-bold hover:bg-orange-500 transition-all duration-300 shadow-lg hover:shadow-orange-500/30 transform active:scale-95"
+                      >
+                        Apply Now
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>

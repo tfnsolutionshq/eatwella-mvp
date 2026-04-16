@@ -44,7 +44,6 @@ function OrderTypeForm() {
     fullName: "",
     email: "",
     phone: "",
-    zipCode: "",
     deliveryAddress: "",
   });
 
@@ -149,7 +148,6 @@ function OrderTypeForm() {
         fullName: user.name || "",
         email: user.email || "",
         phone: user.phone || "",
-        zipCode: user.postal_code || "",
       }));
     }
     getTaxes();
@@ -235,7 +233,6 @@ function OrderTypeForm() {
       if (orderType === "delivery") {
         payload.delivery_city = selectedLocation.city;
         payload.delivery_address = formData.deliveryAddress;
-        payload.delivery_zip = formData.zipCode;
         payload.delivery_zone_id = selectedLocation.id;
       }
 
@@ -496,20 +493,6 @@ function OrderTypeForm() {
                     className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                   />
                 </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-gray-600 mb-2 uppercase tracking-wide">
-                    ZIP Code
-                  </label>
-                  <input
-                    type="text"
-                    name="zipCode"
-                    value={formData.zipCode}
-                    onChange={handleChange}
-                    placeholder="224455"
-                    className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-                  />
-                </div>
               </>
             )}
           </div>
@@ -523,7 +506,13 @@ function OrderTypeForm() {
                 <div key={item.id}>
                   <div className="flex justify-between">
                     <span className="text-gray-700">
-                      {item.quantity}x {item.menu?.name}
+                      {item.quantity}x {item.menu?.name} (
+                      {new Intl.NumberFormat("en-NG", {
+                        style: "currency",
+                        currency: "NGN",
+                        minimumFractionDigits: 0,
+                      }).format(item.menu?.price)}
+                      )
                     </span>
                     <span className="font-bold">
                       {new Intl.NumberFormat("en-NG", {

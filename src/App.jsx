@@ -44,11 +44,13 @@ import MealPlansPage from "./Pages/MealPlansPage/MealPlansPage";
 import LoyaltyBoardPage from "./Pages/LoyaltyBoardPage/LoyaltyBoardPage";
 import TrackOrderPage from "./Pages/TrackOrderPage/TrackOrderPage";
 import VacancyPage from "./Pages/Vacancy/Vacancies";
+import VacancyItemDetails from "./Components/Vacancy/VacancyItemDetails";
 import NotFound from "./Pages/NotFound/NotFound";
 import ScrollToTop from "./Components/ScrollToTop";
 import ScrollToTopButton from "./Components/ScrollToTopButton";
 import FoodPackaging from "./Pages/Admin/FoodPackaging";
 import Settings from "./Pages/Admin/Settings";
+import Campaigns from "./Pages/Admin/Campaigns";
 
 function App() {
   return (
@@ -84,6 +86,10 @@ function App() {
                     element={<EditProfile />}
                   />
                   <Route path="/careers" element={<VacancyPage />} />
+                  <Route
+                    path="/careers/:careerId"
+                    element={<VacancyItemDetails />}
+                  />
                 </Route>
 
                 {/* Admin Routes */}
@@ -117,6 +123,7 @@ function App() {
                     path="/admin/food-packaging"
                     element={<FoodPackaging />}
                   />
+                  <Route path="/admin/campaigns" element={<Campaigns />} />
                 </Route>
 
                 {/* Admin + Supervisor Routes */}

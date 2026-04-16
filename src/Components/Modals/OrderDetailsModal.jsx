@@ -43,8 +43,10 @@ const OrderDetailsModal = ({ isOpen, onClose, order }) => {
             <div>
               <p className="text-sm text-gray-500 mb-1">Order Type</p>
               <p className="text-base font-medium text-gray-900">
-                {order.order_type?.charAt(0).toUpperCase() +
-                  order.order_type?.slice(1)}
+                {order.order_type === "dine"
+                  ? "Dine-in"
+                  : order.order_type?.charAt(0).toUpperCase() +
+                    order.order_type?.slice(1)}
               </p>
             </div>
 
@@ -163,7 +165,7 @@ const OrderDetailsModal = ({ isOpen, onClose, order }) => {
                           {item.menu?.name}
                         </p>
                         <p className="text-xs text-gray-500">
-                          Qty: {item.quantity}
+                          Quantity: {item.quantity}
                         </p>
                         <p className="text-xs text-gray-500">
                           {item.packaging &&
