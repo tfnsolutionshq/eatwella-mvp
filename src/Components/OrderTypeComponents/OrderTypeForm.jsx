@@ -35,7 +35,7 @@ const fetchAvailableTables = async () => {
 function OrderTypeForm() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { cart, removeDiscount } = useCart();
+  const { cart } = useCart();
   const { user } = useAuth();
   const orderType = location.state?.orderType || "pickup";
   const paymentMethod = location.state?.paymentMethod;
@@ -83,19 +83,43 @@ function OrderTypeForm() {
     (Number(item.menu.price) + Number(item.packaging?.price ?? 0)) *
     item.quantity;
 
+  // Items + packaging
   const subtotal = cartItems.reduce((sum, item) => sum + getItemTotal(item), 0);
+
+  // Delivery (separate)
   const deliveryFee =
     orderType === "delivery" ? Number(selectedLocation?.delivery_fee ?? 0) : 0;
-  const discountAmount = Number(cart?.discount_amount || 0);
-  const subtotalAfterDiscount = subtotal - discountAmount;
-  const originalTotal = subtotal + deliveryFee;
-  const discountPercent =
-    originalTotal > 0 ? Math.round((discountAmount / originalTotal) * 100) : 0;
+
+  // Discount (applies ONLY to subtotal)
+  const discountValue = Number(cart?.discount?.value ?? 0);
+  const discountType = cart?.discount?.type ?? null;
+
+  let discountAmount = 0;
+
+  if (discountType === "percentage") {
+    discountAmount = (discountValue / 100) * subtotal;
+  } else if (discountType === "fixed") {
+    discountAmount = discountValue;
+  }
+
+  // Prevent negative edge case
+  const safeDiscount = Math.min(discountAmount, subtotal);
+
+  // Apply discount correctly
+  const subtotalAfterDiscount = subtotal - safeDiscount;
+
+  // Tax should apply AFTER discount (this is industry standard)
   const totalTaxAmount = taxList.reduce(
-    (sum, tax) => sum + (tax.rate / 100) * subtotal,
+    (sum, tax) => sum + (tax.rate / 100) * subtotalAfterDiscount,
     0,
   );
+
+  // Final total
   const grandTotal = subtotalAfterDiscount + deliveryFee + totalTaxAmount;
+
+  // Discount %
+  const discountPercent =
+    subtotal > 0 ? Math.round((safeDiscount / subtotal) * 100) : 0;
 
   // ── Data fetching ─────────────────────────────────────────────────────────
   const getTaxes = async () => {
@@ -254,13 +278,6 @@ function OrderTypeForm() {
     } finally {
       setIsSubmitting(false);
     }
-  };
-
-  const handleRemoveDiscount = async () => {
-    setRemovingDiscount(true);
-    const res = await removeDiscount();
-    setRemovingDiscount(false);
-    if (!res?.success) alert(res?.message || "Failed to remove discount");
   };
 
   // ── Render ────────────────────────────────────────────────────────────────
@@ -552,26 +569,16 @@ function OrderTypeForm() {
                 </span>
               </div>
 
-              {discountAmount > 0 && (
+              {safeDiscount > 0 && (
                 <div className="flex justify-between text-green-600">
                   <span>{`Discount (${discountPercent}%)`}:</span>
                   <span className="font-bold flex items-center gap-2">
-                    -₦
-                    {discountAmount
-                      .toFixed(2)
-                      .toString()
-                      .replace(/\B(?=(\d{3})+(?!\d))/g, ",")}
-                    <button
-                      onClick={handleRemoveDiscount}
-                      disabled={removingDiscount}
-                      className="w-6 h-6 rounded-full bg-red-500 text-white flex items-center justify-center hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {removingDiscount ? (
-                        <span className="spinner" />
-                      ) : (
-                        <FaTimes className="w-3 h-3" />
-                      )}
-                    </button>
+                    -
+                    {new Intl.NumberFormat("en-NG", {
+                      style: "currency",
+                      currency: "NGN",
+                      minimumFractionDigits: 0,
+                    }).format(Math.ceil(discountAmount))}
                   </span>
                 </div>
               )}
@@ -589,7 +596,11 @@ function OrderTypeForm() {
                   </span>
                   {selectedLocation ? (
                     <span className="font-bold">
-                      ₦{Number(deliveryFee).toLocaleString()}
+                      {new Intl.NumberFormat("en-NG", {
+                        style: "currency",
+                        currency: "NGN",
+                        minimumFractionDigits: 0,
+                      }).format(Math.ceil(deliveryFee))}
                     </span>
                   ) : (
                     <span className="text-sm text-gray-400 italic">
@@ -605,7 +616,7 @@ function OrderTypeForm() {
                 </p>
               ) : (
                 taxList?.map((tax) => {
-                  const taxAmount = (tax.rate / 100) * subtotal;
+                  const taxAmount = (tax.rate / 100) * subtotalAfterDiscount;
                   return (
                     <div key={tax.id} className="flex justify-between">
                       <span className="text-gray-600">{`${tax.name} (${tax.rate}%)`}</span>
@@ -638,12 +649,14 @@ function OrderTypeForm() {
               disabled={
                 isSubmitting ||
                 checkingHours ||
-                isLoadingTax ||
+                taxList.length < 1 ||
                 (orderType === "delivery" && !selectedLocation)
               }
               className="w-full bg-orange-500 hover:bg-orange-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white py-4 rounded-full font-bold transition-colors"
             >
-              {isSubmitting || checkingHours ? "Processing..." : "Pay Now"}
+              {isSubmitting || checkingHours || taxList.length < 1
+                ? "Processing..."
+                : "Pay Now"}
             </button>
 
             {orderType === "delivery" && !selectedLocation && (

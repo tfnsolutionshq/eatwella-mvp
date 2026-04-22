@@ -1,7 +1,6 @@
-import React from "react";
-import dineInImg from "../../assets/feeling/dine_in.png";
-import pickupImg from "../../assets/feeling/pickupp.png";
-import deliveryImg from "../../assets/feeling/deliveryyy.png";
+import dineInImg from "../../assets/feeling/eatwella_dinein.jpeg";
+import pickupImg from "../../assets/feeling/eatwella_pickup.jpeg";
+import deliveryImg from "../../assets/feeling/eatwella_delivery.jpeg";
 
 function Feeling() {
   const sections = [
@@ -17,7 +16,7 @@ function Feeling() {
       image: pickupImg,
       title: "Pick Up",
       description: "Order ahead and skip the line.",
-      align: "right",
+      align: "left",
     },
     {
       id: 3,
@@ -29,19 +28,21 @@ function Feeling() {
   ];
 
   return (
-    <div className="w-full">
+    <div className="w-full overflow-hidden">
       {sections.map((section) => (
         <div
           key={section.id}
-          className="relative w-full h-[80vh] bg-fixed bg-center bg-cover flex items-center"
-          style={{ backgroundImage: `url(${section.image})` }}
+          className={`relative w-full h-[80vh] lg:h-[100vh] bg-fixed bg-[length:400%] lg:bg-[length:200%] xl:bg-[length:120%] ${section.title === "Dine In" ? "bg-[position:bottom]" : "bg-center"} flex items-center bg-no-repeat`}
+          style={{
+            backgroundImage: `url(${section.image})`,
+          }}
         >
           {/* Overlay */}
-          <div className="absolute inset-0 bg-black/40"></div>
+          <div className="absolute inset-0 bg-black/50"></div>
 
           {/* Content */}
           <div
-            className={`relative z-10 container mx-auto px-6 md:px-12 flex ${section.align === "right" ? "justify-end" : "justify-start"}`}
+            className={`relative z-10 container mx-auto px-6 md:px-12 flex ${section.align === "right" ? "justify-end text-right" : "justify-start"}`}
           >
             <div className="max-w-xl text-white">
               <h2 className="text-5xl md:text-7xl font-black font-bolota mb-4 tracking-tight drop-shadow-lg">

@@ -1,6 +1,77 @@
 import { FiX } from "react-icons/fi";
+import { Download } from "lucide-react";
+import { pdf } from "@react-pdf/renderer";
+import ReceiptPDF from "../ReceiptPDF";
+import { useCallback, useEffect, useState } from "react";
+
+function useDeviceType() {
+  const [deviceType, setDeviceType] = useState("desktop");
+
+  useEffect(() => {
+    const detectDevice = () => {
+      const width = window.screen.width;
+      const ua = navigator.userAgent.toLowerCase();
+
+      const isPOSByWidth = width <= 600;
+      const isPOSByUA =
+        /pos|terminal|sunmi|ingenico|pax |verifone|newland|epson|star\s?micronics/i.test(
+          ua,
+        );
+      // Touch-only narrow devices are almost always POS in a food-service context
+      const isPOSByTouch =
+        width <= 600 &&
+        navigator.maxTouchPoints > 0 &&
+        !/iphone|ipad|android/i.test(ua);
+
+      if (isPOSByUA || isPOSByWidth || isPOSByTouch) {
+        setDeviceType("pos");
+      } else {
+        setDeviceType("desktop");
+      }
+    };
+
+    detectDevice();
+    window.addEventListener("resize", detectDevice);
+    return () => window.removeEventListener("resize", detectDevice);
+  }, []);
+
+  return deviceType;
+}
+
+// Paper size config per device
+const PAPER_SIZE_MAP = {
+  pos: "58mm", // Standard thermal receipt width; swap to "80mm" if your POS uses 80mm rolls
+  desktop: "A5",
+};
 
 const OrderDetailsModal = ({ isOpen, onClose, order }) => {
+  // ✅ ALL hooks must be called unconditionally, before any early returns
+  const deviceType = useDeviceType();
+  const paperSize = PAPER_SIZE_MAP[deviceType];
+
+  const handlePrint = useCallback(async () => {
+    if (!order) return;
+    try {
+      const blob = await pdf(
+        // ✅ paperSize is now correctly passed in
+        <ReceiptPDF order={order} paperSize={paperSize} />,
+      ).toBlob();
+
+      const url = URL.createObjectURL(blob);
+      const printWindow = window.open(url, "_blank");
+
+      if (printWindow) {
+        printWindow.onload = () => {
+          printWindow.focus();
+          printWindow.print();
+        };
+      }
+    } catch (err) {
+      console.error("Print failed:", err);
+    }
+  }, [order, paperSize]); // ✅ paperSize added to dependency array
+
+  // ✅ Early return comes AFTER all hook calls
   if (!isOpen || !order) return null;
 
   const getStatusColor = (status) => {
@@ -94,6 +165,24 @@ const OrderDetailsModal = ({ isOpen, onClose, order }) => {
               </p>
             </div>
 
+            {order.attendant && (
+              <>
+                <div>
+                  <p className="text-sm text-gray-500 mb-1">Attendant Name</p>
+                  <p className="text-base font-medium text-gray-900">
+                    {order.attendant.name}
+                  </p>
+                </div>
+
+                <div>
+                  <p className="text-sm text-gray-500 mb-1">Attendant Email</p>
+                  <p className="text-base font-medium text-gray-900 text-wrap">
+                    {order.attendant.email}
+                  </p>
+                </div>
+              </>
+            )}
+
             <div>
               <p className="text-sm text-gray-500 mb-1">Created At</p>
               <p className="text-base font-medium text-gray-900">
@@ -140,12 +229,6 @@ const OrderDetailsModal = ({ isOpen, onClose, order }) => {
                   item.menu?.images && item.menu.images.length > 0
                     ? item.menu.images[0]
                     : null;
-                console.log(
-                  "Rendering item:",
-                  item.menu?.name,
-                  "Image URL:",
-                  imageUrl,
-                );
                 return (
                   <div key={item.id} className="flex gap-3">
                     {imageUrl && (
@@ -231,6 +314,16 @@ const OrderDetailsModal = ({ isOpen, onClose, order }) => {
                   }).format(Math.ceil(order.final_amount))}
                 </span>
               </div>
+            </div>
+
+            <div className="pt-4 border-t border-gray-100">
+              <button
+                onClick={handlePrint}
+                className="w-full bg-orange-500 text-white py-3 rounded-lg flex items-center justify-center gap-2 hover:bg-orange-600 transition-colors"
+              >
+                <Download className="w-4 h-4" />
+                <span>Print Receipt</span>
+              </button>
             </div>
           </div>
         </div>

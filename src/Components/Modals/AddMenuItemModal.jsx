@@ -67,6 +67,7 @@ const AddMenuItemModal = ({
       ...prev,
       sideDishes: prev.sideDishes.filter((s) => s !== id),
     }));
+    w;
   };
 
   const handleSubmit = async (e) => {
@@ -74,7 +75,9 @@ const AddMenuItemModal = ({
     setError("");
     setLoading(true);
 
-    console.log("over here guys: ", formData);
+    console.log("over here guys: ", formData, images);
+
+    setLoading(false);
 
     try {
       const data = new FormData();
@@ -104,11 +107,19 @@ const AddMenuItemModal = ({
       setSideDishSearch("");
       onSuccess?.();
       onClose();
-    } catch (err) {
-      console.log("The error here: ", err);
-      setError(err.response?.data?.message || "Failed to create menu item");
+    } catch (error) {
+      if (error.response) {
+        console.log("Status:", error.response.status);
+        console.log("Data:", error.response.data);
+        console.log("Validation errors:", error.response.data.errors);
+      } else if (error.request) {
+        console.log("No response received:", error.request);
+      } else {
+        console.log("Error setting up request:", error.message);
+      }
+      // setError(err.response?.data?.message || "Failed to create menu item");
     } finally {
-      setLoading(false);
+      // setLoading(false);
     }
   };
 
@@ -188,7 +199,7 @@ const AddMenuItemModal = ({
                     setFormData({ ...formData, price: e.target.value })
                   }
                   placeholder="0.00"
-                  required
+                  // required
                   className="w-full px-4 py-3 rounded-xl border border-gray-200 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-100 focus:border-orange-500 transition-all"
                 />
               </div>
@@ -222,6 +233,7 @@ const AddMenuItemModal = ({
               <input
                 type="file"
                 accept="image/*"
+                required
                 onChange={(e) => setImages(Array.from(e.target.files))}
                 className="w-full px-4 py-3 rounded-xl border border-gray-200 text-gray-900 focus:outline-none focus:ring-2 focus:ring-orange-100 focus:border-orange-500 transition-all"
               />

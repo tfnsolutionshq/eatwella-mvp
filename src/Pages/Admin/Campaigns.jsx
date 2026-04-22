@@ -12,7 +12,6 @@ import {
   FiLink,
   FiImage,
   FiAlignLeft,
-  FiCheck,
   FiFilter,
   FiMoreVertical,
   FiSend,
@@ -21,66 +20,6 @@ import {
   FiChevronDown,
 } from "react-icons/fi";
 import api from "../../utils/api";
-
-// ─── Mock data for development ────────────────────────────────────────────────
-const MOCK_CAMPAIGNS = [
-  {
-    id: 1,
-    title: "Grand Opening Promo",
-    details:
-      "Join us for our grand opening and enjoy 20% off all orders this weekend only!",
-    start_date: "2025-04-01",
-    end_date: "2025-04-07",
-    status: "published",
-    campaign_type: "banner",
-    url: "https://eatwella.com/promo",
-    image: null,
-    created_at: "2025-03-28",
-  },
-  {
-    id: 2,
-    title: "Eid Special Feast",
-    details:
-      "Celebrate Eid with our exclusive family meal deals. Order now and get free delivery.",
-    start_date: "2025-04-05",
-    end_date: "2025-04-12",
-    status: "published",
-    campaign_type: "modal",
-    url: "",
-    image:
-      "https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=800&q=80",
-    created_at: "2025-04-01",
-  },
-  {
-    id: 3,
-    title: "Weekend Drinks Deal",
-    details:
-      "Buy any meal and get a complimentary drink every Saturday and Sunday.",
-    start_date: "2025-04-10",
-    end_date: "2025-04-30",
-    status: "draft",
-    campaign_type: "banner",
-    url: "",
-    image: null,
-    created_at: "2025-04-03",
-  },
-  {
-    id: 4,
-    title: "Mother's Day Special",
-    details:
-      "Treat your mum to something special. Book a table or order for delivery.",
-    start_date: "2025-05-11",
-    end_date: "2025-05-11",
-    status: "draft",
-    campaign_type: "modal",
-    url: "https://eatwella.com/mothers-day",
-    image:
-      "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=800&q=80",
-    created_at: "2025-04-05",
-  },
-];
-
-const USE_MOCK = true;
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const formatDate = (d) =>
@@ -100,14 +39,54 @@ const EMPTY_FORM = {
   start_date: "",
   end_date: "",
   status: "draft",
-  campaign_type: "banner",
+  type: "banner",
   url: "",
   image: null,
   imagePreview: null,
 };
 
-// ─── Sub-components ───────────────────────────────────────────────────────────
+// ─── Skeleton Components ──────────────────────────────────────────────────────
+function SkeletonStatCard() {
+  return (
+    <div className="rounded-2xl border border-gray-100 px-4 py-3 bg-gray-50 animate-pulse">
+      <div className="h-3 w-16 bg-gray-200 rounded mb-2" />
+      <div className="h-8 w-10 bg-gray-200 rounded" />
+    </div>
+  );
+}
 
+function SkeletonRow() {
+  return (
+    <tr className="border-b border-gray-50">
+      <td className="px-5 py-4 pl-6">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-gray-200 animate-pulse flex-shrink-0" />
+          <div className="space-y-2 flex-1">
+            <div className="h-3.5 w-40 bg-gray-200 rounded animate-pulse" />
+            <div className="h-3 w-56 bg-gray-100 rounded animate-pulse" />
+          </div>
+        </div>
+      </td>
+      <td className="px-5 py-4">
+        <div className="h-5 w-16 bg-gray-200 rounded-full animate-pulse" />
+      </td>
+      <td className="px-5 py-4">
+        <div className="h-5 w-16 bg-gray-200 rounded-full animate-pulse" />
+      </td>
+      <td className="px-5 py-4">
+        <div className="space-y-1.5">
+          <div className="h-3 w-24 bg-gray-200 rounded animate-pulse" />
+          <div className="h-3 w-20 bg-gray-100 rounded animate-pulse" />
+        </div>
+      </td>
+      <td className="px-5 py-4 pr-6">
+        <div className="w-8 h-8 rounded-full bg-gray-200 animate-pulse" />
+      </td>
+    </tr>
+  );
+}
+
+// ─── Sub-components ───────────────────────────────────────────────────────────
 function StatusBadge({ status }) {
   const styles =
     status === "published"
@@ -201,14 +180,14 @@ function PreviewModal({ campaign, onClose }) {
           </button>
         </div>
         <div className="p-6 space-y-4">
-          {campaign.campaign_type === "modal" && campaign.image && (
+          {campaign.type === "modal" && campaign.image_url && (
             <img
-              src={campaign.image}
+              src={campaign.image_url}
               alt={campaign.title}
               className="w-full h-48 object-cover rounded-2xl"
             />
           )}
-          {campaign.campaign_type === "banner" && (
+          {campaign.type === "banner" && (
             <div className="bg-orange-500 text-white px-4 py-3 rounded-xl text-sm font-medium flex items-center gap-2">
               <span className="text-base">📢</span>
               <span>
@@ -216,7 +195,7 @@ function PreviewModal({ campaign, onClose }) {
               </span>
             </div>
           )}
-          {campaign.campaign_type === "modal" && (
+          {campaign.type === "modal" && (
             <div>
               <h4 className="text-lg font-black text-gray-900">
                 {campaign.title}
@@ -247,7 +226,7 @@ function PreviewModal({ campaign, onClose }) {
               <StatusBadge status={campaign.status} />
             </div>
             <div className="flex items-center gap-1.5">
-              <TypeBadge type={campaign.campaign_type} />
+              <TypeBadge type={campaign.type} />
             </div>
           </div>
         </div>
@@ -263,7 +242,16 @@ function CampaignFormModal({ mode, initialData, onClose, onSave }) {
       ? {
           ...EMPTY_FORM,
           ...initialData,
-          imagePreview: initialData.image || null,
+          // Map API field names to form field names
+          type: initialData.type || "banner",
+          start_date: initialData.start_date
+            ? initialData.start_date.split("T")[0]
+            : "",
+          end_date: initialData.end_date
+            ? initialData.end_date.split("T")[0]
+            : "",
+          imagePreview: initialData.image_url || null,
+          image: null, // don't pre-fill file input; imagePreview shows existing
         }
       : { ...EMPTY_FORM },
   );
@@ -293,7 +281,8 @@ function CampaignFormModal({ mode, initialData, onClose, onSave }) {
     if (!form.end_date) errs.end_date = "End date is required";
     if (form.start_date && form.end_date && form.end_date < form.start_date)
       errs.end_date = "End date must be after start date";
-    if (form.campaign_type === "modal" && !form.image && !form.imagePreview)
+    // Only require image for NEW modal campaigns; existing ones already have image_url
+    if (form.type === "modal" && !form.image && !form.imagePreview)
       errs.image = "Modal campaigns require an image";
     return errs;
   };
@@ -308,11 +297,12 @@ function CampaignFormModal({ mode, initialData, onClose, onSave }) {
     setIsSaving(true);
     const payload = { ...form, status: statusOverride || form.status };
     delete payload.imagePreview;
+    console.log("The payload: ", payload);
     await onSave(payload, mode);
     setIsSaving(false);
   };
 
-  const isModal = form.campaign_type === "modal";
+  const isModal = form.type === "modal";
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -364,19 +354,19 @@ function CampaignFormModal({ mode, initialData, onClose, onSave }) {
                 <button
                   key={value}
                   type="button"
-                  onClick={() => set("campaign_type", value)}
+                  onClick={() => set("type", value)}
                   className={`text-left px-4 py-3 rounded-2xl border-2 transition-all ${
-                    form.campaign_type === value
+                    form.type === value
                       ? "border-orange-500 bg-orange-50"
                       : "border-gray-200 hover:border-gray-300"
                   }`}
                 >
                   <div className="flex items-center gap-2 mb-1">
                     <Icon
-                      className={`w-4 h-4 ${form.campaign_type === value ? "text-orange-500" : "text-gray-400"}`}
+                      className={`w-4 h-4 ${form.type === value ? "text-orange-500" : "text-gray-400"}`}
                     />
                     <span
-                      className={`text-sm font-bold ${form.campaign_type === value ? "text-orange-600" : "text-gray-700"}`}
+                      className={`text-sm font-bold ${form.type === value ? "text-orange-600" : "text-gray-700"}`}
                     >
                       {label}
                     </span>
@@ -391,7 +381,10 @@ function CampaignFormModal({ mode, initialData, onClose, onSave }) {
           {isModal && (
             <div>
               <label className="block text-xs font-semibold text-gray-600 mb-2 uppercase tracking-wide">
-                Campaign Image <span className="text-orange-500">*</span>
+                Campaign Image{" "}
+                {mode === "create" && (
+                  <span className="text-orange-500">*</span>
+                )}
               </label>
               <div
                 onClick={() => fileRef.current?.click()}
@@ -557,7 +550,7 @@ function CampaignFormModal({ mode, initialData, onClose, onSave }) {
           </button>
           <div className="flex items-center gap-2">
             <button
-              onClick={() => handleSubmit("draft")}
+              onClick={() => handleSubmit("drafted")}
               disabled={isSaving}
               className="flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-2xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
@@ -681,19 +674,15 @@ const Campaigns = () => {
     campaign: null,
     action: null,
   });
-  const [actionLoading, setActionLoading] = useState(null); // campaign id
+  const [actionLoading, setActionLoading] = useState(null);
 
   // ── Load campaigns ──────────────────────────────────────────────────────────
   const fetchCampaigns = async () => {
     setIsLoading(true);
     try {
-      if (USE_MOCK) {
-        await new Promise((r) => setTimeout(r, 600));
-        setCampaigns(MOCK_CAMPAIGNS);
-      } else {
-        const { data } = await api.get("/campaigns");
-        setCampaigns(Array.isArray(data) ? data : (data.data ?? []));
-      }
+      const { data } = await api.get("/admin/campaigns");
+      const list = Array.isArray(data) ? data : (data.data ?? []);
+      setCampaigns(list);
     } catch (err) {
       console.error("Failed to load campaigns:", err);
     } finally {
@@ -708,52 +697,51 @@ const Campaigns = () => {
   // ── Save (create / edit) ────────────────────────────────────────────────────
   const handleSave = async (payload, mode) => {
     try {
-      if (USE_MOCK) {
-        await new Promise((r) => setTimeout(r, 500));
-        if (mode === "edit") {
-          setCampaigns((prev) =>
-            prev.map((c) => (c.id === payload.id ? { ...c, ...payload } : c)),
-          );
-        } else {
-          setCampaigns((prev) => [
-            {
-              ...payload,
-              id: Date.now(),
-              created_at: today(),
-              image: payload.imagePreview || null,
-            },
-            ...prev,
-          ]);
-        }
-      } else {
-        const formData = new FormData();
-        Object.entries(payload).forEach(([k, v]) => {
-          if (v !== null && v !== undefined) formData.append(k, v);
-        });
-        if (mode === "edit") {
-          await api.put(`/campaigns/${payload.id}`, formData);
-        } else {
-          await api.post("/campaigns", formData);
-        }
-        await fetchCampaigns();
+      // Always use FormData — the API may receive a file
+      const formData = new FormData();
+      formData.append("title", payload.title);
+      formData.append("details", payload.details);
+      formData.append("start_date", payload.start_date);
+      formData.append("end_date", payload.end_date);
+      formData.append("status", payload.status);
+      formData.append("type", payload.type);
+      if (payload.url) formData.append("url", payload.url);
+      // Only append image if a new file was selected
+      if (payload.image instanceof File) {
+        formData.append("image", payload.image);
       }
+
+      if (mode === "edit") {
+        await api.post(`/admin/campaigns/${payload.id}`, formData, {
+          headers: { "Content-Type": "multipart/form-data" },
+        });
+      } else {
+        await api.post("/admin/campaigns", formData, {
+          headers: { "Content-Type": "multipart/form-data" },
+        });
+      }
+
+      await fetchCampaigns();
       setFormModal({ open: false, mode: "create", data: null });
-    } catch (err) {
-      console.error("Failed to save campaign:", err);
+    } catch (error) {
+      if (error.response) {
+        console.log("Status:", error.response.status);
+        console.log("Data:", error.response.data);
+        console.log("Validation errors:", error.response.data.errors);
+      } else if (error.request) {
+        console.log("No response received:", error.request);
+      } else {
+        console.log("Error setting up request:", error.message);
+      }
     }
   };
 
-  // ── Delete ─────────────────────────────────────────────────────────────────
+  // ── Delete ──────────────────────────────────────────────────────────────────
   const handleDelete = async (campaign) => {
     setActionLoading(campaign.id);
     try {
-      if (USE_MOCK) {
-        await new Promise((r) => setTimeout(r, 400));
-        setCampaigns((prev) => prev.filter((c) => c.id !== campaign.id));
-      } else {
-        await api.delete(`/campaigns/${campaign.id}`);
-        await fetchCampaigns();
-      }
+      await api.delete(`/admin/campaigns/${campaign.id}`);
+      await fetchCampaigns();
     } catch (err) {
       console.error("Failed to delete:", err);
     } finally {
@@ -762,47 +750,47 @@ const Campaigns = () => {
     }
   };
 
-  // ── Toggle status ──────────────────────────────────────────────────────────
+  // ── Toggle status ───────────────────────────────────────────────────────────
   const handleToggleStatus = async (campaign) => {
-    const newStatus = campaign.status === "published" ? "draft" : "published";
+    const newStatus = campaign.status === "published" ? "drafted" : "published";
     setActionLoading(campaign.id);
     try {
-      if (USE_MOCK) {
-        await new Promise((r) => setTimeout(r, 350));
-        setCampaigns((prev) =>
-          prev.map((c) =>
-            c.id === campaign.id ? { ...c, status: newStatus } : c,
-          ),
-        );
-      } else {
-        await api.patch(`/campaigns/${campaign.id}/status`, {
-          status: newStatus,
-        });
-        await fetchCampaigns();
-      }
+      // Reuse the update endpoint with just the status field changed
+      const formData = new FormData();
+      formData.append("title", campaign.title);
+      formData.append("details", campaign.details);
+      formData.append("start_date", campaign.start_date.split("T")[0]);
+      formData.append("end_date", campaign.end_date.split("T")[0]);
+      formData.append("status", newStatus);
+      formData.append("type", campaign.type);
+      if (campaign.url) formData.append("url", campaign.url);
+
+      await api.post(`/admin/campaigns/${campaign.id}`, formData);
+      await fetchCampaigns();
     } catch (err) {
       console.error("Failed to update status:", err);
     } finally {
       setActionLoading(null);
+      setConfirmDialog({ open: false, campaign: null, action: null });
     }
   };
 
-  // ── Filtering ──────────────────────────────────────────────────────────────
+  // ── Filtering ───────────────────────────────────────────────────────────────
   const filtered = campaigns.filter((c) => {
     const matchesSearch =
       !searchQuery ||
       c.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       c.details.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesStatus = filterStatus === "all" || c.status === filterStatus;
-    const matchesType = filterType === "all" || c.campaign_type === filterType;
+    const matchesType = filterType === "all" || c.type === filterType;
     return matchesSearch && matchesStatus && matchesType;
   });
 
   const stats = {
     total: campaigns.length,
     published: campaigns.filter((c) => c.status === "published").length,
-    draft: campaigns.filter((c) => c.status === "draft").length,
-    modal: campaigns.filter((c) => c.campaign_type === "modal").length,
+    draft: campaigns.filter((c) => c.status === "drafted").length,
+    modal: campaigns.filter((c) => c.type === "modal").length,
   };
 
   // ── Render ──────────────────────────────────────────────────────────────────
@@ -829,40 +817,41 @@ const Campaigns = () => {
         </div>
 
         {/* Stats strip */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          {[
-            {
-              label: "Total",
-              value: stats.total,
-              color: "text-gray-800",
-              bg: "bg-gray-50 border-gray-100",
-            },
-            {
-              label: "Published",
-              value: stats.published,
-              color: "text-green-700",
-              bg: "bg-green-50 border-green-100",
-            },
-            {
-              label: "Drafts",
-              value: stats.draft,
-              color: "text-amber-700",
-              bg: "bg-amber-50 border-amber-100",
-            },
-            {
-              label: "Modals",
-              value: stats.modal,
-              color: "text-purple-700",
-              bg: "bg-purple-50 border-purple-100",
-            },
-          ].map(({ label, value, color, bg }) => (
-            <div key={label} className={`rounded-2xl border px-4 py-3 ${bg}`}>
-              <p className="text-xs text-gray-500 font-medium">{label}</p>
-              <p className={`text-2xl font-black mt-0.5 ${color}`}>
-                {isLoading ? "—" : value}
-              </p>
-            </div>
-          ))}
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+          {isLoading
+            ? Array.from({ length: 3 }).map((_, i) => (
+                <SkeletonStatCard key={i} />
+              ))
+            : [
+                {
+                  label: "Total",
+                  value: stats.total,
+                  color: "text-gray-800",
+                  bg: "bg-gray-50 border-gray-100",
+                },
+                {
+                  label: "Published",
+                  value: stats.published,
+                  color: "text-green-700",
+                  bg: "bg-green-50 border-green-100",
+                },
+                {
+                  label: "Drafts",
+                  value: stats.draft,
+                  color: "text-amber-700",
+                  bg: "bg-amber-50 border-amber-100",
+                },
+              ].map(({ label, value, color, bg }) => (
+                <div
+                  key={label}
+                  className={`rounded-2xl border px-4 py-3 ${bg}`}
+                >
+                  <p className="text-xs text-gray-500 font-medium">{label}</p>
+                  <p className={`text-2xl font-black mt-0.5 ${color}`}>
+                    {value}
+                  </p>
+                </div>
+              ))}
         </div>
 
         {/* Filters */}
@@ -877,7 +866,6 @@ const Campaigns = () => {
               className="w-full pl-10 pr-4 py-2.5 text-sm bg-white border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
             />
           </div>
-
           <div className="relative">
             <select
               value={filterStatus}
@@ -886,11 +874,10 @@ const Campaigns = () => {
             >
               <option value="all">All Statuses</option>
               <option value="published">Published</option>
-              <option value="draft">Draft</option>
+              <option value="drafted">Draft</option>
             </select>
             <FiChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none" />
           </div>
-
           <div className="relative">
             <select
               value={filterType}
@@ -907,51 +894,57 @@ const Campaigns = () => {
 
         {/* Table */}
         <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
-          {isLoading ? (
-            <div className="flex flex-col items-center justify-center py-20 gap-4">
-              <div className="w-10 h-10 border-4 border-gray-200 border-t-orange-500 rounded-full animate-spin" />
-              <p className="text-sm text-gray-400 font-medium">
-                Loading campaigns…
-              </p>
-            </div>
-          ) : filtered.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-20 gap-3">
-              <div className="w-14 h-14 rounded-full bg-gray-100 flex items-center justify-center">
-                <FiFilter className="w-6 h-6 text-gray-300" />
-              </div>
-              <p className="text-gray-400 font-medium text-sm">
-                {campaigns.length === 0
-                  ? "No campaigns yet. Create your first one!"
-                  : "No campaigns match your filters."}
-              </p>
-              {campaigns.length === 0 && (
-                <button
-                  onClick={() =>
-                    setFormModal({ open: true, mode: "create", data: null })
-                  }
-                  className="mt-1 flex items-center gap-2 px-4 py-2 text-sm font-semibold text-orange-500 bg-orange-50 hover:bg-orange-100 rounded-xl transition-colors"
-                >
-                  <FiPlus className="w-4 h-4" /> Create Campaign
-                </button>
-              )}
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-gray-100">
-                    {["Campaign", "Type", "Status", "Period", ""].map((h) => (
-                      <th
-                        key={h}
-                        className="px-5 py-3.5 text-left text-xs font-bold text-gray-400 uppercase tracking-wider first:pl-6 last:pr-6"
-                      >
-                        {h}
-                      </th>
-                    ))}
+          {/* Table header always visible so skeletons align under correct columns */}
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-gray-100">
+                  {["Campaign", "Type", "Status", "Period", ""].map((h) => (
+                    <th
+                      key={h}
+                      className="px-5 py-3.5 text-left text-xs font-bold text-gray-400 uppercase tracking-wider first:pl-6 last:pr-6"
+                    >
+                      {h}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-50">
+                {isLoading ? (
+                  Array.from({ length: 4 }).map((_, i) => (
+                    <SkeletonRow key={i} />
+                  ))
+                ) : filtered.length === 0 ? (
+                  <tr>
+                    <td colSpan={5}>
+                      <div className="flex flex-col items-center justify-center py-20 gap-3">
+                        <div className="w-14 h-14 rounded-full bg-gray-100 flex items-center justify-center">
+                          <FiFilter className="w-6 h-6 text-gray-300" />
+                        </div>
+                        <p className="text-gray-400 font-medium text-sm">
+                          {campaigns.length === 0
+                            ? "No campaigns yet. Create your first one!"
+                            : "No campaigns match your filters."}
+                        </p>
+                        {campaigns.length === 0 && (
+                          <button
+                            onClick={() =>
+                              setFormModal({
+                                open: true,
+                                mode: "create",
+                                data: null,
+                              })
+                            }
+                            className="mt-1 flex items-center gap-2 px-4 py-2 text-sm font-semibold text-orange-500 bg-orange-50 hover:bg-orange-100 rounded-xl transition-colors"
+                          >
+                            <FiPlus className="w-4 h-4" /> Create Campaign
+                          </button>
+                        )}
+                      </div>
+                    </td>
                   </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-50">
-                  {filtered.map((campaign) => (
+                ) : (
+                  filtered.map((campaign) => (
                     <tr
                       key={campaign.id}
                       className={`hover:bg-gray-50/70 transition-colors ${actionLoading === campaign.id ? "opacity-50" : ""}`}
@@ -959,10 +952,9 @@ const Campaigns = () => {
                       {/* Campaign info */}
                       <td className="px-5 py-4 pl-6">
                         <div className="flex items-center gap-3">
-                          {campaign.campaign_type === "modal" &&
-                          campaign.image ? (
+                          {campaign.type === "modal" && campaign.image_url ? (
                             <img
-                              src={campaign.image}
+                              src={campaign.image_url}
                               alt=""
                               className="w-10 h-10 rounded-xl object-cover flex-shrink-0"
                             />
@@ -982,7 +974,7 @@ const Campaigns = () => {
                         </div>
                       </td>
                       <td className="px-5 py-4">
-                        <TypeBadge type={campaign.campaign_type} />
+                        <TypeBadge type={campaign.type} />
                       </td>
                       <td className="px-5 py-4">
                         <StatusBadge status={campaign.status} />
@@ -1029,11 +1021,11 @@ const Campaigns = () => {
                         )}
                       </td>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
 
         {/* Result count */}

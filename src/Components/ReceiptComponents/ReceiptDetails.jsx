@@ -73,9 +73,6 @@ function ReceiptDetails() {
   const deviceType = useDeviceType();
   const paperSize = PAPER_SIZE_MAP[deviceType];
 
-  console.log("The order details: ", order);
-  console.log("Detected device type:", deviceType, "→ paper size:", paperSize);
-
   useEffect(() => {
     const clearAndFetch = async () => {
       await clearCart();
@@ -109,7 +106,6 @@ function ReceiptDetails() {
           setIsLoading(true);
           setFetchError(null);
           const res = await api.get(`/orders/track/${orderId}`);
-          console.log("Here we are: ", res.data);
           setOrder(res.data);
         } catch (e) {
           if (e.response?.status === 404) {
@@ -350,7 +346,7 @@ function ReceiptDetails() {
             <div className="flex justify-between">
               <span className="text-gray-500">Order Type</span>
               <span className="text-gray-900 capitalize">
-                {order.order_type || "N/A"}
+                {(order.order_type === "dine" && "dine-in") || "N/A"}
               </span>
             </div>
             <div className="flex justify-between">

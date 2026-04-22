@@ -18,49 +18,39 @@ const formatNGN = (amount) =>
     minimumFractionDigits: 0,
   }).format(amount);
 
-// Points per mm (1 pt = 1/72 inch; 1 inch = 25.4 mm)
 const mmToPt = (mm) => (mm / 25.4) * 72;
 
-/**
- * Returns page size and style scale for the given paperSize string.
- *
- * Supported values:
- *   "58mm"  – 58 mm wide thermal roll (common POS)
- *   "80mm"  – 80 mm wide thermal roll (wider POS)
- *   "A5"    – standard A5 desktop/office receipt (default)
- */
 function getPaperConfig(paperSize = "A5") {
   switch (paperSize) {
     case "58mm":
       return {
-        // 58 × 297 mm — height is auto/long enough for content
         size: [mmToPt(58), mmToPt(297)],
-        padding: mmToPt(3),
-        fontBase: 7,
-        fontSm: 6,
-        fontLg: 9,
-        fontXl: 11,
-        gap: 2,
+        padding: mmToPt(3.5),
+        fontBase: 8, // +1 from 7
+        fontSm: 7, // +1 from 6
+        fontLg: 10, // +1 from 9
+        fontXl: 12, // +1 from 11
+        gap: 3, // +1 from 2 — more breathing room
         isThermal: true,
       };
     case "80mm":
       return {
         size: [mmToPt(80), mmToPt(297)],
-        padding: mmToPt(4),
-        fontBase: 8,
-        fontSm: 7,
-        fontLg: 10,
-        fontXl: 12,
-        gap: 3,
+        padding: mmToPt(4.5),
+        fontBase: 9, // +1 from 8
+        fontSm: 8, // +1 from 7
+        fontLg: 11, // +1 from 10
+        fontXl: 13, // +1 from 12
+        gap: 4, // +1 from 3
         isThermal: true,
       };
     case "A5":
     default:
       return {
         size: "A5",
-        padding: 20,
+        padding: 22,
         fontBase: 10,
-        fontSm: 8,
+        fontSm: 8.5,
         fontLg: 13,
         fontXl: 16,
         gap: 4,
@@ -69,7 +59,6 @@ function getPaperConfig(paperSize = "A5") {
   }
 }
 
-// Status badge colours
 function getStatusStyle(status) {
   const s = (status || "pending").toLowerCase();
   if (s === "completed") return { bg: "#dcfce7", color: "#15803d" };
@@ -113,44 +102,31 @@ const ReceiptPDFDocument = ({ order, paperSize = "A5" }) => {
 
   const cfg = getPaperConfig(paperSize);
 
-  // ── Dynamic StyleSheet (re-created per render based on cfg) ──────────────
   const S = StyleSheet.create({
     page: {
       padding: cfg.padding,
       fontSize: cfg.fontBase,
       fontFamily: "Roboto",
       backgroundColor: "#ffffff",
-      // display: "flex",
-      // flexDirection: "column",
-      // justifyContent: "space-between",
     },
     logoContainer: {
-      // width: cfg.isThermal ? 60 : 100, // narrower on POS, wider on A5
-      // height: cfg.isThermal ? 30 : 50,
-      padding: 10,
+      padding: 8,
+      alignItems: "center", // center logo on all sizes
+      marginBottom: cfg.gap,
     },
-    // Logo (before text)
     logo: {
-      // width: cfg.isThermal ? 60 : 100, // narrower on POS, wider on A5
-      // height: cfg.isThermal ? 30 : 50,
-      // marginBottom: cfg.gap * 2,
+      // Let the image fill its container naturally
       objectFit: "contain",
     },
-    // Header
     header: {
       alignItems: "center",
       marginBottom: cfg.gap * 2,
     },
     headerTitle: {
       fontSize: cfg.fontXl,
-      // fontFamily: "Helvetica-Bold",
       fontWeight: "bold",
       marginBottom: cfg.gap,
-    },
-    headerSubtitle: {
-      fontSize: cfg.fontSm,
-      color: "#6b7280",
-      marginBottom: cfg.gap,
+      letterSpacing: 0.8, // slightly spaced caps read better at small sizes
     },
     orderIdRow: {
       marginBottom: cfg.gap,
@@ -159,154 +135,213 @@ const ReceiptPDFDocument = ({ order, paperSize = "A5" }) => {
       fontSize: cfg.fontLg,
       fontWeight: "bold",
     },
-    statusBadge: {
-      paddingHorizontal: 8,
-      paddingVertical: 3,
-      borderRadius: 10,
-      marginTop: cfg.gap,
-    },
     statusText: {
       fontSize: cfg.fontSm,
       fontWeight: "bold",
       letterSpacing: 0.5,
     },
-    // PIN block
-    pin: {
-      backgroundColor: "#fff7ed",
-      borderRadius: 4,
-      padding: cfg.gap * 1.5,
-      marginBottom: cfg.gap * 2,
-      alignItems: "center",
-    },
-    pinText: {
-      fontSize: cfg.fontBase,
-      fontWeight: "bold",
-      marginBottom: cfg.gap,
-    },
-    pinNote: {
-      fontSize: cfg.fontSm,
-      color: "#6b7280",
-      textAlign: "center",
-    },
-    // Divider
     divider: {
-      borderBottomWidth: 0.5,
-      borderBottomColor: "#e5e7eb",
+      borderBottomWidth: 0.75, // slightly thicker — more visible on small prints
+      borderBottomColor: "#d1d5db",
       marginVertical: cfg.gap * 1.5,
     },
-    // Section
     section: {
       marginBottom: cfg.gap * 2,
     },
     sectionTitle: {
       fontSize: cfg.fontBase,
       fontWeight: "bold",
-      marginBottom: cfg.gap,
-      color: "#374151",
+      marginBottom: cfg.gap * 1.5, // more space under section headings
+      color: "#111827", // darker than before (#374151) — better contrast
+      letterSpacing: 0.5,
     },
-    // Rows — thermal uses a stacked layout for very narrow widths
+
+    // ── Detail rows: always stacked on thermal, side-by-side on A5 ──
     row: cfg.isThermal
+      ? {
+          marginBottom: cfg.gap * 1.5, // more vertical gap between rows
+        }
+      : {
+          flexDirection: "row",
+          justifyContent: "space-between",
+          alignItems: "flex-start",
+          marginBottom: cfg.gap * 1.2,
+        },
+    label: {
+      fontSize: cfg.fontSm,
+      color: "#6b7280",
+      marginBottom: cfg.isThermal ? 1 : 0, // small gap between label and value on thermal
+    },
+    value: cfg.isThermal
+      ? {
+          fontSize: cfg.fontBase,
+          fontWeight: "bold",
+          color: "#111827",
+          flexWrap: "wrap", // allow long values to wrap
+        }
+      : {
+          fontSize: cfg.fontBase,
+          color: "#111827",
+          textAlign: "right",
+          maxWidth: "58%", // slightly narrower so long text wraps rather than overflows
+          flexWrap: "wrap",
+        },
+
+    // ── Item rows ──
+    itemWrapper: {
+      marginBottom: cfg.gap * 1.5,
+      paddingBottom: cfg.gap,
+      borderBottomWidth: 0.5,
+      borderBottomColor: "#f3f4f6", // very subtle separator between items
+    },
+    itemRow: cfg.isThermal
+      ? {
+          // On thermal: name on top, price below (avoids squishing on 58mm)
+          flexDirection: "column",
+        }
+      : {
+          flexDirection: "row",
+          justifyContent: "space-between",
+          alignItems: "flex-start",
+        },
+    itemName: {
+      fontSize: cfg.fontBase,
+      flex: cfg.isThermal ? undefined : 1,
+      marginRight: cfg.isThermal ? 0 : 4,
+      lineHeight: 1.4, // looser line-height helps on small sizes
+      color: "#111827",
+    },
+    itemQtyBadge: {
+      // Quantity shown as a small inline tag before the name on thermal
+      fontSize: cfg.fontSm,
+      fontWeight: "bold",
+      color: "#f97316",
+      marginRight: 2,
+    },
+    itemPrice: {
+      fontSize: cfg.fontBase,
+      fontWeight: "bold",
+      color: cfg.isThermal ? "#374151" : "#111827",
+      marginTop: cfg.isThermal ? 1 : 0, // tiny top gap when stacked
+    },
+    itemPackaging: {
+      fontSize: cfg.fontSm,
+      color: "#9ca3af", // slightly lighter — clearly secondary
+      marginTop: 2,
+    },
+
+    // ── Totals ──
+    totalsSection: {
+      marginTop: cfg.gap,
+    },
+    vatRow: cfg.isThermal
       ? { marginBottom: cfg.gap }
       : {
           flexDirection: "row",
           justifyContent: "space-between",
           marginBottom: cfg.gap,
         },
-    label: {
+    vatLabel: {
       fontSize: cfg.fontSm,
       color: "#6b7280",
+      marginBottom: cfg.isThermal ? 1 : 0,
     },
-    value: cfg.isThermal
-      ? { fontSize: cfg.fontBase, fontWeight: "bold" }
-      : {
-          fontSize: cfg.fontBase,
-          color: "#111827",
-          textAlign: "right",
-          maxWidth: "60%",
-        },
-    // Items
-    itemRow: {
-      flexDirection: "row",
-      justifyContent: "space-between",
-    },
-    itemName: {
-      fontSize: cfg.fontBase,
-      flex: 1,
-      marginRight: 4,
-    },
-    itemPrice: {
-      fontSize: cfg.fontBase,
-      fontWeight: "bold",
-    },
-    itemPackaging: {
-      fontSize: cfg.fontSm,
-      color: "#6b7280",
-      marginTop: 1,
-    },
-    // Totals
+    vatValue: cfg.isThermal
+      ? { fontSize: cfg.fontBase, color: "#374151" }
+      : { fontSize: cfg.fontBase, color: "#374151", textAlign: "right" },
     totalRow: cfg.isThermal
       ? {
-          borderTopWidth: 0.5,
-          borderTopColor: "#e5e7eb",
+          borderTopWidth: 0.75,
+          borderTopColor: "#d1d5db",
           marginTop: cfg.gap,
-          paddingTop: cfg.gap,
+          paddingTop: cfg.gap * 1.5,
+          marginBottom: cfg.gap,
         }
       : {
           flexDirection: "row",
           justifyContent: "space-between",
-          borderTopWidth: 0.5,
-          borderTopColor: "#e5e7eb",
+          alignItems: "center",
+          borderTopWidth: 0.75,
+          borderTopColor: "#d1d5db",
           marginTop: cfg.gap,
-          paddingTop: cfg.gap,
+          paddingTop: cfg.gap * 1.5,
+          marginBottom: cfg.gap,
         },
     totalLabel: {
       fontSize: cfg.fontBase,
       fontWeight: "bold",
+      color: "#111827",
+      letterSpacing: 0.5,
     },
     totalValue: {
       fontSize: cfg.fontLg,
       fontWeight: "bold",
       color: "#f97316",
+      marginTop: cfg.isThermal ? 2 : 0,
     },
-    // Footer
+    paymentRow: cfg.isThermal
+      ? { marginTop: cfg.gap }
+      : {
+          flexDirection: "row",
+          justifyContent: "space-between",
+          marginTop: cfg.gap,
+        },
+    paymentLabel: {
+      fontSize: cfg.fontSm,
+      color: "#6b7280",
+      marginBottom: cfg.isThermal ? 1 : 0,
+    },
+    paymentValue: cfg.isThermal
+      ? { fontSize: cfg.fontBase, fontWeight: "bold", color: "#111827" }
+      : { fontSize: cfg.fontBase, color: "#111827", textAlign: "right" },
+
+    // ── Footer ──
     footer: {
-      marginTop: cfg.gap * 3,
+      marginTop: cfg.gap * 4,
       alignItems: "center",
-      borderTopWidth: 0.5,
-      borderTopColor: "#e5e7eb",
+      borderTopWidth: 0.75,
+      borderTopColor: "#d1d5db",
       paddingTop: cfg.gap * 2,
     },
     footerText: {
       fontSize: cfg.fontSm,
-      color: "#6b7280",
+      color: "#9ca3af",
       textAlign: "center",
+      lineHeight: 1.5,
     },
   });
 
-  // ── Receipt address ──────────────────────────────────────────────────────
-  // NOTE: zone matching happens in ReceiptDetails; pass receiptAddress as a
-  // prop if you prefer, but for now we fall back to delivery_address.
   const receiptAddress =
     order.receiptAddress || order.delivery_address || "N/A";
 
-  // ── Detail rows ──────────────────────────────────────────────────────────
   const detailRows = [
     ["Customer", order.customer_name || "Guest"],
     ["Email", order.customer_email || "N/A"],
     ["Phone", order.customer_phone || "N/A"],
     ["Address", receiptAddress],
+
+    // 👇 Attendant (conditionally included)
+    ...(order.attendant
+      ? [
+          ["Attendant", order.attendant.name],
+          ["Attendant Email", order.attendant.email],
+        ]
+      : []),
+
     [
       "Order Type",
       order.order_type.charAt(0).toUpperCase() + order.order_type.slice(1) ||
         "N/A",
     ],
+
     order.table_number ? ["Table", `#${order.table_number}`] : null,
   ].filter(Boolean);
 
   return (
     <Document>
       <Page size={cfg.size} style={S.page}>
-        <View style={S.main}>
+        <View>
+          {/* ── Logo ── */}
           <View style={S.logoContainer}>
             <Image src={logo} style={S.logo} />
           </View>
@@ -328,7 +363,6 @@ const ReceiptPDFDocument = ({ order, paperSize = "A5" }) => {
 
           {/* ── Customer Details ── */}
           <View style={S.section}>
-            <Text style={S.sectionTitle}>CUSTOMER DETAILS</Text>
             {detailRows.map(([label, value], i) => (
               <View style={S.row} key={i}>
                 <Text style={S.label}>{label}</Text>
@@ -343,18 +377,37 @@ const ReceiptPDFDocument = ({ order, paperSize = "A5" }) => {
           <View style={S.section}>
             <Text style={S.sectionTitle}>ORDER ITEMS</Text>
             {items.map((item, index) => (
-              <View key={index} style={{ marginBottom: cfg.gap }}>
+              <View key={index} style={S.itemWrapper}>
                 <View style={S.itemRow}>
-                  <Text style={S.itemName}>
-                    {item.quantity}x {item.menu?.name || item.name || "Item"}
-                  </Text>
-                  <Text style={S.itemPrice}>
-                    {formatNGN(item.menu?.price || item.price || 0)}
-                  </Text>
+                  {cfg.isThermal ? (
+                    // Thermal: qty + name on one line, price below
+                    <>
+                      <Text style={S.itemName}>
+                        <Text style={S.itemQtyBadge}>{item.quantity}x </Text>
+                        {item.menu?.name || item.name || "Item"}
+                      </Text>
+                      <Text style={S.itemPrice}>
+                        {formatNGN(
+                          (item.menu?.price || item.price || 0) * item.quantity,
+                        )}
+                      </Text>
+                    </>
+                  ) : (
+                    // A5: traditional side-by-side
+                    <>
+                      <Text style={S.itemName}>
+                        {item.quantity}x{" "}
+                        {item.menu?.name || item.name || "Item"}
+                      </Text>
+                      <Text style={S.itemPrice}>
+                        {formatNGN(item.menu?.price || item.price || 0)}
+                      </Text>
+                    </>
+                  )}
                 </View>
                 {item.packaging_price ? (
                   <Text style={S.itemPackaging}>
-                    Packaging: {formatNGN(item.packaging_price)}
+                    + Packaging: {formatNGN(item.packaging_price)}
                   </Text>
                 ) : null}
               </View>
@@ -364,22 +417,22 @@ const ReceiptPDFDocument = ({ order, paperSize = "A5" }) => {
           <View style={S.divider} />
 
           {/* ── Tax + Total ── */}
-          <View style={S.section}>
-            <View style={S.row}>
-              <Text style={S.label}>Tax ({vatType})</Text>
-              <Text style={S.value}>{formatNGN(vatAmount)}</Text>
+          <View style={S.totalsSection}>
+            <View style={S.vatRow}>
+              <Text style={S.vatLabel}>Tax ({vatType})</Text>
+              <Text style={S.vatValue}>{formatNGN(vatAmount)}</Text>
             </View>
             <View style={S.totalRow}>
               <Text style={S.totalLabel}>TOTAL PAYMENT</Text>
               <Text style={S.totalValue}>{formatNGN(totalAmount)}</Text>
             </View>
-            <View style={[S.row, { marginTop: cfg.gap }]}>
-              <Text style={S.label}>Payment Method</Text>
-              <Text style={S.value}>
-                {order.payment_type.charAt(0).toUpperCase() +
-                  order.payment_type.slice(1) ||
-                  order.invoice?.payment_method ||
-                  "N/A"}
+            <View style={S.paymentRow}>
+              <Text style={S.paymentLabel}>Payment method</Text>
+              <Text style={S.paymentValue}>
+                {order.payment_type
+                  ? order.payment_type.charAt(0).toUpperCase() +
+                    order.payment_type.slice(1)
+                  : order.invoice?.payment_method || "N/A"}
               </Text>
             </View>
           </View>

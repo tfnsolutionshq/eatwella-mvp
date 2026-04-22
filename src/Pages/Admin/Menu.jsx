@@ -129,28 +129,42 @@ const Menu = () => {
     }
   };
 
+  // const refetchMenuItems = async () => {
+  //   try {
+  //     const firstResponse = await api.get(
+  //       `/admin/menus?page=${pagination.current_page}`,
+  //     );
+  //     const allMenuRes = await api.get(
+  //       `/admin/menus?per_page=${firstResponse.data.total}`,
+  //     );
+  //     const pageData = firstResponse.data.data ?? [];
+  //     setMenuItems(pageData);
+  //     setAllMenuItems(allMenuRes.data.data);
+  //     setPagination({
+  //       current_page:
+  //         firstResponse.data.current_page ?? pagination.current_page,
+  //       last_page: firstResponse.data.last_page ?? 1,
+  //       total: firstResponse.data.total ?? pageData.length,
+  //       from: firstResponse.data.from ?? (pageData.length ? 1 : 0),
+  //       to: firstResponse.data.to ?? pageData.length,
+  //       per_page: firstResponse.data.per_page ?? 15,
+  //     });
+  //   } catch (err) {
+  //     console.error("Failed to fetch menu items:", err);
+  //   }
+  // };
+
   const refetchMenuItems = async () => {
+    await fetchMenuItems(activeTab, pagination.current_page);
+
+    // Still fetch full list for modals
     try {
-      const firstResponse = await api.get(
-        `/admin/menus?page=${pagination.current_page}`,
+      const { data } = await api.get(
+        `/admin/menus?per_page=${pagination.total}`,
       );
-      const allMenuRes = await api.get(
-        `/admin/menus?per_page=${firstResponse.data.total}`,
-      );
-      const pageData = firstResponse.data.data ?? [];
-      setMenuItems(pageData);
-      setAllMenuItems(allMenuRes.data.data);
-      setPagination({
-        current_page:
-          firstResponse.data.current_page ?? pagination.current_page,
-        last_page: firstResponse.data.last_page ?? 1,
-        total: firstResponse.data.total ?? pageData.length,
-        from: firstResponse.data.from ?? (pageData.length ? 1 : 0),
-        to: firstResponse.data.to ?? pageData.length,
-        per_page: firstResponse.data.per_page ?? 15,
-      });
+      setAllMenuItems(data.data);
     } catch (err) {
-      console.error("Failed to fetch menu items:", err);
+      console.error("Failed to fetch all menu items:", err);
     }
   };
 

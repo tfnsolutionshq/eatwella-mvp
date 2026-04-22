@@ -5,6 +5,7 @@ import { useToast } from "../../context/ToastContext";
 import { Link } from "react-router-dom";
 import { checkWorkingHourAvailability } from "../../utils/checkWorkingHours";
 import WorkingHoursClosedModal from "../Modals/WorkingHoursInfoModal";
+import Marquee from "react-fast-marquee";
 
 function Menu() {
   const [activeTab, setActiveTab] = useState("all");
@@ -144,47 +145,52 @@ function Menu() {
         </div>
       ) : menuItems.length > 3 ? (
         <div className="relative mb-8 overflow-hidden w-full">
-          <div className="flex gap-6 animate-marquee">
-            {[...menuItems, ...menuItems].map((item, idx) => (
-              <div
-                key={`${item.id}-${idx}`}
-                className="bg-white rounded-3xl overflow-hidden text-black min-w-[260px] md:min-w-[320px] hover-zoom flex flex-col h-full"
-              >
-                <img
-                  src={
-                    item.images?.[0] || "https://via.placeholder.com/400x300"
-                  }
-                  alt={item.name}
-                  className="w-full h-48 object-cover flex-shrink-0"
-                />
-                <div className="p-6 flex flex-col flex-grow">
-                  <div className="flex justify-between items-center mb-3">
-                    <h3 className="text-xl font-semibold">{item.name}</h3>
-                    <span className="text-orange-500 font-black text-xl">
-                      {new Intl.NumberFormat("en-NG", {
-                        style: "currency",
-                        currency: "NGN",
-                        minimumFractionDigits: 0,
-                      }).format(item.price)}
-                    </span>
+          <Marquee speed={50} gradient={false} pauseOnHover>
+            <div className="flex gap-6 h-[450px] mr-6">
+              {[...menuItems, ...menuItems].map((item, idx) => (
+                <div
+                  key={`${item.id}-${idx}`}
+                  className="bg-white rounded-3xl overflow-hidden text-black w-[300px] min-w-[260px] md:min-w-[320px] flex flex-col h-full group"
+                >
+                  <div className="overflow-hidden">
+                    <img
+                      src={
+                        item.images?.[0] ||
+                        "https://via.placeholder.com/400x300"
+                      }
+                      alt={item.name}
+                      className="w-full h-48 object-cover flex-shrink-0 transition-transform duration-500 ease-in-out group-hover:scale-110"
+                    />
                   </div>
-                  <p className="text-gray-600 mb-4 line-clamp-2 flex-grow">
-                    {item.description}
-                  </p>
-                  <button
-                    onClick={() => handleAddToCart(item)}
-                    disabled={loadingItems[item.id]}
-                    className="w-full bg-orange-500 hover:bg-orange-600 text-white py-3 rounded-full font-bold transition-colors disabled:opacity-50 flex items-center justify-center gap-2 mt-auto"
-                  >
-                    {loadingItems[item.id] ? (
-                      <span className="spinner" />
-                    ) : null}
-                    {loadingItems[item.id] ? "Adding..." : "Add To Cart"}
-                  </button>
+                  <div className="p-6 flex flex-col flex-grow">
+                    <div className="flex justify-between items-center mb-3">
+                      <h3 className="text-xl font-semibold">{item.name}</h3>
+                      <span className="text-orange-500 font-black text-xl">
+                        {new Intl.NumberFormat("en-NG", {
+                          style: "currency",
+                          currency: "NGN",
+                          minimumFractionDigits: 0,
+                        }).format(item.price)}
+                      </span>
+                    </div>
+                    <p className="text-gray-600 mb-4 line-clamp-2 overflow-hidden">
+                      {item.description}
+                    </p>
+                    <button
+                      onClick={() => handleAddToCart(item)}
+                      disabled={loadingItems[item.id]}
+                      className="w-full bg-orange-500 hover:bg-orange-600 text-white py-3 rounded-full font-bold transition-colors disabled:opacity-50 flex items-center justify-center gap-2 mt-auto"
+                    >
+                      {loadingItems[item.id] ? (
+                        <span className="spinner" />
+                      ) : null}
+                      {loadingItems[item.id] ? "Adding..." : "Add To Cart"}
+                    </button>
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          </Marquee>
         </div>
       ) : (
         <div className="max-w-5xl mx-auto px-6">

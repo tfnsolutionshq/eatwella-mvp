@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { FaArrowLeft, FaTimes, FaChevronDown } from "react-icons/fa";
 import { MdHome, MdRestaurant, MdDeliveryDining } from "react-icons/md";
 import { DollarSign, CreditCard } from "lucide-react";
@@ -37,13 +37,16 @@ function CartItems() {
   const [openIndex, setOpenIndex] = useState(null);
   const [loadingRecommendations, setLoadingRecommendations] = useState(false);
   const [addingToCart, setAddingToCart] = useState({});
-
-  // ── Packaging options (fetched once, shared across all selectors) ────────────
   const [packagingOptions, setPackagingOptions] = useState([]);
   const [packagingLoading, setPackagingLoading] = useState(true);
-  // ─────────────────────────────────────────────────────────────────────────────
 
   const cartItems = cart?.items || [];
+
+  // ── Keep a ref to cartItems so the order-type effect always sees current items
+  const cartItemsRef = useRef(cartItems);
+  useEffect(() => {
+    cartItemsRef.current = cartItems;
+  }, [cartItems]);
 
   useEffect(() => {
     getRecommendedSideDishes();
@@ -53,23 +56,40 @@ function CartItems() {
     fetchPackagingOptions();
   }, []);
 
+  // Auto-assign default packaging for takeaway items once options are loaded
   useEffect(() => {
     if (packagingLoading) return;
     if (!packagingOptions.length) return;
+    if (selectedOrderType === "dine-in") return;
 
     cartItems.forEach((item) => {
-      // Only apply if:
-      // - item requires takeaway
-      // - no packaging already selected
       if (item.menu.requires_takeaway && !item.packaging) {
         const defaultPackaging = packagingOptions[0];
-
         if (defaultPackaging) {
           updateCartItem(item.id, item.quantity, defaultPackaging.id);
         }
       }
     });
-  }, [packagingLoading, packagingOptions, cartItems]);
+  }, [packagingLoading, packagingOptions, selectedOrderType]);
+
+  // ── When switching to dine-in, strip packaging from every cart item ──────────
+  useEffect(() => {
+    if (selectedOrderType !== "dine-in") return;
+
+    // Use the ref so we always act on the current cart, not a stale snapshot
+    const current = cartItemsRef.current;
+    const itemsWithPackaging = current.filter((item) => item.packaging);
+
+    if (!itemsWithPackaging.length) return;
+
+    // Fire all updates in parallel — no need to await each one sequentially
+    Promise.all(
+      itemsWithPackaging.map((item) =>
+        updateCartItem(item.id, item.quantity, null),
+      ),
+    ).catch((err) => console.error("Failed to clear packaging:", err));
+  }, [selectedOrderType]);
+  // ─────────────────────────────────────────────────────────────────────────────
 
   const fetchPackagingOptions = async () => {
     setPackagingLoading(true);
@@ -83,27 +103,20 @@ function CartItems() {
     }
   };
 
-  // Writes directly into context — survives any re-render caused by cart updates
   const handlePackagingChange = (cartItemId, quantity, selectedId) => {
-    if (!selectedId) {
-      return;
-    }
-
+    if (!selectedId) return;
     const match = packagingOptions.find(
       (p) => String(p.id) === String(selectedId),
     );
-
     if (!match) {
       console.warn("Packaging not found for:", selectedId);
       return;
     }
-
     updateCartItem(cartItemId, quantity, match.id);
   };
 
   const getRecommendedSideDishes = async () => {
     setLoadingRecommendations(true);
-
     try {
       const menuArray = cartItems.map((cartItem) => ({
         menuId: cartItem.menu.id,
@@ -141,7 +154,6 @@ function CartItems() {
 
   const handleAddToCart = async (id) => {
     setAddingToCart((prev) => ({ ...prev, [id]: true }));
-
     try {
       await addToCart(id, 1);
     } catch (err) {
@@ -179,7 +191,7 @@ function CartItems() {
 
   const handleRemoveItem = async (itemId) => {
     setOpenIndex(null);
-    await removeFromCart(itemId); // context also cleans up packaging for this item
+    await removeFromCart(itemId);
   };
 
   const handleRemoveDiscount = async () => {
@@ -197,18 +209,16 @@ function CartItems() {
   };
 
   const handleProceedToCheckout = () => {
-    console.log("selected order type: ", selectedOrderType);
-
     const packagingSelections = {};
-    cartItems.forEach((item) => {
-      if (item.packaging) {
-        packagingSelections[item.id] = item.packaging.id;
-      }
-    });
-    if (
-      (!user && selectedOrderType === "delivery") ||
-      (user && selectedOrderType === "delivery")
-    ) {
+    if (selectedOrderType !== "dine-in") {
+      cartItems.forEach((item) => {
+        if (item.packaging) {
+          packagingSelections[item.id] = item.packaging.id;
+        }
+      });
+    }
+
+    if (selectedOrderType === "delivery") {
       navigate("/order-type", {
         state: {
           orderType: selectedOrderType,
@@ -222,15 +232,14 @@ function CartItems() {
   };
 
   const handleConfirmCheckout = async () => {
-    console.log("Here we are");
-
     const packagingSelections = {};
-
-    cartItems.forEach((item) => {
-      if (item.packaging) {
-        packagingSelections[item.id] = item.packaging.id;
-      }
-    });
+    if (selectedOrderType !== "dine-in") {
+      cartItems.forEach((item) => {
+        if (item.packaging) {
+          packagingSelections[item.id] = item.packaging.id;
+        }
+      });
+    }
 
     if (selectedPaymentMethod === "cash") {
       setProcessingCheckout(true);
@@ -241,23 +250,6 @@ function CartItems() {
           packagingSelections,
         },
       });
-      // try {
-      //   await api.post("/checkout", {
-      //     order_type: selectedOrderType,
-      //     payment_type: "cash",
-      //     customer_email: user.email,
-      //     packaging: packagingSelections,
-      //   });
-      //   showToast("Order placed successfully!");
-      //   navigate("/receipt");
-      // } catch (err) {
-      //   showToast(
-      //     err.response?.data?.message || "Failed to process cash payment",
-      //     "error",
-      //   );
-      // } finally {
-      //   setProcessingCheckout(false);
-      // }
     } else {
       navigate("/order-type", {
         state: {
@@ -273,7 +265,9 @@ function CartItems() {
     setOpenIndex((prev) => (prev === index ? null : index));
   };
 
-  // ── Totals ───────────────────────────────────────────────────────────────────
+  // ── Totals ────────────────────────────────────────────────────────────────────
+  const isDineIn = selectedOrderType === "dine-in";
+
   const baseSubtotal = cart?.subtotal
     ? Number(cart.subtotal)
     : cartItems.reduce(
@@ -281,21 +275,20 @@ function CartItems() {
         0,
       );
 
-  const totalPackagingFee = cartItems.reduce(
-    (sum, item) => sum + (item.packaging?.price ?? 0) * item.quantity,
-    0,
-  );
+  const totalPackagingFee = isDineIn
+    ? 0
+    : cartItems.reduce(
+        (sum, item) => sum + (item.packaging?.price ?? 0) * item.quantity,
+        0,
+      );
 
-  // The true subtotal — what the customer actually owes before any discount
   const subtotal = baseSubtotal + totalPackagingFee;
 
-  // Discount rate from the server (e.g. 0.15 for 15%), then apply to full subtotal
   const serverDiscountAmount = Number(cart?.discount_amount || 0);
   const discountRate =
     baseSubtotal > 0 ? serverDiscountAmount / baseSubtotal : 0;
-  const discountAmount = subtotal * discountRate; // ← now applies to full subtotal
-
-  const discountPercent = Math.round(discountRate * 100); // e.g. 15
+  const discountAmount = subtotal * discountRate;
+  const discountPercent = Math.round(discountRate * 100);
 
   const finalTotal = subtotal - discountAmount;
   // ─────────────────────────────────────────────────────────────────────────────
@@ -335,10 +328,12 @@ function CartItems() {
           </div>
           <div className="mt-5">
             {cartItems.map((item) => {
-              // const selectedPkg = itemPackaging[item.id] ?? null;
+              // ── Only include packaging in the per-item price when not dine-in ──
+              const packagingPrice = isDineIn
+                ? 0
+                : (item.packaging?.price ?? 0);
               const itemTotal =
-                Number(item.menu?.price) * item.quantity +
-                (item.packaging ? Number(item.packaging.price) : 0);
+                Number(item.menu?.price) * item.quantity + packagingPrice;
 
               return (
                 <div
@@ -374,7 +369,7 @@ function CartItems() {
                                 item.id,
                                 item.quantity,
                                 -1,
-                                item.packaging?.id ?? "",
+                                isDineIn ? null : (item.packaging?.id ?? ""),
                               )
                             }
                             className="w-6 h-6 flex items-center justify-center hover:text-orange-500 font-bold disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:text-gray-400"
@@ -394,7 +389,7 @@ function CartItems() {
                                 item.id,
                                 item.quantity,
                                 1,
-                                item.packaging?.id ?? "",
+                                isDineIn ? null : (item.packaging?.id ?? ""),
                               )
                             }
                             className="w-6 h-6 flex items-center justify-center hover:text-orange-500 font-bold disabled:opacity-30 disabled:cursor-not-allowed"
@@ -423,8 +418,8 @@ function CartItems() {
                     </button>
                   </div>
 
-                  {/* Per-item packaging selector */}
-                  {item.menu.requires_takeaway && (
+                  {/* Per-item packaging selector — hidden on dine-in */}
+                  {item.menu.requires_takeaway && !isDineIn && (
                     <div className="mt-3 ml-24">
                       {packagingLoading ? (
                         <div className="flex items-center gap-2 text-xs text-gray-400">
@@ -442,7 +437,6 @@ function CartItems() {
                                 );
                                 try {
                                   setPackagingLoading(true);
-                                  // Update the cart item with the new packaging ID
                                   updateCartItem(
                                     item.id,
                                     item.quantity,
@@ -464,11 +458,9 @@ function CartItems() {
                             </select>
                             <FaChevronDown className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 w-2.5 h-2.5 text-gray-400" />
                           </div>
-
                           {item.packaging && (
                             <span className="text-xs font-semibold text-orange-500 whitespace-nowrap">
-                              +₦
-                              {Number(item.packaging.price).toLocaleString()}
+                              +₦{Number(item.packaging.price).toLocaleString()}
                             </span>
                           )}
                         </div>
@@ -492,7 +484,7 @@ function CartItems() {
           <div className="mt-5">
             {loadingRecommendations ? (
               <div className="flex flex-col items-center justify-center py-10 text-gray-500">
-                <div className="w-10 h-10 border-2 border-gray-300 border-t-orange-500 rounded-full animate-spin mb-3"></div>
+                <div className="w-10 h-10 border-2 border-gray-300 border-t-orange-500 rounded-full animate-spin mb-3" />
                 <p className="text-sm font-medium">
                   Loading recommendations...
                 </p>
@@ -529,7 +521,7 @@ function CartItems() {
                     >
                       {addingToCart[complement.id] ? (
                         <>
-                          <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                          <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
                           Adding...
                         </>
                       ) : (
@@ -589,6 +581,7 @@ function CartItems() {
               </div>
             ))}
           </div>
+
           <div className="bg-white rounded-3xl p-6 overflow-y-auto h-[400px] flex flex-col justify-between">
             <div>
               <h3 className="font-black text-xl mb-4">Discount Code</h3>
@@ -609,7 +602,6 @@ function CartItems() {
                   {applyingDiscount ? "Applying..." : "Apply"}
                 </button>
               </div>
-
               {discountMessage.text && (
                 <p
                   className={`text-sm mb-4 ${
@@ -642,8 +634,13 @@ function CartItems() {
 
                 <div className="flex justify-between text-sm mt-6">
                   <span className="text-gray-600">Packaging Fee</span>
-                  {packagingLoading ? (
-                    <span>Loading packaging fee…</span>
+                  {/* Always show ₦0 on dine-in; show loading only on other types */}
+                  {isDineIn ? (
+                    <span className="font-bold">₦0</span>
+                  ) : packagingLoading ? (
+                    <span className="text-gray-400 text-xs">
+                      Loading packaging fee…
+                    </span>
                   ) : (
                     <span className="font-bold">
                       {new Intl.NumberFormat("en-NG", {
@@ -680,6 +677,7 @@ function CartItems() {
                   </div>
                 )}
               </div>
+
               <div className="flex justify-between items-center pt-4 border-t border-gray-200 mb-6">
                 <span className="font-black text-xl">
                   {discountAmount > 0 ? "New Total" : "Total"}
