@@ -89,6 +89,10 @@ const OrderDetailsModal = ({ isOpen, onClose, order }) => {
       return sum + (item.subtotal ?? 0) + packagingPrice * (item.quantity ?? 1);
     }, 0) ?? 0;
 
+  // useEffect(() => {
+  //   console.log("Order data in modal:", order);
+  // }, [order]);
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
       <div className="bg-white rounded-2xl w-full max-w-[800px] shadow-xl overflow-hidden max-h-[90vh] flex flex-col">
@@ -178,6 +182,28 @@ const OrderDetailsModal = ({ isOpen, onClose, order }) => {
                   <p className="text-sm text-gray-500 mb-1">Attendant Email</p>
                   <p className="text-base font-medium text-gray-900 text-wrap">
                     {order.attendant.email}
+                  </p>
+                </div>
+              </>
+            )}
+
+            {order.delivery_agent && (
+              <>
+                <div>
+                  <p className="text-sm text-gray-500 mb-1">
+                    Delivery Agent Name
+                  </p>
+                  <p className="text-base font-medium text-gray-900">
+                    {order.delivery_agent.name}
+                  </p>
+                </div>
+
+                <div>
+                  <p className="text-sm text-gray-500 mb-1">
+                    Delivery Agent Email
+                  </p>
+                  <p className="text-base font-medium text-gray-900 text-wrap">
+                    {order.delivery_agent.email}
                   </p>
                 </div>
               </>

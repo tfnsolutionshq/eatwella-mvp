@@ -17,8 +17,6 @@ const AddStaffModal = ({ isOpen, onClose, onSuccess }) => {
     setError("");
     setLoading(true);
 
-    console.log("Over here: ", formData);
-
     try {
       await api.post("/admin/staff", formData);
       setFormData({ name: "", role: "", email: "", password: "" });

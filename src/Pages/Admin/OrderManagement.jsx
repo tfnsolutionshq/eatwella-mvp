@@ -519,24 +519,24 @@ const OrderManagement = () => {
 
   const handleNonDeliveryComplete = async (orderId) => {
     setChanging(orderId);
-    const endpointByRole = {
-      attendant: `/admin/orders/${orderId}`,
-      supervisor: `/admin/orders/${orderId}`,
-      admin: `/admin/orders/${orderId}/complete`,
-    };
-    const endpoint = endpointByRole[user.role];
-    if (!endpoint) return;
-    try {
-      await api.put(endpoint, { status: "completed" });
-      showToast("Order marked as completed", "success");
-      fetchOrders(true);
-    } catch (err) {
-      showToast(
-        err.response?.data?.message || "Failed to complete order",
-        "error",
-      );
-    } finally {
-      clearChanging(orderId);
+    if (
+      user.role === "attendant" ||
+      user.role === "supervisor" ||
+      user.role === "admin"
+    ) {
+      const endpoint = `/admin/orders/${orderId}`;
+      try {
+        await api.put(endpoint, { status: "completed" });
+        showToast("Order marked as completed", "success");
+        fetchOrders(true);
+      } catch (err) {
+        showToast(
+          err.response?.data?.message || "Failed to complete order",
+          "error",
+        );
+      } finally {
+        clearChanging(orderId);
+      }
     }
   };
 
@@ -582,7 +582,7 @@ const OrderManagement = () => {
       </button>
     );
 
-    if (user.role === "kitchen") {
+    if (user.role === "kitchen" || user.role === "admin") {
       if (status === "confirmed")
         return (
           <OrangeBtn
@@ -599,7 +599,7 @@ const OrderManagement = () => {
         );
     }
 
-    if (user.role === "delivery_agent") {
+    if (user.role === "delivery_agent" || user.role === "admin") {
       if (status === "dispatched")
         return (
           <OrangeBtn
@@ -609,7 +609,7 @@ const OrderManagement = () => {
         );
     }
 
-    if (user.role === "supervisor") {
+    if (user.role === "supervisor" || user.role === "admin") {
       if (status === "ready" && order_type === "delivery")
         return <AssignBtn onClickFn={() => openAssignModal(order)} />;
       if (status === "ready" && order_type !== "delivery")
@@ -628,7 +628,7 @@ const OrderManagement = () => {
         );
     }
 
-    if (user.role === "attendant") {
+    if (user.role === "attendant" || user.role === "admin") {
       if (status === "pending")
         return (
           <OrangeBtn

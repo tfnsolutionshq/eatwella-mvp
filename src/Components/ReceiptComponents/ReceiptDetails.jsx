@@ -322,17 +322,11 @@ function ReceiptDetails() {
               </span>
             </div>
           </div>
-          {order.delivery_pin && (
-            <div className="text-center mt-5">
-              <p>
-                Your Delivery PIN:{" "}
-                <span className="font-bold">{order.delivery_pin}</span>
-              </p>
-              <p className="text-gray-500 mt-1 italic">
-                Save and provide this PIN to the delivery agent who will come
-                with your order.
-              </p>
-            </div>
+          {order.order_type === "delivery" && (
+            <p className="text-gray-500 italic text-center mt-5">
+              Check your email address for your delivery PIN. You will provide
+              the PIN to the delivery agent who will come with your order.
+            </p>
           )}
         </div>
 
@@ -346,7 +340,7 @@ function ReceiptDetails() {
             <div className="flex justify-between">
               <span className="text-gray-500">Order Type</span>
               <span className="text-gray-900 capitalize">
-                {(order.order_type === "dine" && "dine-in") || "N/A"}
+                {(order.order_type === "dine" && "dine-in") || order.order_type}
               </span>
             </div>
             <div className="flex justify-between">
