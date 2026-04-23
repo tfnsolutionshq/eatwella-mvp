@@ -17,6 +17,7 @@ const AddMenuItemModal = ({
     is_available: 1,
     takeawayPack: 1,
     sideDishes: [],
+    quantityLeft: 0,
   });
   const [images, setImages] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -67,7 +68,6 @@ const AddMenuItemModal = ({
       ...prev,
       sideDishes: prev.sideDishes.filter((s) => s !== id),
     }));
-    w;
   };
 
   const handleSubmit = async (e) => {
@@ -102,6 +102,7 @@ const AddMenuItemModal = ({
         is_available: 1,
         takeawayPack: 1,
         sideDishes: [],
+        quantityLeft: 0,
       });
       setImages([]);
       setSideDishSearch("");
@@ -224,6 +225,29 @@ const AddMenuItemModal = ({
                   ))}
                 </select>
               </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Quantity Left <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="number"
+                min="0"
+                value={formData.quantityLeft}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    quantityLeft: Number(e.target.value),
+                  })
+                }
+                placeholder="e.g., 20"
+                required
+                className="w-full px-4 py-3 rounded-xl border border-gray-200 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-100 focus:border-orange-500 transition-all"
+              />
+              <p className="text-xs text-gray-400 mt-1">
+                Number of portions currently available
+              </p>
             </div>
 
             <div>

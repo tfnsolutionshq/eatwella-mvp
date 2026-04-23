@@ -31,6 +31,7 @@ const EditMenuItemModal = ({
     is_available: 1,
     takeawayPack: 0,
     sideDishes: [],
+    quantityLeft: 0,
   });
   const [images, setImages] = useState([]);
   const [currentImage, setCurrentImage] = useState("");
@@ -45,16 +46,12 @@ const EditMenuItemModal = ({
 
   useEffect(() => {
     if (item) {
-      console.log("The item here: ", item.complements);
-
       // Resolve existing side dish IDs from the item, or inject mock data for testing
       const existingSideIds = SIMULATE_EXISTING_SIDES
         ? MOCK_SIDES.map((s) => s.id)
         : (item.complements ?? []).map((s) =>
             typeof s === "object" ? s.id : s,
           );
-
-      console.log("just checking: ", existingSideIds);
 
       setFormData({
         category_id: item.category_id || "",
@@ -64,6 +61,7 @@ const EditMenuItemModal = ({
         is_available: item.is_available ?? 1,
         takeawayPack: (item.requires_takeaway === true ? 1 : 0) ?? 0,
         sideDishes: existingSideIds,
+        quantityLeft: 0,
       });
       setCurrentImage(item.images?.[0] || "");
       setImages([]);
@@ -260,6 +258,29 @@ const EditMenuItemModal = ({
                   ))}
                 </select>
               </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Quantity Left <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="number"
+                min="0"
+                value={formData.quantityLeft}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    quantityLeft: Number(e.target.value),
+                  })
+                }
+                placeholder="e.g., 20"
+                required
+                className="w-full px-4 py-3 rounded-xl border border-gray-200 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-100 focus:border-orange-500 transition-all"
+              />
+              <p className="text-xs text-gray-400 mt-1">
+                Number of portions currently available
+              </p>
             </div>
 
             <div>
