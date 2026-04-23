@@ -437,6 +437,9 @@ const Menu = () => {
                           <span className="px-2.5 py-1 rounded-md bg-gray-100 text-gray-600 text-xs font-medium border border-gray-200">
                             {item.category?.name}
                           </span>
+                          <span className="px-2.5 py-1 rounded-md bg-gray-100 text-gray-600 text-xs font-medium border border-gray-200">
+                            Quantity Left: 20
+                          </span>
                         </div>
 
                         {/* Actions */}
