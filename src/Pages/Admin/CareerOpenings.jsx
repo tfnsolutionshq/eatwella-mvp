@@ -51,7 +51,6 @@ const CareerOpenings = () => {
     setLoading(true);
     try {
       const { data } = await api.get("/careers/openings");
-      console.log("Openings response:", data);
       setOpenings(Array.isArray(data) ? data : data.data || []);
     } catch (err) {
       console.error("Failed to fetch openings:", err);
