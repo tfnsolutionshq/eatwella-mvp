@@ -22,8 +22,10 @@ import { useAuth } from "../context/AuthContext";
 
 export default function Sidebar({ isOpen, onToggle }) {
   const navigate = useNavigate();
-  const { logout, user } = useAuth();
+  const { logout, user, routePrefix } = useAuth();
   const [isCollapsed, setIsCollapsed] = useState(false);
+
+  const p = routePrefix;
 
   const location = useLocation();
 
@@ -39,7 +41,7 @@ export default function Sidebar({ isOpen, onToggle }) {
       id: "orders",
       label: "Orders",
       icon: FiShoppingCart,
-      path: "/admin/orders",
+      path: `${p}/orders`,
       roles: ["admin", "supervisor", "attendant", "delivery_agent", "kitchen"],
     },
     {
@@ -75,7 +77,7 @@ export default function Sidebar({ isOpen, onToggle }) {
       label: "Campaigns",
       icon: FiBell,
       path: "/admin/campaigns",
-      roles: ["admin", "supervisor"],
+      roles: ["admin"],
     },
     {
       id: "vacancies",
@@ -116,8 +118,8 @@ export default function Sidebar({ isOpen, onToggle }) {
       id: "payments",
       label: "Payments",
       icon: FiCreditCard,
-      path: "/admin/payments",
-      roles: ["admin", "cashier"],
+      path: `${p}/payments`,
+      roles: ["admin", "attendant"],
     },
     {
       id: "tax-vat",
@@ -138,7 +140,7 @@ export default function Sidebar({ isOpen, onToggle }) {
       label: "Settings",
       icon: FiSettings,
       path: "/admin/settings",
-      roles: ["admin", "supervisor"],
+      roles: ["admin"],
     },
   ];
 

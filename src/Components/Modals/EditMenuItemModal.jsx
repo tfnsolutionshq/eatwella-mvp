@@ -31,7 +31,7 @@ const EditMenuItemModal = ({
     is_available: 1,
     takeawayPack: 0,
     sideDishes: [],
-    quantityLeft: 0,
+    stock_quantity: 0,
   });
   const [images, setImages] = useState([]);
   const [currentImage, setCurrentImage] = useState("");
@@ -61,7 +61,7 @@ const EditMenuItemModal = ({
         is_available: item.is_available ?? 1,
         takeawayPack: (item.requires_takeaway === true ? 1 : 0) ?? 0,
         sideDishes: existingSideIds,
-        quantityLeft: 0,
+        stock_quantity: item.stock_quantity ?? 0,
       });
       setCurrentImage(item.images?.[0] || "");
       setImages([]);
@@ -125,8 +125,6 @@ const EditMenuItemModal = ({
     setError("");
     setLoading(true);
 
-    console.log("form data: ", formData);
-
     try {
       const data = new FormData();
       data.append("category_id", formData.category_id);
@@ -135,16 +133,28 @@ const EditMenuItemModal = ({
       data.append("price", formData.price);
       data.append("is_available", formData.is_available);
       data.append("requires_takeaway", formData.takeawayPack);
+      data.append("stock_quantity", formData.stock_quantity);
       formData.sideDishes.forEach((id) => data.append("complements[]", id));
       images.forEach((img) => data.append("images[]", img));
 
-      await api.put(`/admin/menus/${item.id}`, data, {
-        headers: { "Content-Type": "multipart/form-data" },
+      await api.put(`/admin/menus/${item.id}`, formData, {
+        headers: { "Content-Type": "application/json" },
       });
       onSuccess?.();
       onClose();
     } catch (err) {
-      setError(err.response?.data?.message || "Failed to update menu item");
+      console.log("Error updating menu item: ", err);
+      const responseData = err.response?.data;
+      const message = responseData?.message || "Failed to update menu item";
+      const errors = responseData?.errors || [];
+
+      setError(message);
+
+      // Use `errors` however you need, e.g.:
+      if (errors.length > 0) {
+        console.log("Validation errors:", errors);
+      }
+      // setError(err.response?.data?.message || "Failed to update menu item");
     } finally {
       setLoading(false);
     }
@@ -262,16 +272,16 @@ const EditMenuItemModal = ({
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Quantity Left <span className="text-red-500">*</span>
+                Stock Quantity <span className="text-red-500">*</span>
               </label>
               <input
                 type="number"
                 min="0"
-                value={formData.quantityLeft}
+                value={formData.stock_quantity}
                 onChange={(e) =>
                   setFormData({
                     ...formData,
-                    quantityLeft: Number(e.target.value),
+                    stock_quantity: e.target.value,
                   })
                 }
                 placeholder="e.g., 20"

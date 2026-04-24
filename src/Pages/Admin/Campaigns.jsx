@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import DashboardLayout from "../../DashboardLayout/DashboardLayout";
+import StarterKit from "@tiptap/starter-kit";
+import { useEditor, EditorContent } from "@tiptap/react";
 import {
   FiPlus,
   FiSearch,
@@ -35,7 +37,8 @@ const today = () => new Date().toISOString().split("T")[0];
 
 const EMPTY_FORM = {
   title: "",
-  details: "",
+  brief: "", // ✅ NEW FIELD
+  details: "", // now RTF (HTML string)
   start_date: "",
   end_date: "",
   status: "draft",
@@ -200,7 +203,10 @@ function PreviewModal({ campaign, onClose }) {
               <h4 className="text-lg font-black text-gray-900">
                 {campaign.title}
               </h4>
-              <p className="text-sm text-gray-600 mt-1">{campaign.details}</p>
+              <div
+                className="text-sm text-gray-600 mt-1"
+                dangerouslySetInnerHTML={{ __html: campaign.details }}
+              />
               {campaign.url && (
                 <a
                   href={campaign.url}
@@ -251,6 +257,8 @@ function CampaignFormModal({ mode, initialData, onClose, onSave }) {
             ? initialData.end_date.split("T")[0]
             : "",
           imagePreview: initialData.image_url || null,
+          details: initialData.details || "",
+          brief: initialData.brief || "",
           image: null, // don't pre-fill file input; imagePreview shows existing
         }
       : { ...EMPTY_FORM },
@@ -258,6 +266,22 @@ function CampaignFormModal({ mode, initialData, onClose, onSave }) {
   const [errors, setErrors] = useState({});
   const [isSaving, setIsSaving] = useState(false);
   const fileRef = useRef();
+
+  const editor = useEditor({
+    extensions: [
+      StarterKit.configure({ heading: { levels: [1, 2, 3, 4, 5, 6] } }),
+    ],
+    content: form.details,
+    onUpdate: ({ editor }) => {
+      set("details", editor.getHTML());
+    },
+  });
+
+  useEffect(() => {
+    if (editor && form.details) {
+      editor.commands.setContent(form.details);
+    }
+  }, [editor]);
 
   const set = (field, value) => {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -279,6 +303,8 @@ function CampaignFormModal({ mode, initialData, onClose, onSave }) {
     if (!form.details.trim()) errs.details = "Campaign details are required";
     if (!form.start_date) errs.start_date = "Start date is required";
     if (!form.end_date) errs.end_date = "End date is required";
+    if (!form.brief.trim()) errs.brief = "Campaign brief is required";
+    if (!form.details.trim()) errs.details = "Campaign details are required";
     if (form.start_date && form.end_date && form.end_date < form.start_date)
       errs.end_date = "End date must be after start date";
     // Only require image for NEW modal campaigns; existing ones already have image_url
@@ -297,7 +323,6 @@ function CampaignFormModal({ mode, initialData, onClose, onSave }) {
     setIsSaving(true);
     const payload = { ...form, status: statusOverride || form.status };
     delete payload.imagePreview;
-    console.log("The payload: ", payload);
     await onSave(payload, mode);
     setIsSaving(false);
   };
@@ -453,20 +478,107 @@ function CampaignFormModal({ mode, initialData, onClose, onSave }) {
             )}
           </div>
 
+          {/* Brief */}
+          <div>
+            <label className="block text-xs font-semibold text-gray-600 mb-2 uppercase tracking-wide">
+              Campaign Brief
+            </label>
+            <input
+              type="text"
+              value={form.brief}
+              onChange={(e) => set("brief", e.target.value)}
+              placeholder="Short summary (e.g. 50% off meals this weekend)"
+              className={`w-full px-4 py-3 rounded-2xl border bg-gray-50 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 ${
+                errors.brief ? "border-red-400 bg-red-50" : "border-gray-200"
+              }`}
+            />
+            {errors.brief && (
+              <p className="text-xs text-red-500 mt-1">{errors.brief}</p>
+            )}
+          </div>
+
           {/* Details */}
           <div>
             <label className="block text-xs font-semibold text-gray-600 mb-2 uppercase tracking-wide">
-              Campaign Details *
+              Campaign Details (Rich Text)
             </label>
-            <textarea
-              value={form.details}
-              onChange={(e) => set("details", e.target.value)}
-              placeholder="Describe what this campaign is about…"
-              rows={3}
-              className={`w-full px-4 py-3 rounded-2xl border bg-gray-50 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all resize-none ${
-                errors.details ? "border-red-400 bg-red-50" : "border-gray-200"
-              }`}
-            />
+
+            <div className="border border-gray-200 rounded-2xl overflow-hidden">
+              {/* Toolbar */}
+              <div className="flex gap-2 p-2 border-b bg-gray-50 flex-wrap items-center">
+                <select
+                  onChange={(e) => {
+                    const level = parseInt(e.target.value);
+                    if (level === 0) {
+                      editor.chain().focus().setParagraph().run();
+                    } else {
+                      editor.chain().focus().toggleHeading({ level }).run();
+                    }
+                  }}
+                  value={
+                    [1, 2, 3, 4, 5, 6].find((l) =>
+                      editor.isActive("heading", { level: l }),
+                    ) || 0
+                  }
+                  className="text-sm border border-gray-200 rounded-lg px-2 py-1 bg-white focus:outline-none cursor-pointer"
+                >
+                  <option value={0}>Paragraph</option>
+                  <option value={1}>Heading 1</option>
+                  <option value={2}>Heading 2</option>
+                  <option value={3}>Heading 3</option>
+                  <option value={4}>Heading 4</option>
+                  <option value={5}>Heading 5</option>
+                  <option value={6}>Heading 6</option>
+                </select>
+                <div className="w-px h-5 bg-gray-200" /> {/* divider */}
+                <button
+                  type="button"
+                  onClick={() => editor.chain().focus().toggleBold().run()}
+                  className="p-2 text-sm w-10 font-bold hover:bg-gray-100 rounded"
+                >
+                  B
+                </button>
+                <button
+                  type="button"
+                  onClick={() => editor.chain().focus().toggleItalic().run()}
+                  className="p-2 text-sm italic w-10 hover:bg-gray-100 rounded"
+                >
+                  I
+                </button>
+                <button
+                  type="button"
+                  onClick={() =>
+                    editor.chain().focus().toggleBulletList().run()
+                  }
+                  className="p-2 text-sm w-10 hover:bg-gray-100 rounded"
+                >
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="currentColor"
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="20"
+                    height="20"
+                  >
+                    <path d="M8 4H21V6H8V4ZM4.5 6.5C3.67157 6.5 3 5.82843 3 5C3 4.17157 3.67157 3.5 4.5 3.5C5.32843 3.5 6 4.17157 6 5C6 5.82843 5.32843 6.5 4.5 6.5ZM4.5 13.5C3.67157 13.5 3 12.8284 3 12C3 11.1716 3.67157 10.5 4.5 10.5C5.32843 10.5 6 11.1716 6 12C6 12.8284 5.32843 13.5 4.5 13.5ZM4.5 20.4C3.67157 20.4 3 19.7284 3 18.9C3 18.0716 3.67157 17.4 4.5 17.4C5.32843 17.4 6 18.0716 6 18.9C6 19.7284 5.32843 20.4 4.5 20.4ZM8 11H21V13H8V11ZM8 18H21V20H8V18Z" />
+                  </svg>
+                </button>
+              </div>
+
+              {/* Editor */}
+              <EditorContent
+                editor={editor}
+                className="p-4 min-h-[120px] text-sm focus:outline-none 
+    [&_.tiptap]:focus:outline-none
+    [&_ul]:list-disc [&_ul]:ml-4 
+    [&_h1]:text-3xl [&_h1]:font-black
+    [&_h2]:text-2xl [&_h2]:font-bold
+    [&_h3]:text-xl  [&_h3]:font-bold
+    [&_h4]:text-lg  [&_h4]:font-semibold
+    [&_h5]:text-base [&_h5]:font-semibold
+    [&_h6]:text-sm  [&_h6]:font-semibold"
+              />
+            </div>
+
             {errors.details && (
               <p className="text-xs text-red-500 mt-1">{errors.details}</p>
             )}
@@ -705,6 +817,8 @@ const Campaigns = () => {
       formData.append("end_date", payload.end_date);
       formData.append("status", payload.status);
       formData.append("type", payload.type);
+      formData.append("brief", payload.brief);
+      formData.append("details", payload.details); // now HTML
       if (payload.url) formData.append("url", payload.url);
       // Only append image if a new file was selected
       if (payload.image instanceof File) {
@@ -967,9 +1081,12 @@ const Campaigns = () => {
                             <p className="text-sm font-bold text-gray-900 truncate max-w-xs">
                               {campaign.title}
                             </p>
-                            <p className="text-xs text-gray-400 truncate max-w-xs mt-0.5">
-                              {campaign.details}
-                            </p>
+                            <p
+                              className="text-xs text-gray-400 truncate max-w-xs mt-0.5"
+                              dangerouslySetInnerHTML={{
+                                __html: campaign.brief,
+                              }}
+                            />
                           </div>
                         </div>
                       </td>

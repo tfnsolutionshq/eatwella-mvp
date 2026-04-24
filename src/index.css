@@ -301,3 +301,19 @@
   border-color: rgba(0, 0, 0, 0.2);
   border-top-color: #000000;
 }
+
+.tiptap ul {
+  list-style-type: disc;
+  margin-left: 1rem;
+  padding-left: 0.5rem;
+}
+
+.tiptap ol {
+  list-style-type: decimal;
+  margin-left: 1rem;
+  padding-left: 0.5rem;
+}
+
+.tiptap:focus {
+  outline: none;
+}

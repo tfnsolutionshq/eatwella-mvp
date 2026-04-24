@@ -517,15 +517,20 @@ function CartItems() {
                     <button
                       className="bg-orange-500 px-5 py-2 rounded-full text-white flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
                       onClick={() => handleAddToCart(complement.id)}
-                      disabled={addingToCart[complement.id]}
+                      disabled={
+                        complement.stock_quantity < 1 ||
+                        addingToCart[complement.id]
+                      }
                     >
                       {addingToCart[complement.id] ? (
                         <>
                           <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
                           Adding...
                         </>
+                      ) : complement.stock_quantity < 1 ? (
+                        "Out of Stock"
                       ) : (
-                        "Add to Cart"
+                        "Add To Cart"
                       )}
                     </button>
                   </div>

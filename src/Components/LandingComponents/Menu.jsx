@@ -178,13 +178,19 @@ function Menu() {
                     </p>
                     <button
                       onClick={() => handleAddToCart(item)}
-                      disabled={loadingItems[item.id]}
+                      disabled={
+                        item.stock_quantity < 1 || loadingItems[item.id]
+                      }
                       className="w-full bg-orange-500 hover:bg-orange-600 text-white py-3 rounded-full font-bold transition-colors disabled:opacity-50 flex items-center justify-center gap-2 mt-auto"
                     >
                       {loadingItems[item.id] ? (
                         <span className="spinner" />
                       ) : null}
-                      {loadingItems[item.id] ? "Adding..." : "Add To Cart"}
+                      {loadingItems[item.id]
+                        ? "Adding..."
+                        : item.stock_quantity < 1
+                          ? "Out of Stock"
+                          : "Add To Cart"}
                     </button>
                   </div>
                 </div>
@@ -223,7 +229,7 @@ function Menu() {
                   </p>
                   <button
                     onClick={() => handleAddToCart(item)}
-                    disabled={loadingItems[item.id]}
+                    disabled={item.stock_quantity < 1 || loadingItems[item.id]}
                     className="w-full bg-orange-500 hover:bg-orange-600 text-white py-3 rounded-full font-bold transition-colors disabled:opacity-50 flex items-center justify-center gap-2 mt-auto"
                   >
                     {loadingItems[item.id] ? (

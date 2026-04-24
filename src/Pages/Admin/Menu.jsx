@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback } from "react";
-import { Link } from "react-router-dom";
 import DashboardLayout from "../../DashboardLayout/DashboardLayout";
 import AddCategoryModal from "../../Components/Modals/AddCategoryModal";
 import EditCategoryModal from "../../Components/Modals/EditCategoryModal";
@@ -438,7 +437,7 @@ const Menu = () => {
                             {item.category?.name}
                           </span>
                           <span className="px-2.5 py-1 rounded-md bg-gray-100 text-gray-600 text-xs font-medium border border-gray-200">
-                            Quantity Left: 20
+                            Quantity Left: {item.stock_quantity}
                           </span>
                         </div>
 

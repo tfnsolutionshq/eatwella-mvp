@@ -22,7 +22,15 @@ const Login = () => {
       const { data } = await api.post("/login", { email, password });
       login(data.token, data.user);
       navigate(
-        data.user?.role === "cashier" ? "/admin/orders" : "/admin/dashboard",
+        data.user?.role === "attendant"
+          ? "/attendant/orders"
+          : data.user?.role === "delivery_agent"
+            ? "/delivery/orders"
+            : data.user?.role === "kitchen"
+              ? "/kitchen/orders"
+              : data.user?.role === "supervisor"
+                ? "/supervisor/orders"
+                : "/admin/dashboard",
       );
     } catch (err) {
       console.error("Login error:", err);
