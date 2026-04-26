@@ -32,7 +32,7 @@ function Feeling() {
       {sections.map((section) => (
         <div
           key={section.id}
-          className={`relative w-full h-[80vh] lg:h-[100vh] bg-fixed bg-[length:400%] lg:bg-[length:200%] xl:bg-[length:120%] ${section.title === "Dine In" ? "bg-[position:bottom]" : "bg-center"} flex items-center bg-no-repeat`}
+          className={`relative w-full h-[100vh] bg-fixed flex items-center bg-no-repeat bg-center bg-cover`}
           style={{
             backgroundImage: `url(${section.image})`,
           }}

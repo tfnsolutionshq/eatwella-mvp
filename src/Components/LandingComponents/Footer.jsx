@@ -19,7 +19,7 @@ function Footer() {
       <div className="max-w-5xl mx-auto">
         {/* Contact Cards */}
         <div className="grid md:grid-cols-2 gap-6 mb-12">
-          <div className="bg-[#262626] rounded-3xl p-8 text-center">
+          <div className="bg-[#262626] rounded-3xl p-8 text-center flex flex-col justify-center">
             <div className="w-12 h-12 bg-orange-500 rounded-full flex items-center justify-center mx-auto mb-4">
               <FaPhone className="text-white text-xl" />
             </div>
@@ -31,7 +31,7 @@ function Footer() {
             </p>
           </div>
 
-          <div className="bg-[#262626] rounded-3xl p-8 text-center">
+          <div className="bg-[#262626] rounded-3xl p-8 text-center flex flex-col justify-center">
             <div className="w-12 h-12 bg-orange-500 rounded-full flex items-center justify-center mx-auto mb-4">
               <FaMapMarkerAlt className="text-white text-xl" />
             </div>
@@ -39,16 +39,14 @@ function Footer() {
               FIND US
             </h3>
             <p className="text-white text-2xl font-black font-bolota">
-              Opposite Admin Block B, Beside the Department of Geology, Nnamdi
-              Azikiwe University
-              <br />
-              NIGERIA.
+              Beside Admin Block B, Behind Geology Lab Building, Nnamdi Azikiwe
+              University, Awka
             </p>
           </div>
         </div>
 
         {/* Navigation Links and Social Media Icons */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-12 gap-6">
+        <div className="flex flex-col md:flex-row justify-between items-center md:items-center mb-12 gap-6">
           <div className="flex gap-4 md:gap-8 flex-wrap">
             <Link
               to="/menu"
@@ -68,12 +66,6 @@ function Footer() {
             >
               Track Order
             </Link>
-            <a
-              href="#contact"
-              className="text-white hover:text-orange-500 transition-colors"
-            >
-              Contact Us
-            </a>
           </div>
 
           <div className="flex gap-4">

@@ -81,7 +81,7 @@ function Header() {
             </motion.p>
             <motion.div
               variants={itemVariants}
-              className="flex gap-4 justify-center lg:justify-start"
+              className="flex flex-col md:flex-row gap-4 justify-center lg:justify-start"
             >
               <Link
                 to="/menu"

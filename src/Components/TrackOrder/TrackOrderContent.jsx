@@ -134,18 +134,6 @@ function TrackOrderContent() {
     return (
       <div className="min-h-[60vh] flex items-center justify-center bg-gray-50 px-4 py-12">
         <div className="bg-white w-full max-w-lg p-8 rounded-2xl shadow-sm border border-gray-100">
-          <div className="flex flex-col items-center mb-8">
-            <div className="w-16 h-16 bg-orange-50 rounded-full flex items-center justify-center mb-4">
-              <Search className="w-8 h-8 text-orange-500" />
-            </div>
-            <h1 className="text-2xl font-bold text-gray-900 mb-2">
-              Find Your Order
-            </h1>
-            <p className="text-gray-500 text-center">
-              Enter your order ID to track your order
-            </p>
-          </div>
-
           <form onSubmit={handleTrackOrder} className="space-y-6">
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">
