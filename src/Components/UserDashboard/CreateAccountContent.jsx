@@ -12,7 +12,7 @@ function CreateAccountContent() {
   const [password, setPassword] = useState("");
   const [phone, setPhone] = useState("");
   const [zoneId, setZoneId] = useState("");
-  const [streetAddress, setStreetAddress] = useState("");
+  const [deliveryAddress, setDeliveryAddress] = useState("");
   const [closestLandmark, setClosestLandmark] = useState("");
   const [zones, setZones] = useState([]);
   const [loadingZones, setLoadingZones] = useState(false);
@@ -57,7 +57,7 @@ function CreateAccountContent() {
       !password ||
       !phone ||
       !zoneId ||
-      !streetAddress ||
+      !deliveryAddress ||
       !closestLandmark
     ) {
       setError("Please fill in all fields");
@@ -78,7 +78,7 @@ function CreateAccountContent() {
           password,
           phone,
           zone_id: Number(zoneId),
-          street_address: streetAddress,
+          street_address: deliveryAddress,
           closest_landmark: closestLandmark,
         },
         {
@@ -187,12 +187,12 @@ function CreateAccountContent() {
 
             <div>
               <label className="block text-xs font-semibold text-gray-600 mb-1 uppercase tracking-wide">
-                Street Address
+                Delivery Address
               </label>
               <input
                 type="text"
-                value={streetAddress}
-                onChange={(e) => setStreetAddress(e.target.value)}
+                value={deliveryAddress}
+                onChange={(e) => setDeliveryAddress(e.target.value)}
                 placeholder="Block 4, Science Village"
                 className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
               />

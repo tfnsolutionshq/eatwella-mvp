@@ -13,6 +13,7 @@ import {
   FiX,
   FiUser,
   FiPackage,
+  FiSend,
 } from "react-icons/fi";
 import { useNavigate } from "react-router-dom";
 import api from "../../utils/api";
@@ -73,6 +74,7 @@ const TABS_BY_ROLE = {
     "dispatched",
     "completed",
   ],
+  // Kitchen only sees orders explicitly sent to them via "Send to Kitchen"
   kitchen: ["all", "confirmed", "processing"],
   delivery_agent: ["all", "dispatched", "completed"],
   attendant: ["all", "pending", "confirmed", "ready", "completed"],
@@ -223,7 +225,14 @@ const OrderManagement = () => {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+
+  // General status-change loading state (keyed by order ID)
   const [changingIds, setChangingIds] = useState(new Set());
+
+  // Separate loading state exclusively for "Send to Kitchen" (keyed by order ID)
+  // This ensures the send-to-kitchen spinner never bleeds into other action buttons
+  const [sendingToKitchenIds, setSendingToKitchenIds] = useState(new Set());
+
   const [loadingOrderDetails, setLoadingOrderDetails] = useState(null);
   const [isDeliveryPhotoOpen, setIsDeliveryPhotoOpen] = useState(false);
   const [pendingStatusUpdate, setPendingStatusUpdate] = useState(null);
@@ -239,9 +248,20 @@ const OrderManagement = () => {
   const [loadingAgents, setLoadingAgents] = useState(false);
   const [isAssigning, setIsAssigning] = useState(false);
 
+  // ── Loading-state helpers ──────────────────────────────────────────────────
+
   const setChanging = (id) => setChangingIds((prev) => new Set(prev).add(id));
   const clearChanging = (id) =>
     setChangingIds((prev) => {
+      const next = new Set(prev);
+      next.delete(id);
+      return next;
+    });
+
+  const setSendingToKitchen = (id) =>
+    setSendingToKitchenIds((prev) => new Set(prev).add(id));
+  const clearSendingToKitchen = (id) =>
+    setSendingToKitchenIds((prev) => {
       const next = new Set(prev);
       next.delete(id);
       return next;
@@ -253,10 +273,9 @@ const OrderManagement = () => {
 
   useEffect(() => {
     const interval = setInterval(() => {
-      fetchOrders(true); // silent refresh (no big spinner)
-    }, 60000); // 60 seconds
-
-    return () => clearInterval(interval); // cleanup
+      fetchOrders(true);
+    }, 60000);
+    return () => clearInterval(interval);
   }, [page, activeTab, user.role]);
 
   // ── Data fetching ──────────────────────────────────────────────────────────
@@ -278,6 +297,7 @@ const OrderManagement = () => {
               new Date(a.created_at).getTime(),
           );
 
+        // Kitchen only sees orders that were explicitly sent via "Send to Kitchen"
         const response = await api.get("/kitchen/orders/confirmed");
         const payload = response?.data;
         const data = payload?.data ?? payload ?? [];
@@ -397,6 +417,26 @@ const OrderManagement = () => {
     }
   };
 
+  // ── Send to Kitchen ────────────────────────────────────────────────────────
+  // Uses its own dedicated loading set (sendingToKitchenIds) so it never
+  // triggers the "Updating…" state on other action buttons for the same order.
+
+  const handleSendToKitchen = async (orderId) => {
+    setSendingToKitchen(orderId);
+    try {
+      await api.post(`/admin/orders/${orderId}/send-to-kitchen`);
+      showToast("Order sent to kitchen successfully", "success");
+      fetchOrders(true);
+    } catch (err) {
+      showToast(
+        err.response?.data?.message || "Failed to send order to kitchen",
+        "error",
+      );
+    } finally {
+      clearSendingToKitchen(orderId);
+    }
+  };
+
   // ── Assign agent ───────────────────────────────────────────────────────────
 
   const openAssignModal = async (order) => {
@@ -472,7 +512,6 @@ const OrderManagement = () => {
       setPinError(
         err.response?.data?.message || "Incorrect PIN. Please try again.",
       );
-      // Note: PIN errors stay in the modal via setPinError, no toast needed here
     } finally {
       setIsVerifyingPin(false);
     }
@@ -519,24 +558,35 @@ const OrderManagement = () => {
 
   const handleNonDeliveryComplete = async (orderId) => {
     setChanging(orderId);
-    if (
-      user.role === "attendant" ||
-      user.role === "supervisor" ||
-      user.role === "admin"
-    ) {
-      const endpoint = `/admin/orders/${orderId}`;
-      try {
-        await api.put(endpoint, { status: "completed" });
-        showToast("Order marked as completed", "success");
-        fetchOrders(true);
-      } catch (err) {
-        showToast(
-          err.response?.data?.message || "Failed to complete order",
-          "error",
-        );
-      } finally {
-        clearChanging(orderId);
-      }
+    try {
+      await api.put(`/admin/orders/${orderId}`, { status: "completed" });
+      showToast("Order marked as completed", "success");
+      fetchOrders(true);
+    } catch (err) {
+      showToast(
+        err.response?.data?.message || "Failed to complete order",
+        "error",
+      );
+    } finally {
+      clearChanging(orderId);
+    }
+  };
+
+  // Complete a confirmed order directly — used for counter-pickup items that
+  // don't need to go through the kitchen at all.
+  const handleCompleteFromConfirmed = async (orderId) => {
+    setChanging(orderId);
+    try {
+      await api.put(`/admin/orders/${orderId}`, { status: "completed" });
+      showToast("Order marked as completed", "success");
+      fetchOrders(true);
+    } catch (err) {
+      showToast(
+        err.response?.data?.message || "Failed to complete order",
+        "error",
+      );
+    } finally {
+      clearChanging(orderId);
     }
   };
 
@@ -557,105 +607,208 @@ const OrderManagement = () => {
   };
 
   // ── Action button renderer ─────────────────────────────────────────────────
+  // Returns an array of button elements. Each will be rendered full-width,
+  // stacked below the "Details" button on its own row.
 
-  const renderActionButton = (order) => {
+  const renderActionButtons = (order) => {
     const { id, status, order_type } = order;
     const busy = changingIds.has(id);
+    const sendingToKitchen = sendingToKitchenIds.has(id);
 
+    // Full-width orange action button
     const OrangeBtn = ({ label, onClick }) => (
       <button
         onClick={onClick}
         disabled={busy}
-        className="flex-1 px-4 py-2.5 bg-orange-500 rounded-xl text-sm font-medium text-white hover:bg-orange-600 transition-colors shadow-sm shadow-orange-200 disabled:bg-orange-500/50 disabled:cursor-not-allowed"
+        className="w-full px-4 py-2.5 bg-orange-500 rounded-xl text-sm font-medium text-white hover:bg-orange-600 transition-colors shadow-sm shadow-orange-200 disabled:bg-orange-500/50 disabled:cursor-not-allowed"
       >
         {busy ? "Updating…" : label}
       </button>
     );
 
+    // Full-width assign button
     const AssignBtn = ({ onClickFn }) => (
       <button
         onClick={onClickFn}
-        className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-orange-500 rounded-xl text-sm font-medium text-white hover:bg-orange-600 transition-colors shadow-sm shadow-orange-200"
+        className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-orange-500 rounded-xl text-sm font-medium text-white hover:bg-orange-600 transition-colors shadow-sm shadow-orange-200"
       >
         <FiUser className="w-4 h-4" />
         Assign Agent
       </button>
     );
 
-    if (user.role === "kitchen" || user.role === "admin") {
+    // Send-to-Kitchen button uses its own isolated loading state (sendingToKitchen)
+    // so it never sets `busy` and never disables unrelated action buttons on the same card.
+    const SendToKitchenBtn = () => (
+      <button
+        onClick={() => handleSendToKitchen(id)}
+        disabled={sendingToKitchen}
+        className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-orange-500 rounded-xl text-sm font-medium text-white hover:bg-orange-600 transition-colors shadow-sm shadow-orange-200 disabled:bg-orange-500/50 disabled:cursor-not-allowed"
+      >
+        <FiSend className="w-4 h-4" />
+        {sendingToKitchen ? "Sending…" : "Send to Kitchen"}
+      </button>
+    );
+
+    const buttons = [];
+
+    // ── Kitchen ──────────────────────────────────────────────────────────────
+    if (user.role === "kitchen") {
       if (status === "confirmed")
-        return (
+        buttons.push(
           <OrangeBtn
+            key="start"
             label="Start Processing"
             onClick={() => handleStatusUpdate(order)}
-          />
+          />,
         );
       if (status === "processing")
-        return (
+        buttons.push(
           <OrangeBtn
+            key="ready"
             label="Mark as Ready"
             onClick={() => handleStatusUpdate(order)}
-          />
+          />,
         );
     }
 
-    if (user.role === "delivery_agent" || user.role === "admin") {
-      if (status === "dispatched")
-        return (
-          <OrangeBtn
-            label="Complete Delivery"
-            onClick={() => openPinModal(id)}
-          />
-        );
-    }
-
-    if (user.role === "supervisor" || user.role === "admin") {
-      if (status === "ready" && order_type === "delivery")
-        return <AssignBtn onClickFn={() => openAssignModal(order)} />;
-      if (status === "ready" && order_type !== "delivery")
-        return (
-          <OrangeBtn
-            label="Mark as Completed"
-            onClick={() => handleNonDeliveryComplete(id)}
-          />
-        );
-      if (status === "dispatched")
-        return (
-          <OrangeBtn
-            label="Complete Delivery"
-            onClick={() => openPinModal(id)}
-          />
-        );
-    }
-
-    if (user.role === "attendant" || user.role === "admin") {
+    // ── Admin ─────────────────────────────────────────────────────────────────
+    if (user.role === "admin") {
       if (status === "pending")
-        return (
+        buttons.push(
           <OrangeBtn
+            key="confirm-payment"
             label="Confirm Payment"
             onClick={() => handleConfirmPayment(id)}
-          />
+          />,
+        );
+      if (status === "confirmed") {
+        buttons.push(
+          <OrangeBtn
+            key="process"
+            label="Start Processing"
+            onClick={() => handleStatusUpdate(order)}
+          />,
+        );
+        // Admin can also complete confirmed orders directly for counter items
+        buttons.push(
+          <OrangeBtn
+            key="complete-confirmed"
+            label="Mark as Completed"
+            onClick={() => handleCompleteFromConfirmed(id)}
+          />,
+        );
+      }
+      if (status === "processing")
+        buttons.push(
+          <OrangeBtn
+            key="ready"
+            label="Mark as Ready"
+            onClick={() => handleStatusUpdate(order)}
+          />,
+        );
+      if (status === "ready" && order_type === "delivery")
+        buttons.push(
+          <AssignBtn key="assign" onClickFn={() => openAssignModal(order)} />,
         );
       if (status === "ready" && order_type !== "delivery")
-        return (
+        buttons.push(
           <OrangeBtn
+            key="complete-ready"
             label="Mark as Completed"
             onClick={() => handleNonDeliveryComplete(id)}
-          />
+          />,
+        );
+      if (status === "dispatched")
+        buttons.push(
+          <OrangeBtn
+            key="complete-dispatched"
+            label="Complete Delivery"
+            onClick={() => openPinModal(id)}
+          />,
         );
     }
 
-    if (user.role === "admin") {
-      if (status === "ready" && order_type !== "delivery")
-        return (
+    // ── Delivery agent ────────────────────────────────────────────────────────
+    if (user.role === "delivery_agent") {
+      if (status === "dispatched")
+        buttons.push(
           <OrangeBtn
-            label="Mark as Completed"
-            onClick={() => handleNonDeliveryComplete(id)}
-          />
+            key="complete"
+            label="Complete Delivery"
+            onClick={() => openPinModal(id)}
+          />,
         );
     }
 
-    return null;
+    // ── Supervisor ────────────────────────────────────────────────────────────
+    if (user.role === "supervisor") {
+      if (status === "confirmed") {
+        // Supervisor can route to kitchen OR complete immediately for counter items
+        buttons.push(<SendToKitchenBtn key="send-kitchen" />);
+        buttons.push(
+          <OrangeBtn
+            key="complete-confirmed"
+            label="Mark as Completed"
+            onClick={() => handleCompleteFromConfirmed(id)}
+          />,
+        );
+      }
+      if (status === "ready" && order_type === "delivery")
+        buttons.push(
+          <AssignBtn key="assign" onClickFn={() => openAssignModal(order)} />,
+        );
+      if (status === "ready" && order_type !== "delivery")
+        buttons.push(
+          <OrangeBtn
+            key="complete-ready"
+            label="Mark as Completed"
+            onClick={() => handleNonDeliveryComplete(id)}
+          />,
+        );
+      if (status === "dispatched")
+        buttons.push(
+          <OrangeBtn
+            key="complete-dispatched"
+            label="Complete Delivery"
+            onClick={() => openPinModal(id)}
+          />,
+        );
+    }
+
+    // ── Attendant ─────────────────────────────────────────────────────────────
+    if (user.role === "attendant") {
+      if (status === "pending")
+        buttons.push(
+          <OrangeBtn
+            key="confirm"
+            label="Confirm Payment"
+            onClick={() => handleConfirmPayment(id)}
+          />,
+        );
+      if (status === "confirmed") {
+        // Attendant can send to kitchen for items that need preparation,
+        // OR complete immediately for items available at the counter.
+        buttons.push(<SendToKitchenBtn key="send-kitchen" />);
+        buttons.push(
+          <OrangeBtn
+            key="complete-confirmed"
+            label="Mark as Completed"
+            onClick={() => handleCompleteFromConfirmed(id)}
+          />,
+        );
+      }
+      if (status === "ready" && order_type !== "delivery")
+        buttons.push(
+          <OrangeBtn
+            key="complete-ready"
+            label="Mark as Completed"
+            onClick={() => handleNonDeliveryComplete(id)}
+          />,
+        );
+    }
+
+    return buttons;
   };
 
   // ── Filtered orders ────────────────────────────────────────────────────────
@@ -757,7 +910,7 @@ const OrderManagement = () => {
             </div>
           </div>
 
-          {/* Status tabs — counts show skeletons while loading, real numbers after */}
+          {/* Status tabs */}
           <div className="bg-white p-2 rounded-xl border border-gray-100 shadow-sm overflow-x-auto">
             <div className="flex items-center gap-2 min-w-max">
               {roleTabs.map((tab) => {
@@ -790,7 +943,7 @@ const OrderManagement = () => {
             </div>
           </div>
 
-          {/* Orders grid — spinner while loading, grid after */}
+          {/* Orders grid */}
           {isLoadingOrders && !isRefreshing ? (
             <div className="flex flex-col items-center justify-center py-32 gap-4">
               <div className="w-12 h-12 border-4 border-gray-200 border-t-orange-500 rounded-full animate-spin" />
@@ -806,120 +959,134 @@ const OrderManagement = () => {
                     No orders found.
                   </div>
                 ) : (
-                  filteredOrders.map((order) => (
-                    <div
-                      key={order.id}
-                      className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden flex flex-col"
-                    >
-                      {/* Card header */}
-                      <div className="p-5 border-b border-gray-50 flex items-start justify-between">
-                        <div>
-                          <span className="font-bold text-gray-900 text-lg">
-                            #{order.order_number}
+                  filteredOrders.map((order) => {
+                    const actionButtons = renderActionButtons(order);
+                    return (
+                      <div
+                        key={order.id}
+                        className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden flex flex-col"
+                      >
+                        {/* Card header */}
+                        <div className="p-5 border-b border-gray-50 flex items-start justify-between">
+                          <div>
+                            <span className="font-bold text-gray-900 text-lg">
+                              #{order.order_number}
+                            </span>
+                            <div className="text-sm text-gray-500 mt-0.5">
+                              {order.customer_email}
+                            </div>
+                            <div className="text-xs text-gray-400 mt-0.5">
+                              {new Date(order.created_at).toLocaleDateString(
+                                "en-US",
+                                {
+                                  month: "short",
+                                  day: "numeric",
+                                  year: "numeric",
+                                },
+                              )}{" "}
+                              at{" "}
+                              {new Date(order.created_at).toLocaleTimeString(
+                                "en-US",
+                                {
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                },
+                              )}
+                            </div>
+                          </div>
+                          <span
+                            className={`px-2.5 py-1 rounded-full text-xs font-medium flex items-center gap-1 ${getStatusColor(order.status)}`}
+                          >
+                            {getStatusIcon(order.status)}
+                            {getStatusLabel(order.status)}
                           </span>
-                          <div className="text-sm text-gray-500 mt-0.5">
-                            {order.customer_email}
-                          </div>
-                          <div className="text-xs text-gray-400 mt-0.5">
-                            {new Date(order.created_at).toLocaleDateString(
-                              "en-US",
-                              {
-                                month: "short",
-                                day: "numeric",
-                                year: "numeric",
-                              },
-                            )}{" "}
-                            at{" "}
-                            {new Date(order.created_at).toLocaleTimeString(
-                              "en-US",
-                              {
-                                hour: "2-digit",
-                                minute: "2-digit",
-                              },
-                            )}
-                          </div>
                         </div>
-                        <span
-                          className={`px-2.5 py-1 rounded-full text-xs font-medium flex items-center gap-1 ${getStatusColor(order.status)}`}
-                        >
-                          {getStatusIcon(order.status)}
-                          {getStatusLabel(order.status)}
-                        </span>
-                      </div>
 
-                      {/* Order items */}
-                      <div className="p-5 flex-1">
-                        <div className="space-y-3 mb-6">
-                          {order.order_items?.map((item) => (
-                            <div key={item.id}>
-                              <div className="flex justify-between text-sm">
-                                <span className="text-gray-600">
-                                  <span className="text-gray-400 mr-2">
-                                    {item.quantity}x
+                        {/* Order items */}
+                        <div className="p-5 flex-1">
+                          <div className="space-y-3 mb-6">
+                            {order.order_items?.map((item) => (
+                              <div key={item.id}>
+                                <div className="flex justify-between text-sm">
+                                  <span className="text-gray-600">
+                                    <span className="text-gray-400 mr-2">
+                                      {item.quantity}x
+                                    </span>
+                                    {item.menu?.name}
                                   </span>
-                                  {item.menu?.name}
-                                </span>
-                                <span className="font-medium text-gray-900">
-                                  {new Intl.NumberFormat("en-NG", {
-                                    style: "currency",
-                                    currency: "NGN",
-                                    minimumFractionDigits: 0,
-                                  }).format(item.subtotal)}
-                                </span>
-                              </div>
-                              {item.packaging && (
-                                <div className="flex justify-between text-xs text-gray-500 mt-1">
-                                  <span>
-                                    Packaging:{" "}
-                                    {item.packaging.size_name
-                                      .charAt(0)
-                                      .toUpperCase() +
-                                      item.packaging.size_name.slice(1)}
-                                  </span>
-                                  <span>
+                                  <span className="font-medium text-gray-900">
                                     {new Intl.NumberFormat("en-NG", {
                                       style: "currency",
                                       currency: "NGN",
                                       minimumFractionDigits: 0,
-                                    }).format(item.packaging.price)}
+                                    }).format(item.subtotal)}
                                   </span>
                                 </div>
-                              )}
-                            </div>
-                          ))}
+                                {item.packaging && (
+                                  <div className="flex justify-between text-xs text-gray-500 mt-1">
+                                    <span>
+                                      Packaging:{" "}
+                                      {item.packaging.size_name
+                                        .charAt(0)
+                                        .toUpperCase() +
+                                        item.packaging.size_name.slice(1)}
+                                    </span>
+                                    <span>
+                                      {new Intl.NumberFormat("en-NG", {
+                                        style: "currency",
+                                        currency: "NGN",
+                                        minimumFractionDigits: 0,
+                                      }).format(item.packaging.price)}
+                                    </span>
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                          <div className="pt-4 border-t border-dashed border-gray-200 flex items-end justify-between">
+                            <span className="font-bold text-gray-900">
+                              Total
+                            </span>
+                            <span className="text-xl font-bold text-orange-500">
+                              {new Intl.NumberFormat("en-NG", {
+                                style: "currency",
+                                currency: "NGN",
+                                minimumFractionDigits: 0,
+                              }).format(Math.ceil(order.final_amount))}
+                            </span>
+                          </div>
                         </div>
-                        <div className="pt-4 border-t border-dashed border-gray-200 flex items-end justify-between">
-                          <span className="font-bold text-gray-900">Total</span>
-                          <span className="text-xl font-bold text-orange-500">
-                            {new Intl.NumberFormat("en-NG", {
-                              style: "currency",
-                              currency: "NGN",
-                              minimumFractionDigits: 0,
-                            }).format(Math.ceil(order.final_amount))}
-                          </span>
-                        </div>
-                      </div>
 
-                      {/* Card footer */}
-                      <div className="p-4 bg-gray-50 border-t border-gray-100 flex items-center gap-3">
-                        <button
-                          onClick={() => loadOrderDetails(order.id)}
-                          disabled={loadingOrderDetails === order.id}
-                          className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-100 transition-colors shadow-sm disabled:bg-white/50 disabled:cursor-not-allowed"
-                        >
-                          {loadingOrderDetails === order.id ? (
-                            "Loading..."
-                          ) : (
-                            <>
-                              <FiEye className="w-4 h-4" />
-                              Details
-                            </>
+                        {/* Card footer
+                            Row 1: "Details" button — always full width on its own line.
+                            Row 2+: Action buttons — each full width, stacked vertically. */}
+                        <div className="p-4 bg-gray-50 border-t border-gray-100 flex flex-col gap-2">
+                          {/* Details — own row */}
+                          <button
+                            onClick={() => loadOrderDetails(order.id)}
+                            disabled={loadingOrderDetails === order.id}
+                            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-100 transition-colors shadow-sm disabled:bg-white/50 disabled:cursor-not-allowed"
+                          >
+                            {loadingOrderDetails === order.id ? (
+                              "Loading..."
+                            ) : (
+                              <>
+                                <FiEye className="w-4 h-4" />
+                                Details
+                              </>
+                            )}
+                          </button>
+
+                          {/* Action buttons — stacked below Details */}
+                          {actionButtons.length > 0 && (
+                            <div className="flex flex-col gap-2">
+                              {actionButtons}
+                            </div>
                           )}
-                        </button>
-                        {renderActionButton(order)}
+                        </div>
                       </div>
-                    </div>
-                  ))
+                    );
+                  })
                 )}
               </div>
 

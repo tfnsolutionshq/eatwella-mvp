@@ -167,6 +167,7 @@ function OrderTypeForm() {
 
   useEffect(() => {
     if (user) {
+      console.log("The user is here: ", user);
       setFormData((prev) => ({
         ...prev,
         fullName: user.name || "",

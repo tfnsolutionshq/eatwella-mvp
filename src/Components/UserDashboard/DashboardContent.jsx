@@ -17,6 +17,7 @@ import {
   FiX,
 } from "react-icons/fi";
 import { useAuth } from "../../context/AuthContext";
+import { useToast } from "../../context/ToastContext";
 import api from "../../utils/api";
 
 const getItemSubtotal = (item) =>
@@ -35,6 +36,9 @@ function DashboardContent() {
   const [addresses, setAddresses] = useState([]);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showDeleteAddressModal, setShowDeleteAddressModal] = useState(false);
+  const [addressToDelete, setAddressToDelete] = useState(null);
+  const [deletingAddress, setDeletingAddress] = useState(false);
   const [passwordData, setPasswordData] = useState({
     current_password: "",
     new_password: "",
@@ -50,28 +54,39 @@ function DashboardContent() {
 
   const [editingAddress, setEditingAddress] = useState(null);
   const [showAddressModal, setShowAddressModal] = useState(false);
+  const [states, setStates] = useState([]);
+  const [cities, setCities] = useState([]);
+  const [zones, setZones] = useState([]);
+  const [isCitiesLoading, setIsCitiesLoading] = useState(false);
+  const [isZonesLoading, setIsZonesLoading] = useState(false);
   const [addressForm, setAddressForm] = useState({
+    state_id: null,
+    city_id: null,
+    zone_id: null,
     street_address: "",
-    state: "",
     closest_landmark: "",
-    postal_code: "",
   });
   const [showOrderModal, setShowOrderModal] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState(null);
+
+  const { showToast } = useToast();
 
   // Fetches profile, overview, and orders all at once on mount
   useEffect(() => {
     const fetchInitialData = async () => {
       setIsLoading(true);
       try {
-        const [profileRes, overviewRes, ordersRes] = await Promise.all([
-          api.get("/customer/profile"),
-          api.get("/customer/overview"),
-          api.get("/customer/orders"),
-        ]);
+        const [profileRes, overviewRes, ordersRes, statesRes] =
+          await Promise.all([
+            api.get("/customer/profile"),
+            api.get("/customer/overview"),
+            api.get("/customer/orders"),
+            api.get("/states"),
+          ]);
         setProfile(profileRes.data);
         setOverview(overviewRes.data);
         setOrders(ordersRes.data.data || []);
+        setStates(statesRes.data);
       } catch (err) {
         console.error("Failed to fetch dashboard data:", err);
       } finally {
@@ -147,25 +162,89 @@ function DashboardContent() {
     }
   };
 
+  const handleLocationChange = async (e, key) => {
+    if (e.target.value === "") {
+      if (key === "state") {
+        setCities([]);
+        setZones([]);
+        setAddressForm({ ...addressForm, [`${key}_id`]: e.target.value });
+      } else if (key === "city") {
+        setZones([]);
+        setAddressForm({ ...addressForm, [`${key}_id`]: e.target.value });
+      }
+      return;
+    }
+
+    if (key === "state") {
+      setAddressForm({ ...addressForm, [`${key}_id`]: e.target.value });
+      setIsCitiesLoading(true);
+      setCities([]);
+      setZones([]);
+      try {
+        const cityRes = await api.get(`/cities?state_id=${e.target.value}`);
+        setCities(cityRes.data);
+      } finally {
+        setIsCitiesLoading(false);
+      }
+    }
+
+    if (key === "city") {
+      setAddressForm({ ...addressForm, [`${key}_id`]: e.target.value });
+      setIsZonesLoading(true);
+      setZones([]);
+      try {
+        const zoneRes = await api.get(`/zones?city_id=${e.target.value}`);
+        const activeZones = zoneRes.data.filter((zone) => zone.is_active);
+        setZones(activeZones);
+      } finally {
+        setIsZonesLoading(false);
+      }
+    }
+
+    if (key === "zone") {
+      setAddressForm({ ...addressForm, [`${key}_id`]: e.target.value });
+    }
+  };
+
   const handleSaveAddress = async (e) => {
     e.preventDefault();
+
+    if (addressForm.city_id || addressForm.state_id || addressForm.zone_id) {
+      if (!addressForm.state_id) {
+        setError("Please select a state");
+        return;
+      }
+      if (!addressForm.city_id) {
+        setError("Please select a city");
+        return;
+      }
+      if (!addressForm.zone_id) {
+        setError("Please select a zone");
+        return;
+      }
+    }
+
     setError("");
     setLoading(true);
     try {
       if (editingAddress) {
         await api.put(`/customer/addresses/${editingAddress.id}`, addressForm);
       } else {
-        await api.post("/customer/addresses", addressForm);
+        const res = await api.post("/customer/addresses", addressForm);
+        if (res.status === 201) {
+          showToast(res.data.message, "success");
+        }
       }
       const { data } = await api.get("/customer/addresses");
       setAddresses(Array.isArray(data) ? data : []);
       setShowAddressModal(false);
       setEditingAddress(null);
       setAddressForm({
+        state_id: null,
+        city_id: null,
+        zone_id: null,
         street_address: "",
-        state: "",
         closest_landmark: "",
-        postal_code: "",
       });
     } catch (err) {
       setError(err.response?.data?.message || "Failed to save address");
@@ -174,14 +253,23 @@ function DashboardContent() {
     }
   };
 
-  const handleDeleteAddress = async (id) => {
-    if (!confirm("Are you sure you want to delete this address?")) return;
+  const handleDeleteAddress = (id) => {
+    setAddressToDelete(id);
+    setShowDeleteAddressModal(true);
+  };
+
+  const confirmDeleteAddress = async () => {
+    setDeletingAddress(true);
     try {
-      await api.delete(`/customer/addresses/${id}`);
+      await api.delete(`/customer/addresses/${addressToDelete}`);
       const { data } = await api.get("/customer/addresses");
       setAddresses(Array.isArray(data) ? data : []);
     } catch (err) {
       alert(err.response?.data?.message || "Failed to delete address");
+    } finally {
+      setShowDeleteAddressModal(false);
+      setAddressToDelete(null);
+      setDeletingAddress(false);
     }
   };
 
@@ -436,10 +524,11 @@ function DashboardContent() {
                             setShowAddressModal(true);
                             setEditingAddress(null);
                             setAddressForm({
+                              state_id: null,
+                              city_id: null,
+                              zone_id: null,
                               street_address: "",
-                              state: "",
                               closest_landmark: "",
-                              postal_code: "",
                             });
                           }}
                           className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-orange-500 text-white text-xs hover:bg-orange-600"
@@ -476,7 +565,13 @@ function DashboardContent() {
                                 <button
                                   onClick={() => {
                                     setEditingAddress(addr);
-                                    setAddressForm(addr);
+                                    setAddressForm({
+                                      zone_id: addr.zone_id,
+                                      city_id: addr.zone.city_id,
+                                      state_id: addr.zone.city.state_id,
+                                      street_address: addr.street_address,
+                                      closest_landmark: addr.closest_landmark,
+                                    });
                                     setShowAddressModal(true);
                                   }}
                                   className="text-gray-600 hover:text-gray-900"
@@ -491,10 +586,21 @@ function DashboardContent() {
                                 </button>
                               </div>
                               <div className="text-sm text-gray-700 leading-6">
-                                <div>{addr.street_address}</div>
-                                <div>{addr.state}</div>
-                                <div>{addr.closest_landmark}</div>
-                                <div>{addr.postal_code}</div>
+                                <div>
+                                  {addr.zone.city.name}, {addr.zone.name}
+                                </div>
+                                <div>
+                                  <span className="font-bold">
+                                    Street Address:
+                                  </span>{" "}
+                                  {addr.street_address}
+                                </div>
+                                <div>
+                                  <span className="font-bold">
+                                    Closest Landmark:
+                                  </span>{" "}
+                                  {addr.closest_landmark}
+                                </div>
                               </div>
                             </div>
                           ))
@@ -651,6 +757,43 @@ function DashboardContent() {
         </ModalWrapper>
       )}
 
+      {showDeleteAddressModal && (
+        <ModalWrapper
+          onClose={() => {
+            setShowDeleteAddressModal(false);
+            setAddressToDelete(null);
+          }}
+        >
+          <div className="p-6 border-b border-gray-100">
+            <h3 className="text-lg font-bold text-red-600">Delete Address</h3>
+            <p className="text-sm text-gray-600 mt-2">
+              Are you sure you want to delete this address? This action cannot
+              be undone.
+            </p>
+          </div>
+          <div className="p-6 border-t border-gray-100 flex gap-3">
+            <button
+              type="button"
+              onClick={() => {
+                setShowDeleteAddressModal(false);
+                setAddressToDelete(null);
+              }}
+              className="flex-1 py-3 rounded-xl border-2 border-gray-200 text-gray-700 font-semibold hover:bg-gray-50"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={confirmDeleteAddress}
+              className="flex-1 py-3 rounded-xl bg-red-600 text-white font-semibold hover:bg-red-700"
+              disabled={deletingAddress}
+            >
+              {deletingAddress ? "Deleting" : "Delete Address"}
+            </button>
+          </div>
+        </ModalWrapper>
+      )}
+
       {showAddressModal && (
         <ModalWrapper
           onClose={() => {
@@ -658,10 +801,11 @@ function DashboardContent() {
             setError("");
             setEditingAddress(null);
             setAddressForm({
+              state_id: null,
+              city_id: null,
+              zone_id: null,
               street_address: "",
-              state: "",
               closest_landmark: "",
-              postal_code: "",
             });
           }}
         >
@@ -675,31 +819,103 @@ function DashboardContent() {
               {error && <ErrorBanner message={error} />}
               {[
                 {
+                  label: "State",
+                  key: "state",
+                  required: true,
+                  inputType: "dropdown",
+                },
+                {
+                  label: "City",
+                  key: "city",
+                  required: true,
+                  inputType: "dropdown",
+                },
+                {
+                  label: "Zone",
+                  key: "zone",
+                  required: true,
+                  inputType: "dropdown",
+                },
+                {
                   label: "Street Address",
                   key: "street_address",
                   required: true,
+                  inputType: "text",
                 },
-                { label: "State", key: "state", required: true },
                 {
                   label: "Closest Landmark",
                   key: "closest_landmark",
                   required: false,
+                  inputType: "text",
                 },
-                { label: "Postal Code", key: "postal_code", required: true },
-              ].map(({ label, key, required }) => (
+              ].map(({ label, key, required, inputType }) => (
                 <div key={key}>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     {label}
                   </label>
-                  <input
-                    type="text"
-                    value={addressForm[key]}
-                    onChange={(e) =>
-                      setAddressForm({ ...addressForm, [key]: e.target.value })
-                    }
-                    required={required}
-                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-orange-500"
-                  />
+                  {inputType === "dropdown" ? (
+                    (() => {
+                      const isLoadingField =
+                        (key === "city" && isCitiesLoading) ||
+                        (key === "zone" && isZonesLoading);
+
+                      if (isLoadingField) {
+                        return (
+                          <div className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 flex items-center gap-3">
+                            <div className="w-4 h-4 border-2 border-gray-300 border-t-orange-500 rounded-full animate-spin flex-shrink-0" />
+                            <span className="text-sm text-gray-400">
+                              Loading...
+                            </span>
+                          </div>
+                        );
+                      }
+
+                      const isDisabled =
+                        (key === "city" && !addressForm.state_id) ||
+                        (key === "zone" && !addressForm.city_id);
+
+                      return (
+                        <select
+                          disabled={isDisabled}
+                          className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-orange-500 disabled:bg-gray-50 disabled:text-gray-400 disabled:cursor-not-allowed"
+                          onChange={(e) => handleLocationChange(e, key)}
+                        >
+                          <option value="">Select {label.toLowerCase()}</option>
+                          {key === "state" &&
+                            states.map((state, index) => (
+                              <option key={index} value={state.id}>
+                                {state.name}
+                              </option>
+                            ))}
+                          {key === "city" &&
+                            cities.map((city, index) => (
+                              <option key={index} value={city.id}>
+                                {city.name}
+                              </option>
+                            ))}
+                          {key === "zone" &&
+                            zones.map((zone, index) => (
+                              <option key={index} value={zone.id}>
+                                {zone.name}
+                              </option>
+                            ))}
+                        </select>
+                      );
+                    })()
+                  ) : (
+                    <input
+                      type="text"
+                      value={addressForm[key]}
+                      onChange={(e) =>
+                        setAddressForm({
+                          ...addressForm,
+                          [key]: e.target.value,
+                        })
+                      }
+                      required={required}
+                      className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                    />
+                  )}
                 </div>
               ))}
             </div>
@@ -711,10 +927,11 @@ function DashboardContent() {
                   setError("");
                   setEditingAddress(null);
                   setAddressForm({
+                    state_id: null,
+                    city_id: null,
+                    zone_id: null,
                     street_address: "",
-                    state: "",
                     closest_landmark: "",
-                    postal_code: "",
                   });
                 }}
                 className="flex-1 py-3 rounded-xl border-2 border-gray-200 text-gray-700 font-semibold hover:bg-gray-50"
