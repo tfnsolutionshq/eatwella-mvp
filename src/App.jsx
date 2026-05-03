@@ -31,6 +31,10 @@ import DeliveryLocationManagement from "./Pages/Admin/DeliveryLocationManagement
 import UserLogin from "./Pages/UserDashboard/Login";
 import CreateAccount from "./Pages/UserDashboard/CreateAccount";
 import UserDashboard from "./Pages/UserDashboard/Dashboard";
+import OverviewPage from "./Pages/UserDashboard/OverviewPage";
+import OrdersPage from "./Pages/UserDashboard/OrdersPage";
+import ProfilePage from "./Pages/UserDashboard/ProfilePage";
+import SettingsPage from "./Pages/UserDashboard/SettingsPage";
 import EditProfile from "./Pages/UserDashboard/EditProfile";
 import Homepage from "./Pages/LandingPage/Homepage";
 import MenuPage from "./Pages/MenuPage/MenuPage";
@@ -74,7 +78,13 @@ function AppRoutes() {
           <Route path="/track-order" element={<TrackOrderPage />} />
           <Route path="/account/create" element={<CreateAccount />} />
           <Route path="/account/login" element={<UserLogin />} />
-          <Route path="/account/dashboard" element={<UserDashboard />} />
+          <Route path="/account/dashboard" element={<UserDashboard />}>
+            <Route index element={<OverviewPage />} />
+            <Route path="overview" element={<OverviewPage />} />
+            <Route path="orders" element={<OrdersPage />} />
+            <Route path="profile" element={<ProfilePage />} />
+            <Route path="settings" element={<SettingsPage />} />
+          </Route>
           <Route path="/account/edit-profile" element={<EditProfile />} />
           <Route path="/careers" element={<VacancyPage />} />
           <Route path="/careers/:careerId" element={<VacancyItemDetails />} />
