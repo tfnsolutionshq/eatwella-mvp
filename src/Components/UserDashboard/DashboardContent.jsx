@@ -291,7 +291,6 @@ function DashboardContent() {
                   { key: "overview", label: "Overview" },
                   { key: "orders", label: "Orders" },
                   { key: "profile", label: "Profile & Address" },
-                  { key: "loyalty", label: "Loyalty & Rewards" },
                   { key: "settings", label: "Settings" },
                 ].map(({ key, label }) => (
                   <button

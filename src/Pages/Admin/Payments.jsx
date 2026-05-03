@@ -159,7 +159,7 @@ function Payments() {
         </div>
 
         {/* Search & filter — always visible */}
-        <div className="flex flex-col md:flex-row gap-4">
+        {/* <div className="flex flex-col md:flex-row gap-4">
           <div className="relative flex-grow">
             <FiSearch
               className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400"
@@ -177,7 +177,7 @@ function Payments() {
             <FiFilter size={20} />
             <span>Filter</span>
           </button>
-        </div>
+        </div> */}
 
         {/* Payments table — spinner while loading, table after */}
         {loading ? (
