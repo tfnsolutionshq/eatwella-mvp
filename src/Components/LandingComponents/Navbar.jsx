@@ -112,7 +112,7 @@ function Navbar() {
             {isDropdownOpen && (
               <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg py-2 z-50">
                 <Link
-                  to="/account/dashboard"
+                  to="/account/dashboard/overview"
                   onClick={() => setIsDropdownOpen(false)}
                   className="flex items-center gap-2 px-4 py-2 text-gray-700 hover:bg-gray-100 transition-colors"
                 >
