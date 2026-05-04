@@ -264,7 +264,8 @@ const OrderManagement = () => {
       return next;
     });
 
-  const setProcessing = (id) => setProcessingIds((prev) => new Set(prev).add(id));
+  const setProcessing = (id) =>
+    setProcessingIds((prev) => new Set(prev).add(id));
   const clearProcessing = (id) =>
     setProcessingIds((prev) => {
       const next = new Set(prev);
@@ -272,7 +273,8 @@ const OrderManagement = () => {
       return next;
     });
 
-  const setCompleting = (id) => setCompletingIds((prev) => new Set(prev).add(id));
+  const setCompleting = (id) =>
+    setCompletingIds((prev) => new Set(prev).add(id));
   const clearCompleting = (id) =>
     setCompletingIds((prev) => {
       const next = new Set(prev);
@@ -427,6 +429,7 @@ const OrderManagement = () => {
     try {
       setLoadingOrderDetails(orderId);
       const { data } = await api.get(endpoint);
+      console.log("The data: ", data);
       setSelectedOrder(data);
       setIsDetailsOpen(true);
     } catch (err) {
@@ -543,7 +546,7 @@ const OrderManagement = () => {
 
   const handleStatusUpdate = async (order) => {
     const { id: orderId, status } = order;
-    
+
     // Use different loading states based on the action
     const isProcessingAction = status === "confirmed";
     if (isProcessingAction) {
@@ -551,7 +554,7 @@ const OrderManagement = () => {
     } else {
       setChanging(orderId);
     }
-    
+
     try {
       if (user.role === "kitchen") {
         if (status === "confirmed") {
@@ -655,7 +658,7 @@ const OrderManagement = () => {
     const OrangeBtn = ({ label, onClick, actionType }) => {
       let isDisabled = busy;
       let loadingText = "Updating...";
-      
+
       if (actionType === "processing") {
         isDisabled = isProcessing;
         loadingText = "Processing...";
@@ -663,7 +666,7 @@ const OrderManagement = () => {
         isDisabled = isCompleting;
         loadingText = "Completing...";
       }
-      
+
       return (
         <button
           onClick={onClick}

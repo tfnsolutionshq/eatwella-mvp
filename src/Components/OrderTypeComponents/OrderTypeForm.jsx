@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { FaArrowLeft, FaTimes } from "react-icons/fa";
-import { FiMapPin, FiChevronDown, FiCheckCircle } from "react-icons/fi";
+import { FiMapPin, FiChevronDown, FiCheckCircle, FiHome } from "react-icons/fi";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useCart } from "../../context/CartContext";
 import { useAuth } from "../../context/AuthContext";
@@ -48,11 +48,10 @@ function OrderTypeForm() {
   });
 
   // ── Saved delivery details ─────────────────────────────────────────────────
-  // Uses the first saved address from the user's profile (user.addresses[0]).
-  // The zone object within it maps directly to the selectedLocation shape.
-  const savedDelivery = user?.addresses?.[0] ?? null;
-  const hasSavedDelivery = orderType === "delivery" && !!savedDelivery;
-  const [useSavedDelivery, setUseSavedDelivery] = useState(false);
+  const savedAddresses = user?.addresses ?? [];
+  const hasSavedAddresses = orderType === "delivery" && savedAddresses.length > 0;
+  const [selectedSavedAddress, setSelectedSavedAddress] = useState(null);
+  const [useManualSelection, setUseManualSelection] = useState(false);
 
   // ── Delivery location state ────────────────────────────────────────────────
   const [selectedLocation, setSelectedLocation] = useState(null);
@@ -60,6 +59,19 @@ function OrderTypeForm() {
   const [isLoadingLocations, setIsLoadingLocations] = useState(false);
   const [locationsError, setLocationsError] = useState(null);
   const [deliveryLocations, setDeliveryLocations] = useState([]);
+
+  // ── State → City → Zone hierarchy for manual selection ───────────────────────
+  const [states, setStates] = useState([]);
+  const [cities, setCities] = useState([]);
+  const [zones, setZones] = useState([]);
+  const [isCitiesLoading, setIsCitiesLoading] = useState(false);
+  const [isZonesLoading, setIsZonesLoading] = useState(false);
+  const [manualAddressForm, setManualAddressForm] = useState({
+    state_id: null,
+    city_id: null,
+    zone_id: null,
+    street_address: "",
+  });
 
   // ── Other state ───────────────────────────────────────────────────────────
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -178,28 +190,34 @@ function OrderTypeForm() {
     getTaxes();
     if (orderType === "delivery") getDeliveryLocations();
     if (orderType === "dine-in") getTables();
+    
+    // Fetch states for manual address selection
+    const fetchStates = async () => {
+      try {
+        const statesRes = await api.get("/states");
+        setStates(statesRes.data);
+      } catch (err) {
+        console.error("Failed to fetch states:", err);
+      }
+    };
+    fetchStates();
   }, [user]);
 
-  // ── Apply / clear saved delivery details when checkbox toggles ────────────
+  // ── Apply saved address when selected ──────────────────────────────────────
   useEffect(() => {
-    if (!hasSavedDelivery) return;
-
-    if (useSavedDelivery) {
-      // savedDelivery.zone matches the shape the rest of the form expects
+    if (selectedSavedAddress && !useManualSelection) {
+      // selectedSavedAddress.zone matches the shape the rest of the form expects
       // for selectedLocation (id, name, delivery_fee, is_active, etc.)
-      setSelectedLocation(savedDelivery.zone);
+      setSelectedLocation(selectedSavedAddress.zone);
       setFormData((prev) => ({
         ...prev,
-        deliveryAddress: savedDelivery.street_address,
+        deliveryAddress: selectedSavedAddress.street_address,
       }));
-    } else {
-      setSelectedLocation(null);
-      setFormData((prev) => ({
-        ...prev,
-        deliveryAddress: "",
-      }));
+    } else if (useManualSelection) {
+      // Clear saved address data when switching to manual selection
+      setSelectedSavedAddress(null);
     }
-  }, [useSavedDelivery]);
+  }, [selectedSavedAddress, useManualSelection]);
 
   // ── Handlers ──────────────────────────────────────────────────────────────
   const handleChange = (e) =>
@@ -208,9 +226,82 @@ function OrderTypeForm() {
   const handleSelectLocation = (loc) => {
     setSelectedLocation(loc);
     setLocationDropdownOpen(false);
-    // If the user manually picks a different zone, uncheck the saved-delivery box
-    if (useSavedDelivery && loc.id !== savedDelivery?.zone?.id) {
-      setUseSavedDelivery(false);
+    // When manually selecting a zone, clear saved address selection
+    setSelectedSavedAddress(null);
+    setUseManualSelection(true);
+  };
+
+  const handleSelectSavedAddress = (address) => {
+    setSelectedSavedAddress(address);
+    setUseManualSelection(false);
+    setLocationDropdownOpen(false);
+  };
+
+  const handleUseManualSelection = () => {
+    setUseManualSelection(true);
+    setSelectedSavedAddress(null);
+    setSelectedLocation(null);
+    setManualAddressForm({
+      state_id: null,
+      city_id: null,
+      zone_id: null,
+      street_address: "",
+    });
+    setCities([]);
+    setZones([]);
+  };
+
+  const handleLocationChange = async (e, key) => {
+    if (e.target.value === "") {
+      if (key === "state") {
+        setCities([]);
+        setZones([]);
+        setManualAddressForm({ ...manualAddressForm, [`${key}_id`]: e.target.value });
+      } else if (key === "city") {
+        setZones([]);
+        setManualAddressForm({ ...manualAddressForm, [`${key}_id`]: e.target.value });
+      }
+      return;
+    }
+
+    if (key === "state") {
+      setManualAddressForm({ ...manualAddressForm, [`${key}_id`]: e.target.value });
+      setIsCitiesLoading(true);
+      setCities([]);
+      setZones([]);
+      try {
+        const cityRes = await api.get(`/cities?state_id=${e.target.value}`);
+        setCities(cityRes.data);
+      } finally {
+        setIsCitiesLoading(false);
+      }
+    }
+
+    if (key === "city") {
+      setManualAddressForm({ ...manualAddressForm, [`${key}_id`]: e.target.value });
+      setIsZonesLoading(true);
+      setZones([]);
+      try {
+        const zoneRes = await api.get(`/zones?city_id=${e.target.value}`);
+        const activeZones = zoneRes.data.filter((zone) => zone.is_active);
+        setZones(activeZones);
+      } finally {
+        setIsZonesLoading(false);
+      }
+    }
+
+    if (key === "zone") {
+      setManualAddressForm({ ...manualAddressForm, [`${key}_id`]: e.target.value });
+      // Update selectedLocation when zone is selected
+      const selectedZone = zones.find(zone => zone.id.toString() === e.target.value);
+      if (selectedZone) {
+        setSelectedLocation(selectedZone);
+      }
+    }
+
+    if (key === "street_address") {
+      setManualAddressForm({ ...manualAddressForm, street_address: e.target.value });
+      setFormData(prev => ({ ...prev, deliveryAddress: e.target.value }));
     }
   };
 
@@ -340,140 +431,158 @@ function OrderTypeForm() {
               </div>
             </div>
 
-            {/* ── Saved delivery opt-in ── */}
-            {hasSavedDelivery && (
-              <label className="flex items-start gap-3 cursor-pointer group select-none">
-                <input
-                  type="checkbox"
-                  className="sr-only"
-                  checked={useSavedDelivery}
-                  onChange={(e) => setUseSavedDelivery(e.target.checked)}
-                />
-
-                <div
-                  className={`mt-0.5 w-5 h-5 flex-shrink-0 rounded-md border-2 flex items-center justify-center transition-colors ${
-                    useSavedDelivery
-                      ? "bg-orange-500 border-orange-500"
-                      : "border-gray-300 group-hover:border-orange-400"
-                  }`}
-                >
-                  {useSavedDelivery && (
-                    <svg
-                      className="w-3 h-3 text-white"
-                      viewBox="0 0 12 12"
-                      fill="none"
-                    >
-                      <path
-                        d="M2 6l3 3 5-5"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-                    </svg>
-                  )}
-                </div>
-
-                <div className="flex-1">
-                  <p className="text-sm font-semibold text-gray-700 leading-snug">
-                    Use my saved delivery details
-                  </p>
-                  <p className="text-xs text-gray-400 mt-0.5 leading-relaxed">
-                    <span className="font-medium text-gray-500">
-                      {savedDelivery.zone.name}
-                    </span>
-                    {" · "}
-                    {savedDelivery.street_address}
-                  </p>
-                </div>
-
-                {useSavedDelivery && (
-                  <span className="flex-shrink-0 flex items-center gap-1 text-xs font-semibold text-orange-600 bg-orange-50 border border-orange-200 rounded-full px-2.5 py-0.5">
-                    <FiCheckCircle className="w-3 h-3" />
-                    Applied
-                  </span>
-                )}
-              </label>
-            )}
-
-            {/* ── Delivery: location selector ── */}
-            {orderType === "delivery" && (
+            {/* ── Saved address selection ── */}
+            {hasSavedAddresses && (
               <div>
                 <label className="block text-xs font-semibold text-gray-600 mb-2 uppercase tracking-wide">
-                  Delivery Location *
+                  Saved Addresses
                 </label>
-
-                {locationsError ? (
-                  <div className="flex items-center justify-between px-4 py-3 rounded-2xl border border-red-200 bg-red-50 text-sm text-red-600">
-                    <span>{locationsError}</span>
-                    <button
-                      type="button"
-                      onClick={getDeliveryLocations}
-                      className="ml-3 text-xs font-semibold underline hover:no-underline flex-shrink-0"
-                    >
-                      Retry
-                    </button>
+                
+                {!useManualSelection && selectedSavedAddress ? (
+                  <div className="relative">
+                    <div className="w-full px-4 py-3 rounded-2xl border border-orange-300 bg-orange-50 text-sm text-left flex items-center justify-between">
+                      <span className="flex items-center gap-2">
+                        <FiHome className="w-4 h-4 text-orange-500 flex-shrink-0" />
+                        <div>
+                          <div className="font-medium text-gray-800">
+                            {selectedSavedAddress.zone.name}
+                          </div>
+                          <div className="text-xs text-gray-600">
+                            {selectedSavedAddress.street_address}
+                          </div>
+                        </div>
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedSavedAddress(null);
+                          setUseManualSelection(true);
+                        }}
+                        className="text-xs text-orange-600 hover:text-orange-700 font-medium"
+                      >
+                        Change
+                      </button>
+                    </div>
+                    
+                    <div className="mt-2 flex items-center gap-2 px-3 py-2 bg-green-50 border border-green-100 rounded-xl text-xs text-green-700">
+                      <FiCheckCircle className="w-3.5 h-3.5 flex-shrink-0" />
+                      <span>
+                        Using saved address: <strong>{selectedSavedAddress.zone.name}</strong>
+                      </span>
+                    </div>
                   </div>
                 ) : (
-                  <div className="relative">
+                  <div className="space-y-2">
+                    <select
+                      value=""
+                      onChange={(e) => {
+                        const addressId = e.target.value;
+                        if (addressId) {
+                          const address = savedAddresses.find(addr => addr.id.toString() === addressId);
+                          if (address) {
+                            handleSelectSavedAddress(address);
+                          }
+                        }
+                      }}
+                      className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                    >
+                      <option value="">Select a saved address</option>
+                      {savedAddresses.map((address) => (
+                        <option key={address.id} value={address.id}>
+                          {address.zone.name} - {address.street_address}
+                        </option>
+                      ))}
+                    </select>
+                    
+                    <div className="flex items-center justify-center">
+                      <span className="text-xs text-gray-400">or</span>
+                    </div>
+                    
                     <button
                       type="button"
-                      onClick={() =>
-                        !isLoadingLocations &&
-                        setLocationDropdownOpen((o) => !o)
-                      }
-                      className={`w-full px-4 py-3 rounded-2xl border bg-gray-50 text-sm text-left flex items-center justify-between transition focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent ${
-                        selectedLocation
-                          ? "border-orange-300 text-gray-800"
-                          : "border-gray-200 text-gray-400"
-                      } ${isLoadingLocations ? "opacity-60 cursor-not-allowed" : ""}`}
+                      onClick={handleUseManualSelection}
+                      className="w-full px-4 py-2.5 text-sm font-medium text-gray-600 bg-gray-50 hover:bg-gray-100 rounded-2xl border border-gray-200 transition-colors"
                     >
-                      <span className="flex items-center gap-2">
-                        <FiMapPin
-                          className={`w-4 h-4 flex-shrink-0 ${selectedLocation ? "text-orange-500" : "text-gray-400"}`}
-                        />
-                        {isLoadingLocations
-                          ? "Loading locations…"
-                          : selectedLocation
-                            ? selectedLocation.name
-                            : "Select a delivery location"}
-                      </span>
-                      <FiChevronDown
-                        className={`w-4 h-4 text-gray-400 flex-shrink-0 transition-transform duration-200 ${locationDropdownOpen ? "rotate-180" : ""}`}
-                      />
+                      {(manualAddressForm.state_id || manualAddressForm.city_id || manualAddressForm.zone_id || manualAddressForm.street_address) ? "Clear selection" : "Select zone manually"}
                     </button>
-
-                    {locationDropdownOpen && (
-                      <div className="absolute z-20 mt-2 w-full bg-white border border-gray-100 rounded-2xl shadow-xl overflow-hidden max-h-64 overflow-y-auto">
-                        {deliveryLocations.length === 0 ? (
-                          <p className="px-4 py-4 text-sm text-gray-400 text-center">
-                            No delivery locations available.
-                          </p>
-                        ) : (
-                          deliveryLocations.map((loc) => (
-                            <button
-                              key={loc.id}
-                              type="button"
-                              onClick={() => handleSelectLocation(loc)}
-                              className={`w-full px-4 py-3 text-left flex items-center justify-between hover:bg-orange-50 transition-colors ${
-                                selectedLocation?.id === loc.id
-                                  ? "bg-orange-50"
-                                  : ""
-                              }`}
-                            >
-                              <p className="text-sm font-semibold text-gray-800">
-                                {loc.name}
-                              </p>
-                              <span className="text-sm font-bold text-orange-500 flex-shrink-0 ml-4">
-                                ₦{Number(loc.delivery_fee).toLocaleString()}
-                              </span>
-                            </button>
-                          ))
-                        )}
-                      </div>
-                    )}
                   </div>
                 )}
+              </div>
+            )}
+
+            {/* ── Manual address entry: State → City → Zone ── */}
+            {orderType === "delivery" && (!hasSavedAddresses || useManualSelection) && (
+              <div className="space-y-4">
+                {/* State Selection */}
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600 mb-2 uppercase tracking-wide">
+                    State *
+                  </label>
+                  <select
+                    value={manualAddressForm.state_id || ""}
+                    onChange={(e) => handleLocationChange(e, "state")}
+                    className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                  >
+                    <option value="">Select a state</option>
+                    {states.map((state) => (
+                      <option key={state.id} value={state.id}>
+                        {state.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* City Selection */}
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600 mb-2 uppercase tracking-wide">
+                    City *
+                  </label>
+                  <select
+                    value={manualAddressForm.city_id || ""}
+                    onChange={(e) => handleLocationChange(e, "city")}
+                    disabled={!manualAddressForm.state_id || isCitiesLoading}
+                    className="w-full px-4 py-3 rounded-2xl border bg-gray-50 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent disabled:bg-gray-50 disabled:text-gray-400 disabled:cursor-not-allowed"
+                  >
+                    <option value="">
+                      {isCitiesLoading
+                        ? "Loading cities..."
+                        : !manualAddressForm.state_id
+                        ? "Select a state first"
+                        : "Select a city"}
+                    </option>
+                    {cities.map((city) => (
+                      <option key={city.id} value={city.id}>
+                        {city.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Zone Selection */}
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600 mb-2 uppercase tracking-wide">
+                    Zone *
+                  </label>
+                  <select
+                    value={manualAddressForm.zone_id || ""}
+                    onChange={(e) => handleLocationChange(e, "zone")}
+                    disabled={!manualAddressForm.city_id || isZonesLoading}
+                    className="w-full px-4 py-3 rounded-2xl border bg-gray-50 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent disabled:bg-gray-50 disabled:text-gray-400 disabled:cursor-not-allowed"
+                  >
+                    <option value="">
+                      {isZonesLoading
+                        ? "Loading zones..."
+                        : !manualAddressForm.city_id
+                        ? "Select a city first"
+                        : "Select a zone"}
+                    </option>
+                    {zones.map((zone) => (
+                      <option key={zone.id} value={zone.id}>
+                        {zone.name || zone.zone_name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
 
                 {selectedLocation && (
                   <div className="mt-2 flex items-center gap-2 px-3 py-2 bg-orange-50 border border-orange-100 rounded-xl text-xs text-orange-700">
@@ -499,16 +608,22 @@ function OrderTypeForm() {
                     value={formData.deliveryAddress}
                     onChange={(e) => {
                       handleChange(e);
-                      // Uncheck saved details if the user edits the address manually
-                      if (
-                        useSavedDelivery &&
-                        e.target.value !== savedDelivery?.street_address
-                      ) {
-                        setUseSavedDelivery(false);
+                      handleLocationChange(e, "street_address");
+                      // Clear saved address if the user edits the address manually
+                      if (selectedSavedAddress && e.target.value !== selectedSavedAddress.street_address) {
+                        setSelectedSavedAddress(null);
+                        setUseManualSelection(true);
                       }
                     }}
-                    placeholder="Admin Block A"
-                    className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                    readOnly={!!selectedSavedAddress}
+                    placeholder={selectedSavedAddress ? selectedSavedAddress.street_address : (useManualSelection ? "Enter your street address" : "Admin Block A")}
+                    className={`w-full px-4 py-3 rounded-2xl border text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent ${
+                      selectedSavedAddress 
+                        ? "border-gray-200 bg-gray-100 text-gray-600 cursor-not-allowed" 
+                        : useManualSelection
+                        ? "border-gray-200 bg-white"
+                        : "border-gray-200 bg-gray-50"
+                    }`}
                   />
                 </div>
               </>
@@ -651,7 +766,7 @@ function OrderTypeForm() {
                 isSubmitting ||
                 checkingHours ||
                 taxList.length < 1 ||
-                (orderType === "delivery" && !selectedLocation)
+                (orderType === "delivery" && !formData.deliveryAddress.trim())
               }
               className="w-full bg-orange-500 hover:bg-orange-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white py-4 rounded-full font-bold transition-colors"
             >
@@ -660,9 +775,9 @@ function OrderTypeForm() {
                 : "Pay Now"}
             </button>
 
-            {orderType === "delivery" && !selectedLocation && (
+            {orderType === "delivery" && !formData.deliveryAddress.trim() && (
               <p className="text-center text-xs text-gray-400 mt-3">
-                Select a delivery location to continue
+                Enter a delivery address to continue
               </p>
             )}
           </div>
