@@ -10,19 +10,22 @@ import {
 } from "react-icons/fi";
 import { useAuth } from "../../context/AuthContext";
 import { useToast } from "../../context/ToastContext";
-import { ModalWrapper, ErrorBanner } from "../../Components/UserDashboard/shared";
+import {
+  ModalWrapper,
+  ErrorBanner,
+} from "../../Components/UserDashboard/shared";
 import api from "../../utils/api";
 
 function ProfilePage() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { showToast } = useToast();
-  
+
   const [profile, setProfile] = useState(null);
   const [addresses, setAddresses] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isAddressesLoading, setIsAddressesLoading] = useState(false);
-  
+
   // Address modal states
   const [showAddressModal, setShowAddressModal] = useState(false);
   const [showDeleteAddressModal, setShowDeleteAddressModal] = useState(false);
@@ -31,14 +34,14 @@ function ProfilePage() {
   const [editingAddress, setEditingAddress] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  
+
   // Location data
   const [states, setStates] = useState([]);
   const [cities, setCities] = useState([]);
   const [zones, setZones] = useState([]);
   const [isCitiesLoading, setIsCitiesLoading] = useState(false);
   const [isZonesLoading, setIsZonesLoading] = useState(false);
-  
+
   const [addressForm, setAddressForm] = useState({
     state_id: null,
     city_id: null,
@@ -180,7 +183,6 @@ function ProfilePage() {
 
   const confirmDeleteAddress = async () => {
     setDeletingAddress(true);
-    setIsAddressesLoading(true);
     try {
       await api.delete(`/customer/addresses/${addressToDelete}`);
       const { data } = await api.get("/customer/addresses");
@@ -191,7 +193,6 @@ function ProfilePage() {
       setShowDeleteAddressModal(false);
       setAddressToDelete(null);
       setDeletingAddress(false);
-      setIsAddressesLoading(false);
     }
   };
 

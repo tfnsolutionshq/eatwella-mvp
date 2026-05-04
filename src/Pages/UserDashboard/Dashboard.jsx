@@ -1,7 +1,7 @@
 import { Outlet } from "react-router-dom";
-import DashboardHeader from "../../Components/UserDashboard/DashboardHeader"
-import Footer from "../../Components/LandingComponents/Footer"
-import DashboardSidebar from "../../Components/UserDashboard/DashboardSidebar"
+import DashboardHeader from "../../Components/UserDashboard/DashboardHeader";
+import Footer from "../../Components/LandingComponents/Footer";
+import DashboardSidebar from "../../Components/UserDashboard/DashboardSidebar";
 
 function Dashboard() {
   return (
@@ -19,7 +19,7 @@ function Dashboard() {
       </div>
       <Footer />
     </div>
-  )
+  );
 }
 
-export default Dashboard
+export default Dashboard;

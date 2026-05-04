@@ -20,6 +20,9 @@ import {
   FiArchive,
   FiAlertCircle,
   FiChevronDown,
+  FiTrendingUp,
+  FiCheckCircle,
+  FiFileText,
 } from "react-icons/fi";
 import api from "../../utils/api";
 
@@ -51,9 +54,15 @@ const EMPTY_FORM = {
 // ─── Skeleton Components ──────────────────────────────────────────────────────
 function SkeletonStatCard() {
   return (
-    <div className="rounded-2xl border border-gray-100 px-4 py-3 bg-gray-50 animate-pulse">
-      <div className="h-3 w-16 bg-gray-200 rounded mb-2" />
-      <div className="h-8 w-10 bg-gray-200 rounded" />
+    <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm animate-pulse">
+      {/* Icon placeholder */}
+      <div className="w-10 h-10 rounded-xl bg-gray-200 animate-pulse mb-4" />
+      
+      {/* Value placeholder */}
+      <div className="h-6 w-16 bg-gray-200 rounded mb-2 animate-pulse" />
+      
+      {/* Label placeholder */}
+      <div className="h-4 w-24 bg-gray-100 rounded animate-pulse" />
     </div>
   );
 }
@@ -910,7 +919,7 @@ const Campaigns = () => {
   // ── Render ──────────────────────────────────────────────────────────────────
   return (
     <DashboardLayout>
-      <div className="p-6 md:p-8 max-w-7xl mx-auto space-y-6">
+      <div className="p-6 space-y-8 bg-gray-50/50 min-h-full">
         {/* Page header */}
         <div className="flex items-start justify-between gap-4">
           <div>
@@ -923,7 +932,7 @@ const Campaigns = () => {
             onClick={() =>
               setFormModal({ open: true, mode: "create", data: null })
             }
-            className="flex items-center gap-2 px-5 py-2.5 bg-orange-500 hover:bg-orange-600 text-white text-sm font-bold rounded-2xl transition-colors shadow-sm shadow-orange-200 flex-shrink-0"
+            className="flex items-center gap-2 px-4 py-2 bg-orange-500 text-white rounded-lg text-sm font-medium hover:bg-orange-600 transition-colors shadow-sm shadow-orange-200"
           >
             <FiPlus className="w-4 h-4" />
             New Campaign
@@ -931,7 +940,7 @@ const Campaigns = () => {
         </div>
 
         {/* Stats strip */}
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {isLoading
             ? Array.from({ length: 3 }).map((_, i) => (
                 <SkeletonStatCard key={i} />
@@ -955,17 +964,27 @@ const Campaigns = () => {
                   color: "text-amber-700",
                   bg: "bg-amber-50 border-amber-100",
                 },
-              ].map(({ label, value, color, bg }) => (
-                <div
-                  key={label}
-                  className={`rounded-2xl border px-4 py-3 ${bg}`}
-                >
-                  <p className="text-xs text-gray-500 font-medium">{label}</p>
-                  <p className={`text-2xl font-black mt-0.5 ${color}`}>
-                    {value}
-                  </p>
-                </div>
-              ))}
+              ].map(({ label, value, color, bg }, index) => {
+                const iconColors = ["bg-orange-50", "bg-green-50", "bg-amber-50"];
+                const iconTextColors = ["text-orange-500", "text-green-500", "text-amber-500"];
+                const icons = [FiTrendingUp, FiCheckCircle, FiFileText];
+                const IconComponent = icons[index];
+                
+                return (
+                  <div
+                    key={label}
+                    className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm"
+                  >
+                    <div className={`w-10 h-10 ${iconColors[index]} rounded-xl flex items-center justify-center mb-4`}>
+                      <IconComponent className={`w-5 h-5 ${iconTextColors[index]}`} />
+                    </div>
+                    <div className="text-2xl font-bold text-gray-900 mb-1">
+                      {value}
+                    </div>
+                    <div className="text-sm text-gray-500">{label}</div>
+                  </div>
+                );
+              })}
         </div>
 
         {/* Filters */}
@@ -977,14 +996,14 @@ const Campaigns = () => {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search campaigns…"
-              className="w-full pl-10 pr-4 py-2.5 text-sm bg-white border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+              className="w-full pl-10 pr-4 py-2.5 text-sm bg-white border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
             />
           </div>
           <div className="relative">
             <select
               value={filterStatus}
               onChange={(e) => setFilterStatus(e.target.value)}
-              className="appearance-none pl-3 pr-8 py-2.5 text-sm bg-white border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-orange-500 cursor-pointer"
+              className="appearance-none pl-3 pr-8 py-2.5 text-sm bg-white border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 cursor-pointer"
             >
               <option value="all">All Statuses</option>
               <option value="published">Published</option>
@@ -996,7 +1015,7 @@ const Campaigns = () => {
             <select
               value={filterType}
               onChange={(e) => setFilterType(e.target.value)}
-              className="appearance-none pl-3 pr-8 py-2.5 text-sm bg-white border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-orange-500 cursor-pointer"
+              className="appearance-none pl-3 pr-8 py-2.5 text-sm bg-white border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 cursor-pointer"
             >
               <option value="all">All Types</option>
               <option value="banner">Banner</option>
@@ -1007,7 +1026,7 @@ const Campaigns = () => {
         </div>
 
         {/* Table */}
-        <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
           {/* Table header always visible so skeletons align under correct columns */}
           <div className="overflow-x-auto">
             <table className="w-full">
@@ -1049,7 +1068,7 @@ const Campaigns = () => {
                                 data: null,
                               })
                             }
-                            className="mt-1 flex items-center gap-2 px-4 py-2 text-sm font-semibold text-orange-500 bg-orange-50 hover:bg-orange-100 rounded-xl transition-colors"
+                            className="mt-1 flex items-center gap-2 px-4 py-2 text-sm font-semibold text-orange-500 bg-orange-50 hover:bg-orange-100 rounded-lg transition-colors"
                           >
                             <FiPlus className="w-4 h-4" /> Create Campaign
                           </button>

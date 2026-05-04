@@ -229,6 +229,12 @@ const OrderManagement = () => {
   // General status-change loading state (keyed by order ID)
   const [changingIds, setChangingIds] = useState(new Set());
 
+  // Separate loading state for "Start Processing" actions (keyed by order ID)
+  const [processingIds, setProcessingIds] = useState(new Set());
+
+  // Separate loading state for "Mark as Completed" actions (keyed by order ID)
+  const [completingIds, setCompletingIds] = useState(new Set());
+
   // Separate loading state exclusively for "Send to Kitchen" (keyed by order ID)
   // This ensures the send-to-kitchen spinner never bleeds into other action buttons
   const [sendingToKitchenIds, setSendingToKitchenIds] = useState(new Set());
@@ -253,6 +259,22 @@ const OrderManagement = () => {
   const setChanging = (id) => setChangingIds((prev) => new Set(prev).add(id));
   const clearChanging = (id) =>
     setChangingIds((prev) => {
+      const next = new Set(prev);
+      next.delete(id);
+      return next;
+    });
+
+  const setProcessing = (id) => setProcessingIds((prev) => new Set(prev).add(id));
+  const clearProcessing = (id) =>
+    setProcessingIds((prev) => {
+      const next = new Set(prev);
+      next.delete(id);
+      return next;
+    });
+
+  const setCompleting = (id) => setCompletingIds((prev) => new Set(prev).add(id));
+  const clearCompleting = (id) =>
+    setCompletingIds((prev) => {
       const next = new Set(prev);
       next.delete(id);
       return next;
@@ -521,7 +543,15 @@ const OrderManagement = () => {
 
   const handleStatusUpdate = async (order) => {
     const { id: orderId, status } = order;
-    setChanging(orderId);
+    
+    // Use different loading states based on the action
+    const isProcessingAction = status === "confirmed";
+    if (isProcessingAction) {
+      setProcessing(orderId);
+    } else {
+      setChanging(orderId);
+    }
+    
     try {
       if (user.role === "kitchen") {
         if (status === "confirmed") {
@@ -552,12 +582,16 @@ const OrderManagement = () => {
         "error",
       );
     } finally {
-      clearChanging(orderId);
+      if (isProcessingAction) {
+        clearProcessing(orderId);
+      } else {
+        clearChanging(orderId);
+      }
     }
   };
 
   const handleNonDeliveryComplete = async (orderId) => {
-    setChanging(orderId);
+    setCompleting(orderId);
     try {
       await api.put(`/admin/orders/${orderId}`, { status: "completed" });
       showToast("Order marked as completed", "success");
@@ -568,14 +602,14 @@ const OrderManagement = () => {
         "error",
       );
     } finally {
-      clearChanging(orderId);
+      clearCompleting(orderId);
     }
   };
 
   // Complete a confirmed order directly — used for counter-pickup items that
   // don't need to go through the kitchen at all.
   const handleCompleteFromConfirmed = async (orderId) => {
-    setChanging(orderId);
+    setCompleting(orderId);
     try {
       await api.put(`/admin/orders/${orderId}`, { status: "completed" });
       showToast("Order marked as completed", "success");
@@ -586,7 +620,7 @@ const OrderManagement = () => {
         "error",
       );
     } finally {
-      clearChanging(orderId);
+      clearCompleting(orderId);
     }
   };
 
@@ -613,18 +647,33 @@ const OrderManagement = () => {
   const renderActionButtons = (order) => {
     const { id, status, order_type } = order;
     const busy = changingIds.has(id);
+    const isProcessing = processingIds.has(id);
+    const isCompleting = completingIds.has(id);
     const sendingToKitchen = sendingToKitchenIds.has(id);
 
     // Full-width orange action button
-    const OrangeBtn = ({ label, onClick }) => (
-      <button
-        onClick={onClick}
-        disabled={busy}
-        className="w-full px-4 py-2.5 bg-orange-500 rounded-xl text-sm font-medium text-white hover:bg-orange-600 transition-colors shadow-sm shadow-orange-200 disabled:bg-orange-500/50 disabled:cursor-not-allowed"
-      >
-        {busy ? "Updating…" : label}
-      </button>
-    );
+    const OrangeBtn = ({ label, onClick, actionType }) => {
+      let isDisabled = busy;
+      let loadingText = "Updating...";
+      
+      if (actionType === "processing") {
+        isDisabled = isProcessing;
+        loadingText = "Processing...";
+      } else if (actionType === "completing") {
+        isDisabled = isCompleting;
+        loadingText = "Completing...";
+      }
+      
+      return (
+        <button
+          onClick={onClick}
+          disabled={isDisabled}
+          className="w-full px-4 py-2.5 bg-orange-500 rounded-xl text-sm font-medium text-white hover:bg-orange-600 transition-colors shadow-sm shadow-orange-200 disabled:bg-orange-500/50 disabled:cursor-not-allowed"
+        >
+          {isDisabled ? loadingText : label}
+        </button>
+      );
+    };
 
     // Full-width assign button
     const AssignBtn = ({ onClickFn }) => (
@@ -660,6 +709,7 @@ const OrderManagement = () => {
             key="start"
             label="Start Processing"
             onClick={() => handleStatusUpdate(order)}
+            actionType="processing"
           />,
         );
       if (status === "processing")
@@ -688,6 +738,7 @@ const OrderManagement = () => {
             key="process"
             label="Start Processing"
             onClick={() => handleStatusUpdate(order)}
+            actionType="processing"
           />,
         );
         // Admin can also complete confirmed orders directly for counter items
@@ -696,6 +747,7 @@ const OrderManagement = () => {
             key="complete-confirmed"
             label="Mark as Completed"
             onClick={() => handleCompleteFromConfirmed(id)}
+            actionType="completing"
           />,
         );
       }
@@ -717,6 +769,7 @@ const OrderManagement = () => {
             key="complete-ready"
             label="Mark as Completed"
             onClick={() => handleNonDeliveryComplete(id)}
+            actionType="completing"
           />,
         );
       if (status === "dispatched")
@@ -751,6 +804,7 @@ const OrderManagement = () => {
             key="complete-confirmed"
             label="Mark as Completed"
             onClick={() => handleCompleteFromConfirmed(id)}
+            actionType="completing"
           />,
         );
       }
@@ -764,6 +818,7 @@ const OrderManagement = () => {
             key="complete-ready"
             label="Mark as Completed"
             onClick={() => handleNonDeliveryComplete(id)}
+            actionType="completing"
           />,
         );
       if (status === "dispatched")
@@ -795,6 +850,7 @@ const OrderManagement = () => {
             key="complete-confirmed"
             label="Mark as Completed"
             onClick={() => handleCompleteFromConfirmed(id)}
+            actionType="completing"
           />,
         );
       }
@@ -804,6 +860,7 @@ const OrderManagement = () => {
             key="complete-ready"
             label="Mark as Completed"
             onClick={() => handleNonDeliveryComplete(id)}
+            actionType="completing"
           />,
         );
     }

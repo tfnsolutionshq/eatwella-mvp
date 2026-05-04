@@ -139,17 +139,6 @@ function VacancyItems() {
   return (
     <div className="bg-gray-50/50 py-16 px-4 md:px-8 min-h-screen font-sans">
       <div className="max-w-5xl mx-auto">
-        <div className="text-center mb-16 relative">
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-24 h-24 bg-orange-100 rounded-full blur-3xl -z-10"></div>
-          <h2 className="text-4xl md:text-5xl font-black mb-4 text-gray-900 font-bolota tracking-tight">
-            Current Openings
-          </h2>
-          <p className="text-gray-500 text-lg max-w-2xl mx-auto">
-            Join our passionate team and help us deliver happiness, one meal at
-            a time.
-          </p>
-        </div>
-
         {loading ? (
           <div className="grid gap-8 mb-12">
             {Array.from({ length: 3 }).map((_, i) => (

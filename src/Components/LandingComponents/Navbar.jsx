@@ -31,7 +31,7 @@ function Navbar() {
   };
 
   return (
-    <nav className="max-w-6xl mx-auto px-6 py-8 flex items-center justify-between relative z-50">
+    <nav className="max-w-6xl mx-auto px-6 py-8 flex items-center justify-between relative z-40">
       <Link to="/" className="flex items-center gap-2">
         <img src={logo} alt="Eatwella Logo" className=" h-9" />
       </Link>
