@@ -34,7 +34,6 @@ const LoyaltySettings = () => {
     setLoading(true);
     try {
       const { data } = await api.get("/admin/settings");
-      console.log("Howdy: ", data);
       // const settingsObj = {};
       // if (Array.isArray(data)) {
       //   data.forEach((setting) => {
