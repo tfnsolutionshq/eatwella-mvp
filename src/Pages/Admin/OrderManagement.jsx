@@ -76,7 +76,7 @@ const TABS_BY_ROLE = {
     "completed",
   ],
   // Kitchen only sees orders explicitly sent to them via "Send to Kitchen"
-  kitchen: ["all", "confirmed", "processing"],
+  kitchen: ["all", "confirmed", "in_kitchen", "processing"],
   delivery_agent: ["all", "dispatched", "completed"],
   attendant: ["all", "pending", "confirmed", "ready", "completed"],
 };
@@ -557,7 +557,7 @@ const OrderManagement = () => {
 
     try {
       if (user.role === "kitchen") {
-        if (status === "confirmed") {
+        if (status === "in_kitchen") {
           await api.post(`/kitchen/orders/preparing`, { order_ids: [orderId] });
           showToast("Order is now being processed", "success");
         } else if (status === "processing") {
@@ -706,7 +706,7 @@ const OrderManagement = () => {
 
     // ── Kitchen ──────────────────────────────────────────────────────────────
     if (user.role === "kitchen") {
-      if (status === "confirmed")
+      if (status === "confirmed" || status === "in_kitchen")
         buttons.push(
           <OrangeBtn
             key="start"

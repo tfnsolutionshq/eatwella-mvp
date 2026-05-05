@@ -7,6 +7,7 @@ import {
   FiSearch,
   FiFilter,
   FiTrendingUp,
+  FiClock,
 } from "react-icons/fi";
 import api from "../../utils/api";
 
@@ -42,16 +43,11 @@ function Payments() {
       }).format(Math.ceil(totals?.total_revenue ?? 0)),
       icon: FiDollarSign,
       color: "bg-green-500",
-      trend: "+12%",
     },
     {
       label: "Pending",
-      value: new Intl.NumberFormat("en-NG", {
-        style: "currency",
-        currency: "NGN",
-        minimumFractionDigits: 0,
-      }).format(Math.ceil(totals?.total_pending ?? 0)),
-      icon: FiDollarSign,
+      value: totals?.total_pending ?? 0,
+      icon: FiClock,
       color: "bg-orange-500",
     },
     {
@@ -247,14 +243,14 @@ function Payments() {
                           <span
                             className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium border ${getMethodColor(payment.payment_method)}`}
                           >
-                            {payment.payment_method}
+                            {payment.payment_method.toUpperCase().charAt(0) + payment.payment_method.slice(1)}
                           </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span
-                            className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold border ${getStatusColor(payment.payment_status)}`}
+                            className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium border ${getStatusColor(payment.payment_status)}`}
                           >
-                            {payment.payment_status}
+                            {payment.payment_status.toUpperCase().charAt(0) + payment.payment_status.slice(1)}
                           </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">

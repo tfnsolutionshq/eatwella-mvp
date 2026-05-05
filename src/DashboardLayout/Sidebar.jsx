@@ -119,7 +119,7 @@ export default function Sidebar({ isOpen, onToggle }) {
       label: "Payments",
       icon: FiCreditCard,
       path: `${p}/payments`,
-      roles: ["admin", "attendant"],
+      roles: ["admin"],
     },
     {
       id: "tax-vat",
