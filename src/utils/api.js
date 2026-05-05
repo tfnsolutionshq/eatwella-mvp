@@ -1,7 +1,7 @@
 import axios from "axios";
 
 const api = axios.create({
-  baseURL: "https://eatwella.tfnsolutions.us/api",
+  baseURL: "https://api.eatwella.ng/api",
   headers: {
     Accept: "application/json",
     "Content-Type": "application/json",

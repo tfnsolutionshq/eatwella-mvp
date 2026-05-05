@@ -736,6 +736,8 @@ const OrderManagement = () => {
           />,
         );
       if (status === "confirmed") {
+        // Admin can send to kitchen for items that need preparation
+        buttons.push(<SendToKitchenBtn key="send-kitchen" />);
         buttons.push(
           <OrangeBtn
             key="process"
