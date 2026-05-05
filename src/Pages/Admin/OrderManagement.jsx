@@ -429,7 +429,6 @@ const OrderManagement = () => {
     try {
       setLoadingOrderDetails(orderId);
       const { data } = await api.get(endpoint);
-      console.log("The data: ", data);
       setSelectedOrder(data);
       setIsDetailsOpen(true);
     } catch (err) {

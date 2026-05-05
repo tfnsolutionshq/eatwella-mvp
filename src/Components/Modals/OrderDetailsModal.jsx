@@ -75,6 +75,7 @@ const OrderDetailsModal = ({ isOpen, onClose, order }) => {
   if (!isOpen || !order) return null;
 
   const getStatusColor = (status) => {
+    if (!status) return "bg-gray-100 text-gray-600";
     const colors = {
       pending: "bg-orange-100 text-orange-600",
       processing: "bg-purple-100 text-purple-600",
@@ -84,7 +85,8 @@ const OrderDetailsModal = ({ isOpen, onClose, order }) => {
   };
 
   const subtotal =
-    order.order_items?.reduce((sum, item) => {
+    order?.order_items?.reduce((sum, item) => {
+      if (!item) return sum;
       const packagingPrice = item.packaging?.price ?? 0;
       return sum + (item.subtotal ?? 0) + packagingPrice * (item.quantity ?? 1);
     }, 0) ?? 0;
@@ -118,54 +120,53 @@ const OrderDetailsModal = ({ isOpen, onClose, order }) => {
             <div>
               <p className="text-sm text-gray-500 mb-1">Order Type</p>
               <p className="text-base font-medium text-gray-900">
-                {order.order_type === "dine"
+                {order?.order_type === "dine"
                   ? "Dine-in"
-                  : order.order_type?.charAt(0).toUpperCase() +
-                    order.order_type?.slice(1)}
+                  : order?.order_type ? order.order_type.charAt(0).toUpperCase() + order.order_type.slice(1) : "N/A"}
               </p>
             </div>
 
             <div>
               <p className="text-sm text-gray-500 mb-1">Delivery City</p>
               <p className="text-base font-medium text-gray-900">
-                {order.delivery_zone.city.name ?? "N/A"}
+                {order?.delivery_zone?.city?.name ?? "N/A"}
               </p>
             </div>
 
             <div>
               <p className="text-sm text-gray-500 mb-1">Delivery Address</p>
               <p className="text-base font-medium text-gray-900">
-                {order.delivery_address ?? "N/A"}
+                {order?.delivery_address ?? "N/A"}
               </p>
             </div>
 
             <div>
               <p className="text-sm text-gray-500 mb-1">Delivery Zone</p>
               <p className="text-base font-medium text-gray-900">
-                {order.delivery_zone.name ?? "N/A"}
+                {order?.delivery_zone?.name ?? "N/A"}
               </p>
             </div>
 
             <div>
               <p className="text-sm text-gray-500 mb-1">Order Number</p>
               <p className="text-base font-medium text-gray-900">
-                #{order.order_number}
+                #{order?.order_number ?? "N/A"}
               </p>
             </div>
 
             <div>
               <p className="text-sm text-gray-500 mb-1">Status</p>
               <span
-                className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(order.status)}`}
+                className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(order?.status)}`}
               >
-                {order.status?.charAt(0).toUpperCase() + order.status?.slice(1)}
+                {order?.status ? order.status.charAt(0).toUpperCase() + order.status.slice(1) : "N/A"}
               </span>
             </div>
 
             <div>
               <p className="text-sm text-gray-500 mb-1">Customer Email</p>
               <p className="text-base font-medium text-gray-900 text-wrap">
-                {order.customer_email}
+                {order?.customer_email ?? "N/A"}
               </p>
             </div>
 
@@ -174,14 +175,14 @@ const OrderDetailsModal = ({ isOpen, onClose, order }) => {
                 <div>
                   <p className="text-sm text-gray-500 mb-1">Attendant Name</p>
                   <p className="text-base font-medium text-gray-900">
-                    {order.attendant.name}
+                    {order?.attendant?.name ?? "N/A"}
                   </p>
                 </div>
 
                 <div>
                   <p className="text-sm text-gray-500 mb-1">Attendant Email</p>
                   <p className="text-base font-medium text-gray-900 text-wrap">
-                    {order.attendant.email}
+                    {order?.attendant?.email ?? "N/A"}
                   </p>
                 </div>
               </>
@@ -194,7 +195,7 @@ const OrderDetailsModal = ({ isOpen, onClose, order }) => {
                     Delivery Agent Name
                   </p>
                   <p className="text-base font-medium text-gray-900">
-                    {order.delivery_agent.name}
+                    {order?.delivery_agent?.name ?? "N/A"}
                   </p>
                 </div>
 
@@ -203,7 +204,7 @@ const OrderDetailsModal = ({ isOpen, onClose, order }) => {
                     Delivery Agent Email
                   </p>
                   <p className="text-base font-medium text-gray-900 text-wrap">
-                    {order.delivery_agent.email}
+                    {order?.delivery_agent?.email ?? "N/A"}
                   </p>
                 </div>
               </>
@@ -212,7 +213,7 @@ const OrderDetailsModal = ({ isOpen, onClose, order }) => {
             <div>
               <p className="text-sm text-gray-500 mb-1">Created At</p>
               <p className="text-base font-medium text-gray-900">
-                {new Date(order.created_at).toLocaleString()}
+                {order?.created_at ? new Date(order.created_at).toLocaleString() : "N/A"}
               </p>
             </div>
           </div>
@@ -225,21 +226,21 @@ const OrderDetailsModal = ({ isOpen, onClose, order }) => {
               <div className="flex justify-between">
                 <span className="text-sm text-gray-500">Invoice Number:</span>
                 <span className="text-sm font-medium text-gray-900">
-                  {order.invoice?.invoice_number || "N/A"}
+                  {order?.invoice?.invoice_number ?? "N/A"}
                 </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-sm text-gray-500">Payment Method:</span>
                 <span className="text-sm font-medium text-gray-900">
-                  {order.invoice?.payment_method?.toUpperCase() || "N/A"}
+                  {order?.invoice?.payment_method ? order.invoice.payment_method.toUpperCase() : "N/A"}
                 </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-sm text-gray-500">Payment Status:</span>
                 <span
-                  className={`px-2.5 py-1 text-xs font-medium rounded-full ${order.invoice?.payment_status === "paid" ? "bg-green-100 text-green-600" : "bg-orange-100 text-orange-600"}`}
+                  className={`px-2.5 py-1 text-xs font-medium rounded-full ${order?.invoice?.payment_status === "paid" ? "bg-green-100 text-green-600" : "bg-orange-100 text-orange-600"}`}
                 >
-                  {order.invoice?.payment_status?.toUpperCase() || "N/A"}
+                  {order?.invoice?.payment_status ? order.invoice.payment_status.toUpperCase() : "N/A"}
                 </span>
               </div>
             </div>
@@ -250,9 +251,10 @@ const OrderDetailsModal = ({ isOpen, onClose, order }) => {
               Order Items
             </h3>
             <div className="space-y-4 mb-4">
-              {order.order_items?.map((item) => {
+              {order?.order_items?.map((item) => {
+                if (!item) return null;
                 const imageUrl =
-                  item.menu?.images && item.menu.images.length > 0
+                  item.menu?.images && Array.isArray(item.menu.images) && item.menu.images.length > 0
                     ? item.menu.images[0]
                     : null;
                 return (
@@ -271,14 +273,14 @@ const OrderDetailsModal = ({ isOpen, onClose, order }) => {
                     <div className="flex-1 flex justify-between items-center">
                       <div>
                         <p className="text-sm font-medium text-gray-900">
-                          {item.menu?.name}
+                          {item.menu?.name ?? "Unknown Item"}
                         </p>
                         <p className="text-xs text-gray-500">
-                          Quantity: {item.quantity}
+                          Quantity: {item.quantity ?? 0}
                         </p>
                         <p className="text-xs text-gray-500">
-                          {item.packaging &&
-                            "Packaging Size: " +
+                          {item.packaging?.size_name && item.packaging.price
+                            ? "Packaging Size: " +
                               item.packaging.size_name
                                 .toUpperCase()
                                 .slice(0, 1)
@@ -289,7 +291,8 @@ const OrderDetailsModal = ({ isOpen, onClose, order }) => {
                                 currency: "NGN",
                                 minimumFractionDigits: 0,
                               }).format(item.packaging.price) +
-                              ")"}
+                              ")"
+                            : ""}
                         </p>
                       </div>
                       <span className="text-sm font-medium text-gray-900">
@@ -297,7 +300,7 @@ const OrderDetailsModal = ({ isOpen, onClose, order }) => {
                           style: "currency",
                           currency: "NGN",
                           minimumFractionDigits: 0,
-                        }).format(item.subtotal)}
+                        }).format(item.subtotal ?? 0)}
                       </span>
                     </div>
                   </div>
@@ -316,7 +319,7 @@ const OrderDetailsModal = ({ isOpen, onClose, order }) => {
                   }).format(subtotal)}
                 </span>
               </div>
-              {order.discount_amount > 0 && (
+              {(order?.discount_amount ?? 0) > 0 && (
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-gray-500">Discount</span>
                   <span className="text-sm font-medium text-green-600">
@@ -337,20 +340,22 @@ const OrderDetailsModal = ({ isOpen, onClose, order }) => {
                     style: "currency",
                     currency: "NGN",
                     minimumFractionDigits: 0,
-                  }).format(Math.ceil(order.final_amount))}
+                  }).format(Math.ceil(order?.final_amount ?? 0))}
                 </span>
               </div>
             </div>
 
-            <div className="pt-4 border-t border-gray-100">
-              <button
-                onClick={handlePrint}
-                className="w-full bg-orange-500 text-white py-3 rounded-lg flex items-center justify-center gap-2 hover:bg-orange-600 transition-colors"
-              >
-                <Download className="w-4 h-4" />
-                <span>Print Receipt</span>
-              </button>
-            </div>
+            {order?.status === 'completed' && (
+              <div className="pt-4 border-t border-gray-100">
+                <button
+                  onClick={handlePrint}
+                  className="w-full bg-orange-500 text-white py-3 rounded-lg flex items-center justify-center gap-2 hover:bg-orange-600 transition-colors"
+                >
+                  <Download className="w-4 h-4" />
+                  <span>Print Receipt</span>
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </div>
