@@ -37,6 +37,7 @@ const STATUS_CONFIG = {
   pending: { label: "Pending", color: "bg-gray-100 text-gray-600" },
   confirmed: { label: "Confirmed", color: "bg-blue-100 text-blue-600" },
   processing: { label: "Processing", color: "bg-purple-100 text-purple-600" },
+  in_kitchen: { label: "In Kitchen", color: "bg-orange-100 text-orange-600" },
   ready: { label: "Ready", color: "bg-yellow-100 text-yellow-600" },
   dispatched: { label: "Dispatched", color: "bg-indigo-100 text-indigo-600" },
   completed: { label: "Completed", color: "bg-green-100 text-green-600" },
