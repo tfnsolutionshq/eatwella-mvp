@@ -250,11 +250,9 @@ const CreateOrder = () => {
         orderData.delivery_zone_id = 1;
       }
 
-      console.log("over here: ", orderData);
-
       await api.post("/checkout", orderData);
       showToast("Order created successfully!");
-      navigate("/admin/orders");
+      navigate("/attendant/orders");
     } catch (err) {
       showToast(
         err.response?.data?.message || "Failed to create order",
