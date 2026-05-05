@@ -30,6 +30,8 @@ const CreateOrder = () => {
     deliveryZip: "",
   });
   const [paymentMode, setPaymentMode] = useState("cash");
+  const [posService, setPosService] = useState("OPay");
+  const [bankAccount, setBankAccount] = useState("OPay");
   const [loading, setLoading] = useState(false);
   const [menuLoading, setMenuLoading] = useState(false);
 
@@ -239,6 +241,13 @@ const CreateOrder = () => {
           packaging_id: item.packaging_id ?? null,
         })),
       };
+
+      // Add POS service and bank account details
+      if (paymentMode === "POS") {
+        orderData.pos_service = posService;
+      } else if (paymentMode === "transfer") {
+        orderData.bank_account = bankAccount;
+      }
 
       if (orderType === "dine") {
         orderData.table_number = formData.tableNumber;
@@ -686,6 +695,37 @@ const CreateOrder = () => {
                     <option value="transfer">Transfer</option>
                   </select>
                 </div>
+
+                {paymentMode === "POS" && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      POS Service
+                    </label>
+                    <select
+                      value={posService}
+                      onChange={(e) => setPosService(e.target.value)}
+                      className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2.5 px-4 text-sm text-gray-900 focus:ring-2 focus:ring-orange-100 focus:border-orange-500 outline-none"
+                    >
+                      <option value="OPay">OPay</option>
+                    </select>
+                  </div>
+                )}
+
+                {paymentMode === "transfer" && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Bank Account
+                    </label>
+                    <select
+                      value={bankAccount}
+                      onChange={(e) => setBankAccount(e.target.value)}
+                      className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2.5 px-4 text-sm text-gray-900 focus:ring-2 focus:ring-orange-100 focus:border-orange-500 outline-none"
+                    >
+                      <option value="OPayFirst">OPay - 6550510874</option>
+                      <option value="OPaySecond">OPay - 6425460090</option>
+                    </select>
+                  </div>
+                )}
 
                 {orderType === "delivery" && (
                   <div>
