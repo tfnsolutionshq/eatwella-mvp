@@ -721,12 +721,12 @@ function CartItems() {
                   desc: "Pay with card or bank transfer",
                   Icon: CreditCard,
                 },
-                {
-                  key: "cash",
-                  label: "Cash Payment",
-                  desc: "Pay with cash",
-                  Icon: DollarSign,
-                },
+                // {
+                //   key: "cash",
+                //   label: "Cash Payment",
+                //   desc: "Pay with cash",
+                //   Icon: DollarSign,
+                // },
               ].map(({ key, label, desc, Icon }) => (
                 <div
                   key={key}
