@@ -34,15 +34,9 @@ const LoyaltySettings = () => {
     setLoading(true);
     try {
       const { data } = await api.get("/admin/settings");
-      // const settingsObj = {};
-      // if (Array.isArray(data)) {
-      //   data.forEach((setting) => {
-      //     settingsObj[setting.key] = setting.value;
-      //   });
-      // }
       setSettings({
-        loyalty_points_per_order: data.loyalty_points_per_order || "",
-        loyalty_min_points_redemption: data.loyalty_min_points_redemption || "",
+        loyalty_points_per_order: data.availability_hours || "",
+        loyalty_min_points_redemption: data[1] || "",
       });
     } catch (err) {
       console.error("Failed to fetch settings:", err);
@@ -61,7 +55,6 @@ const LoyaltySettings = () => {
           settings.loyalty_min_points_redemption,
         ],
       };
-      console.log("The payload: ", payload);
       await api.put("/admin/settings", payload);
       showToast("Loyalty settings updated successfully!");
       fetchSettings();
