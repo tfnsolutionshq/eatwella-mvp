@@ -128,7 +128,7 @@ const OrderDetailsModal = ({ isOpen, onClose, order }) => {
             <div>
               <p className="text-sm text-gray-500 mb-1">Delivery City</p>
               <p className="text-base font-medium text-gray-900">
-                {order.delivery_city ?? "N/A"}
+                {order.delivery_zone.city.name ?? "N/A"}
               </p>
             </div>
 
@@ -140,9 +140,9 @@ const OrderDetailsModal = ({ isOpen, onClose, order }) => {
             </div>
 
             <div>
-              <p className="text-sm text-gray-500 mb-1">Delivery Zip</p>
+              <p className="text-sm text-gray-500 mb-1">Delivery Zone</p>
               <p className="text-base font-medium text-gray-900">
-                {order.delivery_zip ?? "N/A"}
+                {order.delivery_zone.name ?? "N/A"}
               </p>
             </div>
 

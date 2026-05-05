@@ -960,7 +960,7 @@ const OrderManagement = () => {
               </button>
               {user?.role === "attendant" && (
                 <button
-                  onClick={() => navigate("/admin/create-order")}
+                  onClick={() => navigate("/attendant/create-order")}
                   className="flex items-center gap-2 px-4 py-2 bg-orange-500 text-white rounded-lg text-sm font-medium hover:bg-orange-600 transition-colors shadow-sm shadow-orange-200"
                 >
                   <FiPlus className="w-4 h-4" />

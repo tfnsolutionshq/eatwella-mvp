@@ -29,6 +29,7 @@ const CreateOrder = () => {
     deliveryCity: "",
     deliveryZip: "",
   });
+  const [paymentMode, setPaymentMode] = useState("cash");
   const [loading, setLoading] = useState(false);
   const [menuLoading, setMenuLoading] = useState(false);
 
@@ -229,7 +230,7 @@ const CreateOrder = () => {
     try {
       const orderData = {
         order_type: orderType,
-        payment_type: "cash",
+        payment_type: paymentMode,
         customer_name: formData.customerName,
         customer_email: formData.customerEmail,
         items: cart.map((item) => ({
@@ -248,6 +249,8 @@ const CreateOrder = () => {
         orderData.delivery_zip = formData.deliveryZip;
         orderData.delivery_zone_id = 1;
       }
+
+      console.log("over here: ", orderData);
 
       await api.post("/checkout", orderData);
       showToast("Order created successfully!");
@@ -365,9 +368,12 @@ const CreateOrder = () => {
                             </p>
                             <button
                               onClick={() => addToCart(menu)}
-                              className="w-full px-3 py-1.5 bg-orange-500 text-white rounded-lg text-xs font-medium hover:bg-orange-600 transition-colors"
+                              className="w-full px-3 py-1.5 bg-orange-500 text-white rounded-lg text-xs font-medium hover:bg-orange-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                              disabled={menu.stock_quantity < 1}
                             >
-                              Add to Cart
+                              {menu.stock_quantity < 1
+                                ? "Out of Stock"
+                                : "Add To Cart"}
                             </button>
                           </div>
                         </div>
@@ -666,6 +672,21 @@ const CreateOrder = () => {
                     }
                     className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2.5 px-4 text-sm text-gray-900 focus:ring-2 focus:ring-orange-100 focus:border-orange-500 outline-none"
                   />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Payment Mode
+                  </label>
+                  <select
+                    value={paymentMode}
+                    onChange={(e) => setPaymentMode(e.target.value)}
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2.5 px-4 text-sm text-gray-900 focus:ring-2 focus:ring-orange-100 focus:border-orange-500 outline-none"
+                  >
+                    <option value="cash">Cash</option>
+                    <option value="POS">POS</option>
+                    <option value="transfer">Transfer</option>
+                  </select>
                 </div>
 
                 {orderType === "delivery" && (
