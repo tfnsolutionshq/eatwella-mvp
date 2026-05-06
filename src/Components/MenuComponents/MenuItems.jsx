@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import axios from "axios";
+import api from "../../utils/api";
 import { useCart } from "../../context/CartContext";
 import { useToast } from "../../context/ToastContext";
 import { checkWorkingHourAvailability } from "../../utils/checkWorkingHours";
@@ -49,12 +49,8 @@ function MenuItems() {
     setIsLoading(true);
     try {
       const [categoriesRes, menuRes] = await Promise.all([
-        axios.get("https://api.eatwella.ng/api/categories", {
-          headers: { Accept: "application/json" },
-        }),
-        axios.get("https://api.eatwella.ng/api/menus?page=1", {
-          headers: { Accept: "application/json" },
-        }),
+        api.get("/categories"),
+        api.get("/menus?page=1"),
       ]);
 
       setCategories(categoriesRes.data.data);
@@ -88,10 +84,7 @@ function MenuItems() {
           params.set("category_id", categoryId);
         }
 
-        const { data } = await axios.get(
-          `https://api.eatwella.ng/api/menus?${params.toString()}`,
-          { headers: { Accept: "application/json" } },
-        );
+        const { data } = await api.get(`/menus?${params.toString()}`);
 
         const pageData = data.data ?? [];
         setMenuItems(pageData);
