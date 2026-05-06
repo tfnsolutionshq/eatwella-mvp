@@ -58,18 +58,25 @@ function CartItems() {
 
   // Auto-assign default packaging for takeaway items once options are loaded
   useEffect(() => {
-    if (packagingLoading) return;
-    if (!packagingOptions.length) return;
-    if (selectedOrderType === "dine-in") return;
+    const assignDefaultPackaging = async () => {
+      if (packagingLoading) return;
+      if (!packagingOptions.length) return;
+      if (selectedOrderType === "dine-in") return;
 
-    cartItems.forEach((item) => {
-      if (item.menu.requires_takeaway && !item.packaging) {
-        const defaultPackaging = packagingOptions[0];
-        if (defaultPackaging) {
-          updateCartItem(item.id, item.quantity, defaultPackaging.id);
+      cartItems.forEach(async (item) => {
+        if (item.menu.requires_takeaway && !item.packaging) {
+          const defaultPackaging = packagingOptions[0];
+          if (defaultPackaging) {
+            const result = await updateCartItem(item.id, item.quantity, defaultPackaging.id);
+            if (!result.success) {
+              console.error("Failed to set default packaging:", result.message);
+            }
+          }
         }
-      }
-    });
+      });
+    };
+
+    assignDefaultPackaging();
   }, [packagingLoading, packagingOptions, selectedOrderType]);
 
   // ── When switching to dine-in, strip packaging from every cart item ──────────
@@ -87,7 +94,9 @@ function CartItems() {
       itemsWithPackaging.map((item) =>
         updateCartItem(item.id, item.quantity, null),
       ),
-    ).catch((err) => console.error("Failed to clear packaging:", err));
+    ).catch((err) => {
+      console.error("Failed to clear packaging:", err.message || err);
+    });
   }, [selectedOrderType]);
   // ─────────────────────────────────────────────────────────────────────────────
 
@@ -103,7 +112,7 @@ function CartItems() {
     }
   };
 
-  const handlePackagingChange = (cartItemId, quantity, selectedId) => {
+  const handlePackagingChange = async (cartItemId, quantity, selectedId) => {
     if (!selectedId) return;
     const match = packagingOptions.find(
       (p) => String(p.id) === String(selectedId),
@@ -112,7 +121,10 @@ function CartItems() {
       console.warn("Packaging not found for:", selectedId);
       return;
     }
-    updateCartItem(cartItemId, quantity, match.id);
+    const result = await updateCartItem(cartItemId, quantity, match.id);
+    if (!result.success) {
+      console.error("Failed to update packaging:", result.message);
+    }
   };
 
   const getRecommendedSideDishes = async () => {
@@ -185,7 +197,12 @@ function CartItems() {
     const newQuantity = Number(currentQuantity) + change;
     if (newQuantity < 1) return;
     setQuantityLoading((prev) => ({ ...prev, [itemId]: true }));
-    await updateCartItem(itemId, newQuantity, packaging_id);
+    const result = await updateCartItem(itemId, newQuantity, packaging_id);
+    if (!result.success) {
+      console.error("Failed to update quantity:", result.message);
+      // Optionally show toast to user
+      showToast(result.message, "error");
+    }
     setQuantityLoading((prev) => ({ ...prev, [itemId]: false }));
   };
 
@@ -431,17 +448,20 @@ function CartItems() {
                           <div className="relative flex-1">
                             <select
                               value={item.packaging?.id ?? ""}
-                              onChange={(e) => {
+                              onChange={async (e) => {
                                 const selected = packagingOptions.find(
                                   (p) => String(p.id) === e.target.value,
                                 );
                                 try {
                                   setPackagingLoading(true);
-                                  updateCartItem(
+                                  const result = await updateCartItem(
                                     item.id,
                                     item.quantity,
                                     selected ? selected.id : null,
                                   );
+                                  if (!result.success) {
+                                    showToast(result.message, "error");
+                                  }
                                 } finally {
                                   setPackagingLoading(false);
                                 }

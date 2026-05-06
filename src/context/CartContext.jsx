@@ -135,11 +135,40 @@ export const CartProvider = ({ children }) => {
       } else {
         await fetchCart();
       }
-      return true;
+      return { success: true };
     } catch (err) {
       console.error("Failed to update cart item:", err);
+      
+      // Extract the exact error message from server response
+      let errorMessage = "Failed to update cart item";
+      
+      if (err.response?.data) {
+        // Handle different error response formats
+        if (err.response.data.message) {
+          errorMessage = err.response.data.message;
+        } else if (err.response.data.error) {
+          errorMessage = err.response.data.error;
+        } else if (err.response.data.errors) {
+          // Handle validation errors (array of messages)
+          if (Array.isArray(err.response.data.errors)) {
+            errorMessage = err.response.data.errors.join(', ');
+          } else if (typeof err.response.data.errors === 'object') {
+            // Handle object-based validation errors
+            const errorMessages = Object.values(err.response.data.errors).flat();
+            errorMessage = errorMessages.join(', ');
+          }
+        }
+      } else if (err.message) {
+        errorMessage = err.message;
+      }
+      
       await fetchCart();
-      return false;
+      return { 
+        success: false, 
+        message: errorMessage,
+        status: err.response?.status,
+        statusText: err.response?.statusText
+      };
     }
   };
 
