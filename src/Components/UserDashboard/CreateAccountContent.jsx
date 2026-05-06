@@ -19,9 +19,10 @@ function CreateAccountContent() {
   const [error, setError] = useState("");
 
   // ── Address selection state ────────────────────────────────────────────────
-  const [useManualAddressSelection, setUseManualAddressSelection] = useState(false);
+  const [useManualAddressSelection, setUseManualAddressSelection] =
+    useState(false);
   const [selectedLocation, setSelectedLocation] = useState(null);
-  
+
   // ── State → City → Zone hierarchy for manual selection ───────────────────────
   const [states, setStates] = useState([]);
   const [cities, setCities] = useState([]);
@@ -39,7 +40,7 @@ function CreateAccountContent() {
     // Fetch states for manual address selection
     const fetchStates = async () => {
       try {
-        const statesRes = await axios.get("https://eatwella.tfnsolutions.us/api/states");
+        const statesRes = await axios.get("https://api.eatwella.ng/api/states");
         setStates(statesRes.data);
       } catch (err) {
         console.error("Failed to fetch states:", err);
@@ -54,7 +55,9 @@ function CreateAccountContent() {
     setCities([]);
     setZones([]);
     try {
-      const cityRes = await axios.get(`https://eatwella.tfnsolutions.us/api/cities?state_id=${stateId}`);
+      const cityRes = await axios.get(
+        `https://api.eatwella.ng/api/cities?state_id=${stateId}`,
+      );
       setCities(cityRes.data);
     } finally {
       setIsCitiesLoading(false);
@@ -65,7 +68,9 @@ function CreateAccountContent() {
     setIsZonesLoading(true);
     setZones([]);
     try {
-      const zoneRes = await axios.get(`https://eatwella.tfnsolutions.us/api/zones?city_id=${cityId}`);
+      const zoneRes = await axios.get(
+        `https://api.eatwella.ng/api/zones?city_id=${cityId}`,
+      );
       const activeZones = zoneRes.data.filter((zone) => zone.is_active);
       setZones(activeZones);
     } finally {
@@ -79,35 +84,55 @@ function CreateAccountContent() {
       if (key === "state") {
         setCities([]);
         setZones([]);
-        setManualAddressForm({ ...manualAddressForm, [`${key}_id`]: e.target.value });
+        setManualAddressForm({
+          ...manualAddressForm,
+          [`${key}_id`]: e.target.value,
+        });
       } else if (key === "city") {
         setZones([]);
-        setManualAddressForm({ ...manualAddressForm, [`${key}_id`]: e.target.value });
+        setManualAddressForm({
+          ...manualAddressForm,
+          [`${key}_id`]: e.target.value,
+        });
       }
       return;
     }
 
     if (key === "state") {
-      setManualAddressForm({ ...manualAddressForm, [`${key}_id`]: e.target.value });
+      setManualAddressForm({
+        ...manualAddressForm,
+        [`${key}_id`]: e.target.value,
+      });
       await fetchCities(e.target.value);
     }
 
     if (key === "city") {
-      setManualAddressForm({ ...manualAddressForm, [`${key}_id`]: e.target.value });
+      setManualAddressForm({
+        ...manualAddressForm,
+        [`${key}_id`]: e.target.value,
+      });
       await fetchZones(e.target.value);
     }
 
     if (key === "zone") {
-      setManualAddressForm({ ...manualAddressForm, [`${key}_id`]: e.target.value });
+      setManualAddressForm({
+        ...manualAddressForm,
+        [`${key}_id`]: e.target.value,
+      });
       // Update selectedLocation when zone is selected
-      const selectedZone = zones.find(zone => zone.id.toString() === e.target.value);
+      const selectedZone = zones.find(
+        (zone) => zone.id.toString() === e.target.value,
+      );
       if (selectedZone) {
         setSelectedLocation(selectedZone);
       }
     }
 
     if (key === "street_address") {
-      setManualAddressForm({ ...manualAddressForm, street_address: e.target.value });
+      setManualAddressForm({
+        ...manualAddressForm,
+        street_address: e.target.value,
+      });
       setDeliveryAddress(e.target.value);
     }
   };
@@ -158,13 +183,13 @@ function CreateAccountContent() {
       setError("Please fill in all required fields");
       return;
     }
-    
+
     // Check address validation
     if (hasAnyAddressFields() && !hasCompleteAddressFields()) {
       setError("Please complete all address fields or clear them to continue");
       return;
     }
-    
+
     if (password.length < 6) {
       setError("Password must be at least 6 characters");
       return;
@@ -178,16 +203,16 @@ function CreateAccountContent() {
         password,
         phone,
       };
-      
+
       // Only include address fields if they are populated
       if (hasAnyAddressFields()) {
         payload.zone_id = Number(manualAddressForm.zone_id);
         payload.street_address = deliveryAddress;
         payload.closest_landmark = closestLandmark;
       }
-      
+
       const response = await axios.post(
-        "https://eatwella.tfnsolutions.us/api/customer/register",
+        "https://api.eatwella.ng/api/customer/register",
         payload,
         {
           headers: {
@@ -277,13 +302,13 @@ function CreateAccountContent() {
               <label className="block text-xs font-semibold text-gray-600 mb-1 uppercase tracking-wide">
                 Delivery Address (Optional)
               </label>
-              
+
               {!useManualAddressSelection && !hasAnyAddressFields() ? (
                 <div className="space-y-2">
                   <p className="text-xs text-gray-400">
                     Add your delivery address for faster checkout
                   </p>
-                  
+
                   <button
                     type="button"
                     onClick={handleUseManualAddressSelection}
@@ -328,8 +353,8 @@ function CreateAccountContent() {
                         {isCitiesLoading
                           ? "Loading cities..."
                           : !manualAddressForm.state_id
-                          ? "Select a state first"
-                          : "Select a city"}
+                            ? "Select a state first"
+                            : "Select a city"}
                       </option>
                       {cities.map((city) => (
                         <option key={city.id} value={city.id}>
@@ -354,8 +379,8 @@ function CreateAccountContent() {
                         {isZonesLoading
                           ? "Loading zones..."
                           : !manualAddressForm.city_id
-                          ? "Select a city first"
-                          : "Select a zone"}
+                            ? "Select a city first"
+                            : "Select a zone"}
                       </option>
                       {zones.map((zone) => (
                         <option key={zone.id} value={zone.id}>

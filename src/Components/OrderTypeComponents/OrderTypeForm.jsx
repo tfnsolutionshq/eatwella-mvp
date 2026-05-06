@@ -765,12 +765,12 @@ function OrderTypeForm() {
               disabled={
                 isSubmitting ||
                 checkingHours ||
-                taxList.length < 1 ||
+                isLoadingTax ||
                 (orderType === "delivery" && !formData.deliveryAddress.trim())
               }
               className="w-full bg-orange-500 hover:bg-orange-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white py-4 rounded-full font-bold transition-colors"
             >
-              {isSubmitting || checkingHours || taxList.length < 1
+              {isSubmitting || checkingHours || isLoadingTax
                 ? "Processing..."
                 : "Pay Now"}
             </button>
@@ -778,6 +778,12 @@ function OrderTypeForm() {
             {orderType === "delivery" && !formData.deliveryAddress.trim() && (
               <p className="text-center text-xs text-gray-400 mt-3">
                 Enter a delivery address to continue
+              </p>
+            )}
+            
+            {!isLoadingTax && taxList.length === 0 && (
+              <p className="text-center text-xs text-green-600 mt-3">
+                No taxes for this order
               </p>
             )}
           </div>

@@ -9,6 +9,8 @@ import {
   FiChevronDown,
 } from "react-icons/fi";
 import { useNavigate } from "react-router-dom";
+import SearchInput from "../../Components/SearchInput";
+import { useSearch } from "../../hooks/useSearch";
 import api from "../../utils/api";
 import { useToast } from "../../context/ToastContext";
 
@@ -19,6 +21,16 @@ const CreateOrder = () => {
   const [categories, setCategories] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [cart, setCart] = useState([]);
+
+  // Search functionality
+  const {
+    searchTerm,
+    searchResults,
+    isLoading: isSearchLoading,
+    error: searchError,
+    handleSearchChange,
+    clearSearch
+  } = useSearch();
   const [orderType, setOrderType] = useState("pickup");
   const [formData, setFormData] = useState({
     customerName: "",
@@ -118,6 +130,12 @@ const CreateOrder = () => {
   const handlePageChange = (pageNumber) => {
     fetchMenus(selectedCategory, pageNumber);
   };
+
+  const displayMenus = searchTerm 
+    ? searchResults 
+    : selectedCategory === "all" 
+      ? menus 
+      : menus.filter(menu => menu.category_id === selectedCategory);
 
   const getVisiblePageNumbers = () => {
     const { last_page, current_page } = pagination;
@@ -276,7 +294,7 @@ const CreateOrder = () => {
 
   return (
     <DashboardLayout>
-      <div className="p-6 space-y-6 bg-gray-50/50 min-h-full">
+      <div className="p-4 sm:p-6 space-y-6 bg-gray-50/50 min-h-full max-w-full overflow-x-hidden">
         <button
           onClick={() => navigate("/admin/orders")}
           className="flex items-center gap-2 text-gray-600 hover:text-gray-800"
@@ -292,19 +310,30 @@ const CreateOrder = () => {
           </p>
         </div>
 
-        <div className="grid lg:grid-cols-3 gap-6">
+        <div className="grid lg:grid-cols-3 gap-4 lg:gap-6 max-w-full">
           {/* ── Menu panel ── */}
-          <div className="lg:col-span-2 space-y-4">
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-              <h2 className="text-lg font-bold text-gray-900 mb-4">
+          <div className="lg:col-span-2 space-y-4 min-w-0">
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 lg:p-6 overflow-hidden min-w-0">
+              <h2 className="text-lg font-bold text-gray-900 mb-3 lg:mb-4">
                 Menu Items
               </h2>
 
+              {/* Search Input */}
+              <div className="mb-3 lg:mb-4">
+                <SearchInput
+                  value={searchTerm}
+                  onChange={handleSearchChange}
+                  onClear={clearSearch}
+                  isLoading={isSearchLoading}
+                  placeholder="Search menu items..."
+                />
+              </div>
+
               {/* Category tabs */}
-              <div className="mb-4 flex gap-2 overflow-x-auto pb-2">
+              <div className="mb-3 lg:mb-4 flex gap-2 overflow-x-auto pb-2 -mx-1 px-1 scrollbar-hide">
                 <button
                   onClick={() => handleCategoryChange("all")}
-                  className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
+                  className={`px-3 py-1.5 lg:px-4 lg:py-2 rounded-lg text-xs lg:text-sm font-medium whitespace-nowrap transition-colors ${
                     selectedCategory === "all"
                       ? "bg-orange-500 text-white"
                       : "bg-gray-100 text-gray-600 hover:bg-gray-200"
@@ -316,7 +345,7 @@ const CreateOrder = () => {
                   <button
                     key={category.id}
                     onClick={() => handleCategoryChange(category.id)}
-                    className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
+                    className={`px-3 py-1.5 lg:px-4 lg:py-2 rounded-lg text-xs lg:text-sm font-medium whitespace-nowrap transition-colors ${
                       selectedCategory === category.id
                         ? "bg-orange-500 text-white"
                         : "bg-gray-100 text-gray-600 hover:bg-gray-200"
@@ -335,47 +364,54 @@ const CreateOrder = () => {
                     Loading Menu...
                   </p>
                 </div>
-              ) : menus.length === 0 ? (
+              ) : displayMenus.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-16">
-                  <p className="text-sm text-gray-400">
-                    No items found in this category.
-                  </p>
+                  {searchTerm && isSearchLoading ? (
+                    <div className="flex flex-col items-center gap-4">
+                      <div className="w-8 h-8 border-4 border-gray-200 border-t-orange-500 rounded-full animate-spin" />
+                      <p>Searching...</p>
+                    </div>
+                  ) : (
+                    <p className="text-sm text-gray-400">
+                      {searchTerm ? "This item does not exist" : "No items found in this category."}
+                    </p>
+                  )}
                 </div>
               ) : (
                 <>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    {menus.map((menu) => (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 min-w-0">
+                    {displayMenus.map((menu) => (
                       <div
                         key={menu.id}
                         className="border border-gray-200 rounded-xl hover:border-orange-500 transition-colors"
                       >
-                        <div className="flex gap-3 p-3">
+                        <div className="flex gap-3 p-3 min-w-0">
                           {menu.images && menu.images.length > 0 && (
                             <img
                               src={menu.images[0]}
                               alt={menu.name}
-                              className="w-20 h-20 object-cover rounded-lg flex-shrink-0"
+                              className="w-16 h-16 lg:w-20 lg:h-20 object-cover rounded-lg flex-shrink-0"
                               onError={(e) => {
                                 e.target.src =
                                   "https://via.placeholder.com/80x80";
                               }}
                             />
                           )}
-                          <div className="flex-1 min-w-0">
+                          <div className="flex-1 min-w-0 overflow-hidden">
                             <div className="flex justify-between items-start gap-2 mb-1">
-                              <h3 className="font-bold text-gray-900 text-sm">
+                              <h3 className="font-bold text-gray-900 text-xs lg:text-sm truncate flex-1 min-w-0">
                                 {menu.name}
                               </h3>
-                              <span className="text-sm font-bold text-orange-500 whitespace-nowrap">
+                              <span className="text-xs lg:text-sm font-bold text-orange-500 whitespace-nowrap flex-shrink-0">
                                 ₦{Number(menu.price).toLocaleString()}
                               </span>
                             </div>
-                            <p className="text-xs text-gray-500 line-clamp-2 mb-2">
+                            <p className="text-xs text-gray-500 line-clamp-2 mb-2 hidden lg:block">
                               {menu.description}
                             </p>
                             <button
                               onClick={() => addToCart(menu)}
-                              className="w-full px-3 py-1.5 bg-orange-500 text-white rounded-lg text-xs font-medium hover:bg-orange-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                              className="w-full px-3 py-1.5 lg:py-2 bg-orange-500 text-white rounded-lg text-xs font-medium hover:bg-orange-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                               disabled={menu.stock_quantity < 1}
                             >
                               {menu.stock_quantity < 1
@@ -390,18 +426,18 @@ const CreateOrder = () => {
 
                   {/* Pagination */}
                   {pagination.last_page > 1 && (
-                    <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
-                      <p className="text-xs text-gray-400">
+                    <div className="mt-4 lg:mt-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 min-w-0 overflow-x-hidden">
+                      <p className="text-xs text-gray-400 order-2 sm:order-1 truncate">
                         Page {pagination.current_page} of {pagination.last_page}{" "}
                         &mdash; {pagination.total} items
                       </p>
-                      <div className="flex items-center gap-1.5 flex-wrap">
+                      <div className="flex items-center gap-1 flex-wrap order-1 sm:order-2 w-full sm:w-auto justify-center sm:justify-start overflow-x-auto">
                         <button
                           disabled={pagination.current_page === 1}
                           onClick={() =>
                             handlePageChange(pagination.current_page - 1)
                           }
-                          className="px-3 py-1.5 border border-gray-200 rounded-lg text-xs font-medium text-gray-600 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed"
+                          className="px-3 py-2 lg:py-1.5 border border-gray-200 rounded-lg text-xs font-medium text-gray-600 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed min-w-[60px]"
                         >
                           Prev
                         </button>
@@ -409,7 +445,7 @@ const CreateOrder = () => {
                         {/* First page */}
                         <button
                           onClick={() => handlePageChange(1)}
-                          className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
+                          className={`px-3 py-2 lg:py-1.5 rounded-lg text-xs font-medium border transition-colors min-w-[44px] ${
                             pagination.current_page === 1
                               ? "bg-orange-500 text-white border-orange-500"
                               : "border-gray-200 text-gray-600 hover:bg-gray-100"
@@ -428,7 +464,7 @@ const CreateOrder = () => {
                           <button
                             key={pageNum}
                             onClick={() => handlePageChange(pageNum)}
-                            className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
+                            className={`px-3 py-2 lg:py-1.5 rounded-lg text-xs font-medium border transition-colors min-w-[44px] ${
                               pagination.current_page === pageNum
                                 ? "bg-orange-500 text-white border-orange-500"
                                 : "border-gray-200 text-gray-600 hover:bg-gray-100"
@@ -450,7 +486,7 @@ const CreateOrder = () => {
                             onClick={() =>
                               handlePageChange(pagination.last_page)
                             }
-                            className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
+                            className={`px-3 py-2 lg:py-1.5 rounded-lg text-xs font-medium border transition-colors min-w-[44px] ${
                               pagination.current_page === pagination.last_page
                                 ? "bg-orange-500 text-white border-orange-500"
                                 : "border-gray-200 text-gray-600 hover:bg-gray-100"
@@ -467,7 +503,7 @@ const CreateOrder = () => {
                           onClick={() =>
                             handlePageChange(pagination.current_page + 1)
                           }
-                          className="px-3 py-1.5 border border-gray-200 rounded-lg text-xs font-medium text-gray-600 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed"
+                          className="px-3 py-2 lg:py-1.5 border border-gray-200 rounded-lg text-xs font-medium text-gray-600 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed min-w-[60px]"
                         >
                           Next
                         </button>
@@ -480,16 +516,16 @@ const CreateOrder = () => {
           </div>
 
           {/* ── Sidebar ── */}
-          <div className="space-y-4">
+          <div className="space-y-4 min-w-0">
             {/* Cart */}
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-              <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 lg:p-6 overflow-hidden min-w-0">
+              <h2 className="text-lg font-bold text-gray-900 mb-3 lg:mb-4 flex items-center gap-2">
                 <FiShoppingCart />
                 Cart ({cart.length})
               </h2>
 
               {cart.length === 0 ? (
-                <p className="text-sm text-gray-500 text-center py-8">
+                <p className="text-sm text-gray-500 text-center py-6 lg:py-8">
                   Cart is empty
                 </p>
               ) : (
@@ -497,11 +533,11 @@ const CreateOrder = () => {
                   {cart.map((item) => (
                     <div
                       key={item.menu.id}
-                      className="p-3 bg-gray-50 rounded-xl space-y-2"
+                      className="p-3 bg-gray-50 rounded-xl space-y-3 min-w-0 overflow-hidden"
                     >
                       {/* Item row */}
-                      <div className="flex items-center gap-3">
-                        <div className="flex-1 min-w-0">
+                      <div className="flex items-start gap-3 min-w-0">
+                        <div className="flex-1 min-w-0 overflow-hidden">
                           <p className="font-medium text-gray-900 text-sm truncate">
                             {item.menu.name}
                           </p>
@@ -509,31 +545,31 @@ const CreateOrder = () => {
                             ₦{Number(item.menu.price).toLocaleString()}
                           </p>
                         </div>
-                        <div className="flex items-center gap-1.5 shrink-0">
+                        <div className="flex items-center gap-1 shrink-0">
                           <button
                             onClick={() =>
                               updateQuantity(item.menu.id, item.quantity - 1)
                             }
-                            className="p-1 hover:bg-gray-200 rounded"
+                            className="p-1.5 hover:bg-gray-200 rounded touch-manipulation"
                           >
-                            <FiMinus className="w-3.5 h-3.5" />
+                            <FiMinus className="w-4 h-4" />
                           </button>
-                          <span className="w-7 text-center text-sm font-medium">
+                          <span className="w-8 text-center text-sm font-medium">
                             {item.quantity}
                           </span>
                           <button
                             onClick={() =>
                               updateQuantity(item.menu.id, item.quantity + 1)
                             }
-                            className="p-1 hover:bg-gray-200 rounded"
+                            className="p-1.5 hover:bg-gray-200 rounded touch-manipulation"
                           >
-                            <FiPlus className="w-3.5 h-3.5" />
+                            <FiPlus className="w-4 h-4" />
                           </button>
                           <button
                             onClick={() => removeFromCart(item.menu.id)}
-                            className="p-1 hover:bg-red-50 text-red-500 rounded ml-1"
+                            className="p-1.5 hover:bg-red-50 text-red-500 rounded ml-1 touch-manipulation"
                           >
-                            <FiTrash2 className="w-3.5 h-3.5" />
+                            <FiTrash2 className="w-4 h-4" />
                           </button>
                         </div>
                       </div>
@@ -550,7 +586,7 @@ const CreateOrder = () => {
                             )
                           }
                           disabled={loadingPackaging}
-                          className={`w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg border text-xs transition-colors focus:outline-none focus:ring-2 focus:ring-orange-300 ${
+                          className={`w-full flex items-center justify-between gap-2 px-3 py-2.5 rounded-lg border text-xs transition-colors focus:outline-none focus:ring-2 focus:ring-orange-300 touch-manipulation ${
                             item.packaging
                               ? "border-orange-300 bg-orange-50 text-orange-700"
                               : "border-gray-200 bg-white text-gray-400 hover:border-gray-300"
@@ -564,7 +600,7 @@ const CreateOrder = () => {
                                 : "Select packaging (optional)"}
                           </span>
                           <FiChevronDown
-                            className={`w-3.5 h-3.5 flex-shrink-0 transition-transform duration-200 ${
+                            className={`w-4 h-4 flex-shrink-0 transition-transform duration-200 ${
                               openPackagingDropdown === item.menu.id
                                 ? "rotate-180"
                                 : ""
@@ -573,7 +609,7 @@ const CreateOrder = () => {
                         </button>
 
                         {openPackagingDropdown === item.menu.id && (
-                          <div className="absolute z-20 mt-1 w-full bg-white border border-gray-100 rounded-xl shadow-xl overflow-hidden max-h-48 overflow-y-auto">
+                          <div className="absolute z-20 mt-1 w-full bg-white border border-gray-100 rounded-xl shadow-xl overflow-hidden max-h-48 overflow-y-auto left-0 right-0">
                             {packagingOptions.length === 0 ? (
                               <p className="px-3 py-3 text-xs text-gray-400 text-center">
                                 No packaging options available.
@@ -586,7 +622,7 @@ const CreateOrder = () => {
                                   onClick={() =>
                                     selectPackaging(item.menu.id, pkg)
                                   }
-                                  className={`w-full px-3 py-2.5 text-left flex items-center justify-between hover:bg-orange-50 transition-colors ${
+                                  className={`w-full px-3 py-3 text-left flex items-center justify-between hover:bg-orange-50 transition-colors touch-manipulation ${
                                     item.packaging?.id === pkg.id
                                       ? "bg-orange-50"
                                       : ""
@@ -630,11 +666,11 @@ const CreateOrder = () => {
             </div>
 
             {/* Order details form */}
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-              <h2 className="text-lg font-bold text-gray-900 mb-4">
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 lg:p-6 overflow-hidden min-w-0">
+              <h2 className="text-lg font-bold text-gray-900 mb-3 lg:mb-4">
                 Order Details
               </h2>
-              <div className="space-y-4">
+              <div className="space-y-3 lg:space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Order Type
@@ -770,7 +806,7 @@ const CreateOrder = () => {
                 <button
                   onClick={handleCheckout}
                   disabled={loading || cart.length === 0}
-                  className="w-full px-4 py-3 bg-orange-500 text-white rounded-xl text-sm font-medium hover:bg-orange-600 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full px-4 py-3 lg:py-3 bg-orange-500 text-white rounded-xl text-sm font-medium hover:bg-orange-600 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed touch-manipulation"
                 >
                   {loading ? "Creating Order..." : "Create Order"}
                 </button>

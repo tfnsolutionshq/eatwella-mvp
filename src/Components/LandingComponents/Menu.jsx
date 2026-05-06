@@ -26,10 +26,10 @@ function Menu() {
     setIsLoading(true);
     try {
       const [categoriesRes, menuRes] = await Promise.all([
-        axios.get("https://eatwella.tfnsolutions.us/api/categories", {
+        axios.get("https://api.eatwella.ng/api/categories", {
           headers: { Accept: "application/json" },
         }),
-        axios.get("https://eatwella.tfnsolutions.us/api/menus", {
+        axios.get("https://api.eatwella.ng/api/menus", {
           headers: { Accept: "application/json" },
         }),
       ]);
@@ -48,8 +48,8 @@ function Menu() {
     try {
       const url =
         categoryId === "all"
-          ? "https://eatwella.tfnsolutions.us/api/menus"
-          : `https://eatwella.tfnsolutions.us/api/menus?category_id=${categoryId}`;
+          ? "https://api.eatwella.ng/api/menus"
+          : `https://api.eatwella.ng/api/menus?category_id=${categoryId}`;
       const { data } = await axios.get(url, {
         headers: { Accept: "application/json" },
       });

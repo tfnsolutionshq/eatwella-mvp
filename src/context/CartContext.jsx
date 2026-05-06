@@ -18,7 +18,7 @@ const getCartId = () => {
 };
 
 const cartApi = axios.create({
-  baseURL: "https://eatwella.tfnsolutions.us/api",
+  baseURL: "https://api.eatwella.ng/api",
   headers: { Accept: "application/json", "Content-Type": "application/json" },
   withCredentials: true,
 });
@@ -138,10 +138,10 @@ export const CartProvider = ({ children }) => {
       return { success: true };
     } catch (err) {
       console.error("Failed to update cart item:", err);
-      
+
       // Extract the exact error message from server response
       let errorMessage = "Failed to update cart item";
-      
+
       if (err.response?.data) {
         // Handle different error response formats
         if (err.response.data.message) {
@@ -151,23 +151,25 @@ export const CartProvider = ({ children }) => {
         } else if (err.response.data.errors) {
           // Handle validation errors (array of messages)
           if (Array.isArray(err.response.data.errors)) {
-            errorMessage = err.response.data.errors.join(', ');
-          } else if (typeof err.response.data.errors === 'object') {
+            errorMessage = err.response.data.errors.join(", ");
+          } else if (typeof err.response.data.errors === "object") {
             // Handle object-based validation errors
-            const errorMessages = Object.values(err.response.data.errors).flat();
-            errorMessage = errorMessages.join(', ');
+            const errorMessages = Object.values(
+              err.response.data.errors,
+            ).flat();
+            errorMessage = errorMessages.join(", ");
           }
         }
       } else if (err.message) {
         errorMessage = err.message;
       }
-      
+
       await fetchCart();
-      return { 
-        success: false, 
+      return {
+        success: false,
         message: errorMessage,
         status: err.response?.status,
-        statusText: err.response?.statusText
+        statusText: err.response?.statusText,
       };
     }
   };

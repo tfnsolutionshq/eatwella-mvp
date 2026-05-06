@@ -12,6 +12,7 @@ import {
   FiEye,
   FiEyeOff,
 } from "react-icons/fi";
+import SearchInput from "../../Components/SearchInput";
 import api from "../../utils/api";
 
 const Menu = () => {
@@ -25,6 +26,50 @@ const Menu = () => {
   const [isAddMenuItemOpen, setIsAddMenuItemOpen] = useState(false);
   const [isEditMenuItemOpen, setIsEditMenuItemOpen] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
+
+  // Search functionality
+  const [searchTerm, setSearchTerm] = useState("");
+  const [searchResults, setSearchResults] = useState([]);
+  const [isSearchLoading, setIsSearchLoading] = useState(false);
+
+  const handleSearchChange = useCallback((e) => {
+    setSearchTerm(e.target.value);
+  }, []);
+
+  const clearSearch = useCallback(() => {
+    setSearchTerm("");
+    setSearchResults([]);
+  }, []);
+
+  // Debounced search for admin menu items
+  useEffect(() => {
+    const timerId = setTimeout(() => {
+      if (!searchTerm.trim()) {
+        setSearchResults([]);
+        return;
+      }
+
+      const performSearch = async () => {
+        setIsSearchLoading(true);
+        try {
+          const response = await api.get(
+            `/admin/menus?search=${encodeURIComponent(searchTerm.trim())}`,
+          );
+          const data = response.data?.data || response.data || [];
+          setSearchResults(Array.isArray(data) ? data : []);
+        } catch (err) {
+          console.error("Search error:", err);
+          setSearchResults([]);
+        } finally {
+          setIsSearchLoading(false);
+        }
+      };
+
+      performSearch();
+    }, 300);
+
+    return () => clearTimeout(timerId);
+  }, [searchTerm]);
 
   // Numbered pagination state (mirrors MenuItems.jsx)
   const [page, setPage] = useState(1);
@@ -238,8 +283,11 @@ const Menu = () => {
     }
   };
 
-  const filteredItems =
-    activeTab === "all"
+  const filteredItems = searchTerm
+    ? searchResults.filter(
+        (item) => activeTab === "all" || item.category_id === activeTab,
+      )
+    : activeTab === "all"
       ? menuItems
       : menuItems.filter((item) => item.category_id === activeTab);
 
@@ -301,6 +349,17 @@ const Menu = () => {
                 Add Menu Item
               </button>
             </div>
+          </div>
+
+          {/* Search Input */}
+          <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm mb-4">
+            <SearchInput
+              value={searchTerm}
+              onChange={handleSearchChange}
+              onClear={clearSearch}
+              isLoading={isSearchLoading}
+              placeholder="Search menu items..."
+            />
           </div>
 
           {/* Filter Tabs — skeleton pills while loading, real tabs after */}
@@ -375,7 +434,16 @@ const Menu = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                 {filteredItems.length === 0 ? (
                   <div className="col-span-full text-center py-16 text-gray-400 text-sm">
-                    No menu items found.
+                    {searchTerm && isSearchLoading ? (
+                      <div className="flex flex-col items-center gap-4">
+                        <div className="w-8 h-8 border-4 border-gray-200 border-t-orange-500 rounded-full animate-spin" />
+                        <p>Searching...</p>
+                      </div>
+                    ) : searchTerm ? (
+                      "This item does not exist"
+                    ) : (
+                      "No menu items found."
+                    )}
                   </div>
                 ) : (
                   filteredItems.map((item) => (
@@ -487,7 +555,7 @@ const Menu = () => {
               </div>
 
               {/* Numbered pagination (mirrors MenuItems.jsx) */}
-              {pagination.last_page > 1 && (
+              {!searchTerm && pagination.last_page > 1 && (
                 <div className="mt-8 flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-gray-200 pt-6">
                   <div className="text-sm text-gray-500">
                     Showing {pagination.from} to {pagination.to} of{" "}

@@ -34,6 +34,7 @@ const LoyaltySettings = () => {
     setLoading(true);
     try {
       const { data } = await api.get("/admin/settings");
+      console.log("this is the data: ", data);
       setSettings({
         loyalty_points_per_order: data.availability_hours || "",
         loyalty_min_points_redemption: data[1] || "",

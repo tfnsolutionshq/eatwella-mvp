@@ -26,7 +26,7 @@ function LoginContent() {
     try {
       setLoading(true);
       const response = await axios.post(
-        "https://eatwella.tfnsolutions.us/api/customer/login",
+        "https://api.eatwella.ng/api/customer/login",
         { email, password },
         {
           headers: {
