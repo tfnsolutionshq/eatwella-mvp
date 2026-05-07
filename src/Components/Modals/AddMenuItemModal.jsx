@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { FiX, FiSearch, FiChevronDown } from "react-icons/fi";
+import { useToast } from "../../context/ToastContext";
 import api from "../../utils/api";
 
 const AddMenuItemModal = ({
@@ -9,6 +10,7 @@ const AddMenuItemModal = ({
   onSuccess,
   menuItems,
 }) => {
+  const { showToast } = useToast();
   const [formData, setFormData] = useState({
     category_id: "",
     name: "",
@@ -75,10 +77,6 @@ const AddMenuItemModal = ({
     setError("");
     setLoading(true);
 
-    console.log("over here guys: ", formData, images);
-
-    setLoading(false);
-
     try {
       const data = new FormData();
       data.append("category_id", formData.category_id);
@@ -86,41 +84,50 @@ const AddMenuItemModal = ({
       data.append("description", formData.description);
       data.append("price", formData.price);
       data.append("is_available", formData.is_available);
+      data.append("stock_quantity", formData.quantityLeft);
       data.append("requires_takeaway", formData.takeawayPack);
       formData.sideDishes.forEach((id) => data.append("complements[]", id));
       images.forEach((img) => data.append("images[]", img));
 
-      await api.post("/admin/menus", data, {
+      const response = await api.post("/admin/menus", data, {
         headers: { "Content-Type": "multipart/form-data" },
       });
 
-      setFormData({
-        category_id: "",
-        name: "",
-        description: "",
-        price: "",
-        is_available: 1,
-        takeawayPack: 1,
-        sideDishes: [],
-        quantityLeft: 0,
-      });
-      setImages([]);
-      setSideDishSearch("");
-      onSuccess?.();
-      onClose();
+      if (response.status === 201) {
+        showToast("Menu item created successfully!", "success");
+        setFormData({
+          category_id: "",
+          name: "",
+          description: "",
+          price: "",
+          is_available: 1,
+          takeawayPack: 1,
+          sideDishes: [],
+          quantityLeft: 0,
+        });
+        setImages([]);
+        setSideDishSearch("");
+        onSuccess?.();
+        onClose();
+      }
     } catch (error) {
       if (error.response) {
         console.log("Status:", error.response.status);
         console.log("Data:", error.response.data);
         console.log("Validation errors:", error.response.data.errors);
+        showToast(
+          error.response.data?.message || "Failed to create menu item",
+          "error",
+        );
       } else if (error.request) {
         console.log("No response received:", error.request);
+        showToast("Network error. Please try again.", "error");
       } else {
         console.log("Error setting up request:", error.message);
+        showToast("An unexpected error occurred", "error");
       }
-      // setError(err.response?.data?.message || "Failed to create menu item");
     } finally {
-      // setLoading(false);
+      setLoading(false);
     }
   };
 
@@ -211,7 +218,6 @@ const AddMenuItemModal = ({
                 <select
                   value={formData.category_id}
                   onChange={(e) => {
-                    console.log("This value for e: ", e.target.value);
                     setFormData({ ...formData, category_id: e.target.value });
                   }}
                   required

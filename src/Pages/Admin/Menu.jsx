@@ -4,6 +4,8 @@ import AddCategoryModal from "../../Components/Modals/AddCategoryModal";
 import EditCategoryModal from "../../Components/Modals/EditCategoryModal";
 import AddMenuItemModal from "../../Components/Modals/AddMenuItemModal";
 import EditMenuItemModal from "../../Components/Modals/EditMenuItemModal";
+import ConfirmDeleteModal from "../../Components/Modals/ConfirmDeleteModal";
+import { useToast } from "../../context/ToastContext";
 import {
   FiPlus,
   FiFolderPlus,
@@ -16,6 +18,7 @@ import SearchInput from "../../Components/SearchInput";
 import api from "../../utils/api";
 
 const Menu = () => {
+  const { showToast } = useToast();
   const [activeTab, setActiveTab] = useState("all");
   const [categories, setCategories] = useState([]);
   const [menuItems, setMenuItems] = useState([]);
@@ -26,6 +29,9 @@ const Menu = () => {
   const [isAddMenuItemOpen, setIsAddMenuItemOpen] = useState(false);
   const [isEditMenuItemOpen, setIsEditMenuItemOpen] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Search functionality
   const [searchTerm, setSearchTerm] = useState("");
@@ -256,19 +262,32 @@ const Menu = () => {
     try {
       await api.delete(`/admin/categories/${id}`);
       refetchCategories();
+      showToast("Category deleted successfully", "success");
       if (activeTab === id) handleTabChange("all");
     } catch (err) {
-      alert(err.response?.data?.message || "Failed to delete category");
+      showToast(err.response?.data?.message || "Failed to delete category", "error");
     }
   };
 
   const handleDeleteMenuItem = async (id) => {
-    if (!confirm("Are you sure you want to delete this item?")) return;
+    setItemToDelete(id);
+    setIsDeleteModalOpen(true);
+  };
+
+  const confirmDeleteMenuItem = async () => {
+    if (!itemToDelete) return;
+    
+    setIsDeleting(true);
     try {
-      await api.delete(`/admin/menus/${id}`);
+      await api.delete(`/admin/menus/${itemToDelete}`);
       refetchMenuItems();
+      showToast("Menu item deleted successfully", "success");
     } catch (err) {
-      alert(err.response?.data?.message || "Failed to delete item");
+      showToast(err.response?.data?.message || "Failed to delete item", "error");
+    } finally {
+      setIsDeleting(false);
+      setIsDeleteModalOpen(false);
+      setItemToDelete(null);
     }
   };
 
@@ -278,8 +297,12 @@ const Menu = () => {
         is_available: item.is_available ? 0 : 1,
       });
       refetchMenuItems();
+      showToast(
+        `Item ${item.is_available ? "deactivated" : "activated"} successfully`,
+        "success"
+      );
     } catch (err) {
-      alert(err.response?.data?.message || "Failed to update item");
+      showToast(err.response?.data?.message || "Failed to update item", "error");
     }
   };
 
@@ -324,6 +347,17 @@ const Menu = () => {
         categories={categories}
         onSuccess={refetchMenuItems}
         menuItems={allMenuItems}
+      />
+      <ConfirmDeleteModal
+        isOpen={isDeleteModalOpen}
+        onClose={() => {
+          setIsDeleteModalOpen(false);
+          setItemToDelete(null);
+        }}
+        onConfirm={confirmDeleteMenuItem}
+        title="Delete Menu Item"
+        message="Are you sure you want to delete this menu item? This action cannot be undone."
+        isLoading={isDeleting}
       />
 
       <DashboardLayout>

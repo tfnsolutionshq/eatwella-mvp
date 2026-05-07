@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { useToast } from "../../context/ToastContext";
 import { FiX, FiSearch, FiChevronDown } from "react-icons/fi";
 import api from "../../utils/api";
 
@@ -23,6 +24,7 @@ const EditMenuItemModal = ({
   onSuccess,
   menuItems = [],
 }) => {
+  const { showToast } = useToast();
   const [formData, setFormData] = useState({
     category_id: "",
     name: "",
@@ -131,30 +133,37 @@ const EditMenuItemModal = ({
       data.append("name", formData.name);
       data.append("description", formData.description);
       data.append("price", formData.price);
-      data.append("is_available", formData.is_available);
+      data.append("is_available", formData.is_available ? 1 : 0);
       data.append("requires_takeaway", formData.takeawayPack);
       data.append("stock_quantity", formData.stock_quantity);
       formData.sideDishes.forEach((id) => data.append("complements[]", id));
       images.forEach((img) => data.append("images[]", img));
 
-      await api.put(`/admin/menus/${item.id}`, formData, {
-        headers: { "Content-Type": "application/json" },
+      const response = await api.post(`/admin/menus/${item.id}`, data, {
+        headers: { "Content-Type": "multipart/form-data" },
       });
-      onSuccess?.();
-      onClose();
-    } catch (err) {
-      console.log("Error updating menu item: ", err);
-      const responseData = err.response?.data;
-      const message = responseData?.message || "Failed to update menu item";
-      const errors = responseData?.errors || [];
 
-      setError(message);
-
-      // Use `errors` however you need, e.g.:
-      if (errors.length > 0) {
-        console.log("Validation errors:", errors);
+      if (response.status === 200) {
+        showToast("Menu item edited successfully!", "success");
+        onSuccess?.();
+        onClose();
       }
-      // setError(err.response?.data?.message || "Failed to update menu item");
+    } catch (err) {
+      if (error.response) {
+        console.log("Status:", error.response.status);
+        console.log("Data:", error.response.data);
+        console.log("Validation errors:", error.response.data.errors);
+        showToast(
+          error.response.data?.message || "Failed to create menu item",
+          "error",
+        );
+      } else if (error.request) {
+        console.log("No response received:", error.request);
+        showToast("Network error. Please try again.", "error");
+      } else {
+        console.log("Error setting up request:", error.message);
+        showToast("An unexpected error occurred", "error");
+      }
     } finally {
       setLoading(false);
     }
