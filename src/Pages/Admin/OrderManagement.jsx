@@ -4,17 +4,30 @@ import OrderDetailsModal from "../../Components/Modals/OrderDetailsModal";
 import DeliveryPhotoModal from "../../Components/Modals/DeliveryPhotoModal";
 import DeliveryPinModal from "../../Components/Modals/DeliveryPinModal";
 import {
-  FiFilter,
-  FiEye,
-  FiClock,
-  FiCheck,
-  FiTruck,
-  FiPlus,
-  FiX,
-  FiUser,
-  FiPackage,
-  FiSend,
-} from "react-icons/fi";
+  Filter,
+  Eye,
+  Clock,
+  Check,
+  Truck,
+  Plus,
+  X,
+  User,
+  Package,
+  Send,
+  CreditCard,
+  CheckCircle,
+  Play,
+  ChefHat,
+  PackageCheck,
+  ThumbsUp,
+  CheckSquare,
+  CircleCheck,
+  UserPlus,
+  UserCheck,
+  XCircle,
+  Ban,
+  XSquare,
+} from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import api from "../../utils/api";
 import { useAuth } from "../../context/AuthContext";
@@ -41,6 +54,7 @@ const STATUS_CONFIG = {
   ready: { label: "Ready", color: "bg-yellow-100 text-yellow-600" },
   dispatched: { label: "Dispatched", color: "bg-indigo-100 text-indigo-600" },
   completed: { label: "Completed", color: "bg-green-100 text-green-600" },
+  cancelled: { label: "Cancelled", color: "bg-red-100 text-red-600" },
 };
 
 const getStatusColor = (status) =>
@@ -49,10 +63,11 @@ const getStatusColor = (status) =>
 const getStatusLabel = (status) => STATUS_CONFIG[status]?.label ?? status;
 
 const getStatusIcon = (status) => {
-  if (status === "completed") return <FiCheck className="w-3 h-3" />;
-  if (status === "confirmed") return <FiClock className="w-3 h-3" />;
-  if (status === "ready") return <FiPackage className="w-3 h-3" />;
-  if (status === "dispatched") return <FiTruck className="w-3 h-3" />;
+  if (status === "completed") return <Check className="w-3 h-3" />;
+  if (status === "confirmed") return <Clock className="w-3 h-3" />;
+  if (status === "ready") return <Package className="w-3 h-3" />;
+  if (status === "dispatched") return <Truck className="w-3 h-3" />;
+  if (status === "cancelled") return <X className="w-3 h-3" />;
   return null;
 };
 
@@ -65,6 +80,7 @@ const TABS_BY_ROLE = {
     "ready",
     "dispatched",
     "completed",
+    "cancelled",
   ],
   supervisor: [
     "all",
@@ -74,6 +90,7 @@ const TABS_BY_ROLE = {
     "ready",
     "dispatched",
     "completed",
+    "cancelled",
   ],
   // Kitchen only sees orders explicitly sent to them via "Send to Kitchen"
   kitchen: ["all", "confirmed", "in_kitchen", "processing"],
@@ -123,7 +140,7 @@ const AssignAgentModal = ({
             onClick={onClose}
             className="p-2 rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors"
           >
-            <FiX className="w-4 h-4" />
+            <X className="w-4 h-4" />
           </button>
         </div>
 
@@ -170,7 +187,7 @@ const AssignAgentModal = ({
                   </p>
                 </div>
                 {selected === agent.id && (
-                  <FiCheck className="ml-auto w-4 h-4 text-orange-500 shrink-0" />
+                  <Check className="ml-auto w-4 h-4 text-orange-500 shrink-0" />
                 )}
               </button>
             ))
@@ -236,6 +253,9 @@ const OrderManagement = () => {
   // Separate loading state for "Mark as Completed" actions (keyed by order ID)
   const [completingIds, setCompletingIds] = useState(new Set());
 
+  // Separate loading state for cancellation actions (keyed by order ID)
+  const [cancellingIds, setCancellingIds] = useState(new Set());
+
   // Separate loading state exclusively for "Send to Kitchen" (keyed by order ID)
   // This ensures the send-to-kitchen spinner never bleeds into other action buttons
   const [sendingToKitchenIds, setSendingToKitchenIds] = useState(new Set());
@@ -254,6 +274,7 @@ const OrderManagement = () => {
   const [deliveryAgents, setDeliveryAgents] = useState([]);
   const [loadingAgents, setLoadingAgents] = useState(false);
   const [isAssigning, setIsAssigning] = useState(false);
+  const [cancelModal, setCancelModal] = useState({ open: false, order: null });
 
   // ── Loading-state helpers ──────────────────────────────────────────────────
 
@@ -278,6 +299,14 @@ const OrderManagement = () => {
     setCompletingIds((prev) => new Set(prev).add(id));
   const clearCompleting = (id) =>
     setCompletingIds((prev) => {
+      const next = new Set(prev);
+      next.delete(id);
+      return next;
+    });
+
+  const setCancelling = (id) => setCancellingIds((prev) => new Set(prev).add(id));
+  const clearCancelling = (id) =>
+    setCancellingIds((prev) => {
       const next = new Set(prev);
       next.delete(id);
       return next;
@@ -542,6 +571,62 @@ const OrderManagement = () => {
     }
   };
 
+  // ── Cancel Order Confirmation ───────────────────────────────────────────────────
+
+  const openCancelModal = (order) => {
+    setCancelModal({ open: true, order });
+  };
+
+  const closeCancelModal = () => {
+    setCancelModal({ open: false, order: null });
+  };
+
+  const confirmCancelOrder = async () => {
+    if (!cancelModal.order) return;
+    
+    setCancelling(cancelModal.order.id);
+    closeCancelModal();
+    
+    try {
+      await api.put(`/admin/orders/${cancelModal.order.id}`, { status: "cancelled" });
+      showToast("Order cancelled successfully", "success");
+      fetchOrders(true);
+      if (selectedOrder?.id === cancelModal.order.id) {
+        const { data } = await api.get(`/admin/orders/${cancelModal.order.id}`);
+        setSelectedOrder(data);
+      }
+    } catch (err) {
+      showToast(
+        err.response?.data?.message || "Failed to cancel order",
+        "error",
+      );
+    } finally {
+      clearCancelling(cancelModal.order.id);
+    }
+  };
+
+  // ── Cancel Order ───────────────────────────────────────────────────────────
+
+  const handleCancelOrder = async (orderId) => {
+    setCancelling(orderId);
+    try {
+      await api.put(`/admin/orders/${orderId}`, { status: "cancelled" });
+      showToast("Order cancelled successfully", "success");
+      fetchOrders(true);
+      if (selectedOrder?.id === orderId) {
+        const { data } = await api.get(`/admin/orders/${orderId}`);
+        setSelectedOrder(data);
+      }
+    } catch (err) {
+      showToast(
+        err.response?.data?.message || "Failed to cancel order",
+        "error",
+      );
+    } finally {
+      clearCancelling(orderId);
+    }
+  };
+
   // ── Status updates ─────────────────────────────────────────────────────────
 
   const handleStatusUpdate = async (order) => {
@@ -653,9 +738,10 @@ const OrderManagement = () => {
     const isProcessing = processingIds.has(id);
     const isCompleting = completingIds.has(id);
     const sendingToKitchen = sendingToKitchenIds.has(id);
+    const isCancelling = cancellingIds.has(id);
 
-    // Full-width orange action button
-    const OrangeBtn = ({ label, onClick, actionType }) => {
+    // Full-width orange action button with icon
+    const OrangeBtn = ({ label, onClick, actionType, icon: Icon }) => {
       let isDisabled = busy;
       let loadingText = "Updating...";
 
@@ -671,12 +757,37 @@ const OrderManagement = () => {
         <button
           onClick={onClick}
           disabled={isDisabled}
-          className="w-full px-4 py-2.5 bg-orange-500 rounded-xl text-sm font-medium text-white hover:bg-orange-600 transition-colors shadow-sm shadow-orange-200 disabled:bg-orange-500/50 disabled:cursor-not-allowed"
+          className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-orange-500 rounded-xl text-sm font-medium text-white hover:bg-orange-600 transition-colors shadow-sm shadow-orange-200 disabled:bg-orange-500/50 disabled:cursor-not-allowed"
         >
-          {isDisabled ? loadingText : label}
+          {isDisabled ? (
+            loadingText
+          ) : (
+            <>
+              {Icon && <Icon className="w-4 h-4" />}
+              {label}
+            </>
+          )}
         </button>
       );
     };
+
+    // Full-width red cancel button
+    const CancelBtn = ({ onClick }) => (
+      <button
+        onClick={onClick}
+        disabled={busy || cancellingIds.has(id)}
+        className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-red-500 rounded-xl text-sm font-medium text-white hover:bg-red-600 transition-colors shadow-sm shadow-red-200 disabled:bg-red-500/50 disabled:cursor-not-allowed"
+      >
+        {cancellingIds.has(id) ? (
+          "Cancelling..."
+        ) : (
+          <>
+            <XCircle className="w-4 h-4" />
+            Cancel Order
+          </>
+        )}
+      </button>
+    );
 
     // Full-width assign button
     const AssignBtn = ({ onClickFn }) => (
@@ -684,7 +795,7 @@ const OrderManagement = () => {
         onClick={onClickFn}
         className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-orange-500 rounded-xl text-sm font-medium text-white hover:bg-orange-600 transition-colors shadow-sm shadow-orange-200"
       >
-        <FiUser className="w-4 h-4" />
+        <UserPlus className="w-4 h-4" />
         Assign Agent
       </button>
     );
@@ -697,7 +808,7 @@ const OrderManagement = () => {
         disabled={sendingToKitchen}
         className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-orange-500 rounded-xl text-sm font-medium text-white hover:bg-orange-600 transition-colors shadow-sm shadow-orange-200 disabled:bg-orange-500/50 disabled:cursor-not-allowed"
       >
-        <FiSend className="w-4 h-4" />
+        <Send className="w-4 h-4" />
         {sendingToKitchen ? "Sending…" : "Send to Kitchen"}
       </button>
     );
@@ -713,6 +824,7 @@ const OrderManagement = () => {
             label="Start Processing"
             onClick={() => handleStatusUpdate(order)}
             actionType="processing"
+            icon={ChefHat}
           />,
         );
       if (status === "processing")
@@ -721,6 +833,7 @@ const OrderManagement = () => {
             key="ready"
             label="Mark as Ready"
             onClick={() => handleStatusUpdate(order)}
+            icon={PackageCheck}
           />,
         );
     }
@@ -733,6 +846,7 @@ const OrderManagement = () => {
             key="confirm-payment"
             label="Confirm Payment"
             onClick={() => handleConfirmPayment(id)}
+            icon={CreditCard}
           />,
         );
       if (status === "confirmed") {
@@ -744,6 +858,7 @@ const OrderManagement = () => {
             label="Start Processing"
             onClick={() => handleStatusUpdate(order)}
             actionType="processing"
+            icon={ChefHat}
           />,
         );
         // Admin can also complete confirmed orders directly for counter items
@@ -753,6 +868,7 @@ const OrderManagement = () => {
             label="Mark as Completed"
             onClick={() => handleCompleteFromConfirmed(id)}
             actionType="completing"
+            icon={CheckCircle}
           />,
         );
       }
@@ -762,6 +878,7 @@ const OrderManagement = () => {
             key="ready"
             label="Mark as Ready"
             onClick={() => handleStatusUpdate(order)}
+            icon={PackageCheck}
           />,
         );
       if (status === "ready" && order_type === "delivery")
@@ -775,6 +892,7 @@ const OrderManagement = () => {
             label="Mark as Completed"
             onClick={() => handleNonDeliveryComplete(id)}
             actionType="completing"
+            icon={CheckCircle}
           />,
         );
       if (status === "dispatched")
@@ -783,8 +901,19 @@ const OrderManagement = () => {
             key="complete-dispatched"
             label="Complete Delivery"
             onClick={() => openPinModal(id)}
+            icon={Truck}
           />,
         );
+      
+      // Add cancel button for all non-cancelled orders
+      if (status !== "cancelled" && status !== "completed") {
+        buttons.push(
+          <CancelBtn
+            key="cancel"
+            onClick={() => openCancelModal(order)}
+          />,
+        );
+      }
     }
 
     // ── Delivery agent ────────────────────────────────────────────────────────
@@ -795,6 +924,7 @@ const OrderManagement = () => {
             key="complete"
             label="Complete Delivery"
             onClick={() => openPinModal(id)}
+            icon={Truck}
           />,
         );
     }
@@ -810,6 +940,7 @@ const OrderManagement = () => {
             label="Mark as Completed"
             onClick={() => handleCompleteFromConfirmed(id)}
             actionType="completing"
+            icon={CheckCircle}
           />,
         );
       }
@@ -824,6 +955,7 @@ const OrderManagement = () => {
             label="Mark as Completed"
             onClick={() => handleNonDeliveryComplete(id)}
             actionType="completing"
+            icon={CheckCircle}
           />,
         );
       if (status === "dispatched")
@@ -832,6 +964,7 @@ const OrderManagement = () => {
             key="complete-dispatched"
             label="Complete Delivery"
             onClick={() => openPinModal(id)}
+            icon={Truck}
           />,
         );
     }
@@ -844,6 +977,7 @@ const OrderManagement = () => {
             key="confirm"
             label="Confirm Payment"
             onClick={() => handleConfirmPayment(id)}
+            icon={CreditCard}
           />,
         );
       if (status === "confirmed") {
@@ -856,6 +990,7 @@ const OrderManagement = () => {
             label="Mark as Completed"
             onClick={() => handleCompleteFromConfirmed(id)}
             actionType="completing"
+            icon={CheckCircle}
           />,
         );
       }
@@ -866,6 +1001,7 @@ const OrderManagement = () => {
             label="Mark as Completed"
             onClick={() => handleNonDeliveryComplete(id)}
             actionType="completing"
+            icon={CheckCircle}
           />,
         );
     }
@@ -876,7 +1012,15 @@ const OrderManagement = () => {
   // ── Filtered orders ────────────────────────────────────────────────────────
 
   const filteredOrders =
-    activeTab === "all" ? orders : orders.filter((o) => o.status === activeTab);
+    activeTab === "all" 
+      ? orders.filter((o) => {
+          // For kitchen, delivery agent, and attendant roles, exclude cancelled orders from "All Orders"
+          if ((user.role === "kitchen" || user.role === "delivery_agent" || user.role === "attendant") && o.status === "cancelled") {
+            return false;
+          }
+          return true;
+        })
+      : orders.filter((o) => o.status === activeTab);
 
   // ── Render ─────────────────────────────────────────────────────────────────
 
@@ -930,6 +1074,94 @@ const OrderManagement = () => {
         order={selectedOrder}
       />
 
+      {/* Cancel Order Confirmation Modal */}
+      {cancelModal.open && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+            onClick={closeCancelModal}
+          />
+          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+              <div>
+                <h2 className="text-lg font-bold text-gray-900">
+                  Cancel Order
+                </h2>
+                {cancelModal.order && (
+                  <p className="text-xs text-gray-400 mt-0.5">
+                    Order #{cancelModal.order.order_number}
+                  </p>
+                )}
+              </div>
+              <button
+                onClick={closeCancelModal}
+                className="p-2 rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="px-6 py-4">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center">
+                  <X className="w-5 h-5 text-red-500" />
+                </div>
+                <div>
+                  <p className="font-semibold text-gray-900">
+                    Are you sure you want to cancel this order?
+                  </p>
+                  <p className="text-sm text-gray-500 mt-1">
+                    This action cannot be undone.
+                  </p>
+                </div>
+              </div>
+              
+              {cancelModal.order && (
+                <div className="bg-gray-50 rounded-lg p-3 mb-4">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-600">Order Total:</span>
+                    <span className="font-bold text-orange-500">
+                      {new Intl.NumberFormat("en-NG", {
+                        style: "currency",
+                        currency: "NGN",
+                        minimumFractionDigits: 0,
+                      }).format(Math.ceil(cancelModal.order.final_amount))}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center mt-2">
+                    <span className="text-sm text-gray-600">Customer:</span>
+                    <span className="text-sm font-medium text-gray-900">
+                      {cancelModal.order.customer_email}
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              <div className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-lg p-3">
+                <strong>Warning:</strong> Cancelling this order will process any necessary refunds and notify the customer.
+              </div>
+            </div>
+
+            <div className="px-6 py-4 border-t border-gray-100 flex gap-3">
+              <button
+                onClick={closeCancelModal}
+                disabled={cancellingIds.has(cancelModal.order?.id)}
+                className="flex-1 px-4 py-2.5 rounded-xl border border-gray-200 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Keep Order
+              </button>
+              <button
+                onClick={confirmCancelOrder}
+                disabled={cancellingIds.has(cancelModal.order?.id)}
+                className="flex-1 px-4 py-2.5 rounded-xl bg-red-500 text-white text-sm font-medium hover:bg-red-600 transition-colors shadow-sm shadow-red-200 disabled:bg-red-500/50 disabled:cursor-not-allowed"
+              >
+                {cancellingIds.has(cancelModal.order?.id) ? "Cancelling…" : "Cancel Order"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <DashboardLayout>
         <div className="p-6 space-y-6 bg-gray-50/50 min-h-full">
           {/* Header */}
@@ -955,7 +1187,7 @@ const OrderManagement = () => {
                   </>
                 ) : (
                   <>
-                    <FiClock className="w-4 h-4" />
+                    <Clock className="w-4 h-4" />
                     Refresh
                   </>
                 )}
@@ -965,7 +1197,7 @@ const OrderManagement = () => {
                   onClick={() => navigate("/attendant/create-order")}
                   className="flex items-center gap-2 px-4 py-2 bg-orange-500 text-white rounded-lg text-sm font-medium hover:bg-orange-600 transition-colors shadow-sm shadow-orange-200"
                 >
-                  <FiPlus className="w-4 h-4" />
+                  <Plus className="w-4 h-4" />
                   Add Order
                 </button>
               )}
@@ -978,7 +1210,13 @@ const OrderManagement = () => {
               {roleTabs.map((tab) => {
                 const count =
                   tab === "all"
-                    ? orders.length
+                    ? orders.filter((o) => {
+                        // For kitchen, delivery agent, and attendant roles, exclude cancelled orders from "All Orders" count
+                        if ((user.role === "kitchen" || user.role === "delivery_agent" || user.role === "attendant") && o.status === "cancelled") {
+                          return false;
+                        }
+                        return true;
+                      }).length
                     : orders.filter((o) => o.status === tab).length;
                 return (
                   <button
@@ -1133,7 +1371,7 @@ const OrderManagement = () => {
                               "Loading..."
                             ) : (
                               <>
-                                <FiEye className="w-4 h-4" />
+                                <Eye className="w-4 h-4" />
                                 Details
                               </>
                             )}

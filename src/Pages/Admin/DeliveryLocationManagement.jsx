@@ -163,7 +163,7 @@ const CancelBtn = ({ onClose }) => (
 // ── STATE Modal ───────────────────────────────────────────────────────────────
 const StateModal = ({ isOpen, onClose, onSuccess, editingItem }) => {
   const isEdit = !!editingItem;
-  const [form, setForm] = useState({ name: "", code: "", is_active: true });
+  const [form, setForm] = useState({ name: "", code: "" });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
@@ -175,9 +175,8 @@ const StateModal = ({ isOpen, onClose, onSuccess, editingItem }) => {
         ? {
             name: editingItem.name ?? "",
             code: editingItem.code ?? "",
-            is_active: editingItem.is_active ?? true,
           }
-        : { name: "", code: "", is_active: true },
+        : { name: "", code: "" },
     );
   }, [isOpen, editingItem]);
 
@@ -192,7 +191,6 @@ const StateModal = ({ isOpen, onClose, onSuccess, editingItem }) => {
       const payload = {
         name: form.name.trim(),
         code: form.code.trim(),
-        is_active: form.is_active,
       };
       if (USING_DUMMY_DATA) {
         await new Promise((r) => setTimeout(r, 500));
@@ -270,12 +268,6 @@ const StateModal = ({ isOpen, onClose, onSuccess, editingItem }) => {
           onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
         />
       </div>
-      <ToggleRow
-        label="Active"
-        description="State is available for city assignment"
-        value={form.is_active}
-        onChange={(v) => setForm({ ...form, is_active: v })}
-      />
     </ModalShell>
   );
 };
@@ -283,7 +275,7 @@ const StateModal = ({ isOpen, onClose, onSuccess, editingItem }) => {
 // ── CITY Modal ────────────────────────────────────────────────────────────────
 const CityModal = ({ isOpen, onClose, onSuccess, editingItem, states }) => {
   const isEdit = !!editingItem;
-  const [form, setForm] = useState({ name: "", state_id: "", is_active: true });
+  const [form, setForm] = useState({ name: "", state_id: "" });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
@@ -295,9 +287,8 @@ const CityModal = ({ isOpen, onClose, onSuccess, editingItem, states }) => {
         ? {
             name: editingItem.name ?? "",
             state_id: editingItem.state_id ?? "",
-            is_active: editingItem.is_active ?? true,
           }
-        : { name: "", state_id: states[0]?.id ?? "", is_active: true },
+        : { name: "", state_id: states[0]?.id ?? "" },
     );
   }, [isOpen, editingItem, states]);
 
@@ -316,7 +307,6 @@ const CityModal = ({ isOpen, onClose, onSuccess, editingItem, states }) => {
       const payload = {
         name: form.name.trim(),
         state_id: Number(form.state_id),
-        is_active: form.is_active,
       };
       if (USING_DUMMY_DATA) {
         await new Promise((r) => setTimeout(r, 500));
@@ -397,12 +387,6 @@ const CityModal = ({ isOpen, onClose, onSuccess, editingItem, states }) => {
           ))}
         </select>
       </div>
-      <ToggleRow
-        label="Active"
-        description="City is available for zone assignment"
-        value={form.is_active}
-        onChange={(v) => setForm({ ...form, is_active: v })}
-      />
     </ModalShell>
   );
 };
@@ -660,17 +644,11 @@ const SkeletonCard = () => (
 
 // ── State Card ────────────────────────────────────────────────────────────────
 const StateCard = ({ item, onEdit, onDelete }) => (
-  <div
-    className={`bg-white rounded-2xl border shadow-sm overflow-hidden flex flex-col transition-opacity ${item.is_active ? "border-gray-100" : "border-gray-100 opacity-60"}`}
-  >
-    <div className="p-5 border-b border-gray-50 flex items-start justify-between gap-3">
+  <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden flex flex-col">
+    <div className="p-5 border-b border-gray-50 flex items-start gap-3">
       <div className="flex items-center gap-3 min-w-0">
-        <div
-          className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${item.is_active ? "bg-orange-100" : "bg-gray-100"}`}
-        >
-          <FiGlobe
-            className={`w-5 h-5 ${item.is_active ? "text-orange-500" : "text-gray-400"}`}
-          />
+        <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 bg-orange-100">
+          <FiGlobe className="w-5 h-5 text-orange-500" />
         </div>
         <div className="min-w-0">
           <h3 className="font-bold text-gray-900 text-base leading-tight truncate">
@@ -679,11 +657,6 @@ const StateCard = ({ item, onEdit, onDelete }) => (
           <p className="text-xs text-gray-400 mt-0.5">State</p>
         </div>
       </div>
-      <span
-        className={`flex-shrink-0 px-2.5 py-1 rounded-full text-xs font-semibold ${item.is_active ? "bg-green-100 text-green-600" : "bg-gray-100 text-gray-500"}`}
-      >
-        {item.is_active ? "Active" : "Inactive"}
-      </span>
     </div>
     <div className="flex-1" />
     <div className="p-4 bg-gray-50 border-t border-gray-100 flex items-center gap-2">
@@ -708,17 +681,11 @@ const StateCard = ({ item, onEdit, onDelete }) => (
 const CityCard = ({ item, onEdit, onDelete, stateMap }) => {
   const stateName = stateMap[item.state_id] ?? `State #${item.state_id}`;
   return (
-    <div
-      className={`bg-white rounded-2xl border shadow-sm overflow-hidden flex flex-col transition-opacity ${item.is_active ? "border-gray-100" : "border-gray-100 opacity-60"}`}
-    >
-      <div className="p-5 border-b border-gray-50 flex items-start justify-between gap-3">
+    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden flex flex-col">
+      <div className="p-5 border-b border-gray-50 flex items-start gap-3">
         <div className="flex items-center gap-3 min-w-0">
-          <div
-            className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${item.is_active ? "bg-orange-100" : "bg-gray-100"}`}
-          >
-            <FiMap
-              className={`w-5 h-5 ${item.is_active ? "text-orange-500" : "text-gray-400"}`}
-            />
+          <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 bg-orange-100">
+            <FiMap className="w-5 h-5 text-orange-500" />
           </div>
           <div className="min-w-0">
             <h3 className="font-bold text-gray-900 text-base leading-tight truncate">
@@ -727,11 +694,6 @@ const CityCard = ({ item, onEdit, onDelete, stateMap }) => {
             <p className="text-sm text-gray-500 mt-0.5 truncate">{stateName}</p>
           </div>
         </div>
-        <span
-          className={`flex-shrink-0 px-2.5 py-1 rounded-full text-xs font-semibold ${item.is_active ? "bg-green-100 text-green-600" : "bg-gray-100 text-gray-500"}`}
-        >
-          {item.is_active ? "Active" : "Inactive"}
-        </span>
       </div>
       <div className="p-5 flex-1">
         <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 rounded-lg">

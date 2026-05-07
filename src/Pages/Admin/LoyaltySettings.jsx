@@ -34,10 +34,9 @@ const LoyaltySettings = () => {
     setLoading(true);
     try {
       const { data } = await api.get("/admin/settings");
-      console.log("this is the data: ", data);
       setSettings({
-        loyalty_points_per_order: data.availability_hours || "",
-        loyalty_min_points_redemption: data[1] || "",
+        loyalty_points_per_order: data.loyalty_points_per_order || "",
+        loyalty_min_points_redemption: data.loyalty_min_points_redemption || "",
       });
     } catch (err) {
       console.error("Failed to fetch settings:", err);
