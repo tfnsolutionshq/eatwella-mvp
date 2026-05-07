@@ -23,12 +23,10 @@
           });
           const data = await res.json();
           output.textContent = "GET CART:\n" + JSON.stringify(data, null, 2);
-          console.log("Cart data:", data);
 
           // Calculate count
           const count =
             data?.items?.reduce((sum, item) => sum + item.quantity, 0) || 0;
-          console.log("Cart count:", count);
         } catch (err) {
           output.textContent = "Error: " + err.message;
         }
@@ -60,12 +58,10 @@
           const data = await res.json();
           output.textContent =
             `ADD ITEM ${menuId}:\n` + JSON.stringify(data, null, 2);
-          console.log("Add to cart response:", data);
 
           // Calculate count
           const count =
             data?.items?.reduce((sum, item) => sum + item.quantity, 0) || 0;
-          console.log("Cart count after add:", count);
         } catch (err) {
           output.textContent = "Error: " + err.message;
         }

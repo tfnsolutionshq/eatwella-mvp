@@ -91,10 +91,6 @@ const OrderDetailsModal = ({ isOpen, onClose, order }) => {
       return sum + (item.subtotal ?? 0) + packagingPrice * (item.quantity ?? 1);
     }, 0) ?? 0;
 
-  // useEffect(() => {
-  //   console.log("Order data in modal:", order);
-  // }, [order]);
-
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
       <div className="bg-white rounded-2xl w-full max-w-[800px] shadow-xl overflow-hidden max-h-[90vh] flex flex-col">
@@ -122,7 +118,10 @@ const OrderDetailsModal = ({ isOpen, onClose, order }) => {
               <p className="text-base font-medium text-gray-900">
                 {order?.order_type === "dine"
                   ? "Dine-in"
-                  : order?.order_type ? order.order_type.charAt(0).toUpperCase() + order.order_type.slice(1) : "N/A"}
+                  : order?.order_type
+                    ? order.order_type.charAt(0).toUpperCase() +
+                      order.order_type.slice(1)
+                    : "N/A"}
               </p>
             </div>
 
@@ -159,7 +158,9 @@ const OrderDetailsModal = ({ isOpen, onClose, order }) => {
               <span
                 className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(order?.status)}`}
               >
-                {order?.status ? order.status.charAt(0).toUpperCase() + order.status.slice(1) : "N/A"}
+                {order?.status
+                  ? order.status.charAt(0).toUpperCase() + order.status.slice(1)
+                  : "N/A"}
               </span>
             </div>
 
@@ -213,7 +214,9 @@ const OrderDetailsModal = ({ isOpen, onClose, order }) => {
             <div>
               <p className="text-sm text-gray-500 mb-1">Created At</p>
               <p className="text-base font-medium text-gray-900">
-                {order?.created_at ? new Date(order.created_at).toLocaleString() : "N/A"}
+                {order?.created_at
+                  ? new Date(order.created_at).toLocaleString()
+                  : "N/A"}
               </p>
             </div>
           </div>
@@ -232,7 +235,9 @@ const OrderDetailsModal = ({ isOpen, onClose, order }) => {
               <div className="flex justify-between">
                 <span className="text-sm text-gray-500">Payment Method:</span>
                 <span className="text-sm font-medium text-gray-900">
-                  {order?.invoice?.payment_method ? order.invoice.payment_method.toUpperCase() : "N/A"}
+                  {order?.invoice?.payment_method
+                    ? order.invoice.payment_method.toUpperCase()
+                    : "N/A"}
                 </span>
               </div>
               <div className="flex justify-between">
@@ -240,7 +245,9 @@ const OrderDetailsModal = ({ isOpen, onClose, order }) => {
                 <span
                   className={`px-2.5 py-1 text-xs font-medium rounded-full ${order?.invoice?.payment_status === "paid" ? "bg-green-100 text-green-600" : "bg-orange-100 text-orange-600"}`}
                 >
-                  {order?.invoice?.payment_status ? order.invoice.payment_status.toUpperCase() : "N/A"}
+                  {order?.invoice?.payment_status
+                    ? order.invoice.payment_status.toUpperCase()
+                    : "N/A"}
                 </span>
               </div>
             </div>
@@ -254,7 +261,9 @@ const OrderDetailsModal = ({ isOpen, onClose, order }) => {
               {order?.order_items?.map((item) => {
                 if (!item) return null;
                 const imageUrl =
-                  item.menu?.images && Array.isArray(item.menu.images) && item.menu.images.length > 0
+                  item.menu?.images &&
+                  Array.isArray(item.menu.images) &&
+                  item.menu.images.length > 0
                     ? item.menu.images[0]
                     : null;
                 return (
@@ -265,7 +274,6 @@ const OrderDetailsModal = ({ isOpen, onClose, order }) => {
                         alt={item.menu?.name || "Menu item"}
                         className="w-16 h-16 rounded-lg object-cover border border-gray-200"
                         onError={(e) => {
-                          console.log("Image failed to load:", imageUrl);
                           e.target.src = "https://via.placeholder.com/64";
                         }}
                       />
@@ -345,7 +353,7 @@ const OrderDetailsModal = ({ isOpen, onClose, order }) => {
               </div>
             </div>
 
-            {order?.status === 'completed' && (
+            {order?.status === "completed" && (
               <div className="pt-4 border-t border-gray-100">
                 <button
                   onClick={handlePrint}

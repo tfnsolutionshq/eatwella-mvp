@@ -49,7 +49,8 @@ function OrderTypeForm() {
 
   // ── Saved delivery details ─────────────────────────────────────────────────
   const savedAddresses = user?.addresses ?? [];
-  const hasSavedAddresses = orderType === "delivery" && savedAddresses.length > 0;
+  const hasSavedAddresses =
+    orderType === "delivery" && savedAddresses.length > 0;
   const [selectedSavedAddress, setSelectedSavedAddress] = useState(null);
   const [useManualSelection, setUseManualSelection] = useState(false);
 
@@ -179,7 +180,6 @@ function OrderTypeForm() {
 
   useEffect(() => {
     if (user) {
-      console.log("The user is here: ", user);
       setFormData((prev) => ({
         ...prev,
         fullName: user.name || "",
@@ -190,7 +190,7 @@ function OrderTypeForm() {
     getTaxes();
     if (orderType === "delivery") getDeliveryLocations();
     if (orderType === "dine-in") getTables();
-    
+
     // Fetch states for manual address selection
     const fetchStates = async () => {
       try {
@@ -256,16 +256,25 @@ function OrderTypeForm() {
       if (key === "state") {
         setCities([]);
         setZones([]);
-        setManualAddressForm({ ...manualAddressForm, [`${key}_id`]: e.target.value });
+        setManualAddressForm({
+          ...manualAddressForm,
+          [`${key}_id`]: e.target.value,
+        });
       } else if (key === "city") {
         setZones([]);
-        setManualAddressForm({ ...manualAddressForm, [`${key}_id`]: e.target.value });
+        setManualAddressForm({
+          ...manualAddressForm,
+          [`${key}_id`]: e.target.value,
+        });
       }
       return;
     }
 
     if (key === "state") {
-      setManualAddressForm({ ...manualAddressForm, [`${key}_id`]: e.target.value });
+      setManualAddressForm({
+        ...manualAddressForm,
+        [`${key}_id`]: e.target.value,
+      });
       setIsCitiesLoading(true);
       setCities([]);
       setZones([]);
@@ -278,7 +287,10 @@ function OrderTypeForm() {
     }
 
     if (key === "city") {
-      setManualAddressForm({ ...manualAddressForm, [`${key}_id`]: e.target.value });
+      setManualAddressForm({
+        ...manualAddressForm,
+        [`${key}_id`]: e.target.value,
+      });
       setIsZonesLoading(true);
       setZones([]);
       try {
@@ -291,17 +303,25 @@ function OrderTypeForm() {
     }
 
     if (key === "zone") {
-      setManualAddressForm({ ...manualAddressForm, [`${key}_id`]: e.target.value });
+      setManualAddressForm({
+        ...manualAddressForm,
+        [`${key}_id`]: e.target.value,
+      });
       // Update selectedLocation when zone is selected
-      const selectedZone = zones.find(zone => zone.id.toString() === e.target.value);
+      const selectedZone = zones.find(
+        (zone) => zone.id.toString() === e.target.value,
+      );
       if (selectedZone) {
         setSelectedLocation(selectedZone);
       }
     }
 
     if (key === "street_address") {
-      setManualAddressForm({ ...manualAddressForm, street_address: e.target.value });
-      setFormData(prev => ({ ...prev, deliveryAddress: e.target.value }));
+      setManualAddressForm({
+        ...manualAddressForm,
+        street_address: e.target.value,
+      });
+      setFormData((prev) => ({ ...prev, deliveryAddress: e.target.value }));
     }
   };
 
@@ -437,7 +457,7 @@ function OrderTypeForm() {
                 <label className="block text-xs font-semibold text-gray-600 mb-2 uppercase tracking-wide">
                   Saved Addresses
                 </label>
-                
+
                 {!useManualSelection && selectedSavedAddress ? (
                   <div className="relative">
                     <div className="w-full px-4 py-3 rounded-2xl border border-orange-300 bg-orange-50 text-sm text-left flex items-center justify-between">
@@ -463,11 +483,12 @@ function OrderTypeForm() {
                         Change
                       </button>
                     </div>
-                    
+
                     <div className="mt-2 flex items-center gap-2 px-3 py-2 bg-green-50 border border-green-100 rounded-xl text-xs text-green-700">
                       <FiCheckCircle className="w-3.5 h-3.5 flex-shrink-0" />
                       <span>
-                        Using saved address: <strong>{selectedSavedAddress.zone.name}</strong>
+                        Using saved address:{" "}
+                        <strong>{selectedSavedAddress.zone.name}</strong>
                       </span>
                     </div>
                   </div>
@@ -478,7 +499,9 @@ function OrderTypeForm() {
                       onChange={(e) => {
                         const addressId = e.target.value;
                         if (addressId) {
-                          const address = savedAddresses.find(addr => addr.id.toString() === addressId);
+                          const address = savedAddresses.find(
+                            (addr) => addr.id.toString() === addressId,
+                          );
                           if (address) {
                             handleSelectSavedAddress(address);
                           }
@@ -493,17 +516,22 @@ function OrderTypeForm() {
                         </option>
                       ))}
                     </select>
-                    
+
                     <div className="flex items-center justify-center">
                       <span className="text-xs text-gray-400">or</span>
                     </div>
-                    
+
                     <button
                       type="button"
                       onClick={handleUseManualSelection}
                       className="w-full px-4 py-2.5 text-sm font-medium text-gray-600 bg-gray-50 hover:bg-gray-100 rounded-2xl border border-gray-200 transition-colors"
                     >
-                      {(manualAddressForm.state_id || manualAddressForm.city_id || manualAddressForm.zone_id || manualAddressForm.street_address) ? "Clear selection" : "Select zone manually"}
+                      {manualAddressForm.state_id ||
+                      manualAddressForm.city_id ||
+                      manualAddressForm.zone_id ||
+                      manualAddressForm.street_address
+                        ? "Clear selection"
+                        : "Select zone manually"}
                     </button>
                   </div>
                 )}
@@ -511,89 +539,90 @@ function OrderTypeForm() {
             )}
 
             {/* ── Manual address entry: State → City → Zone ── */}
-            {orderType === "delivery" && (!hasSavedAddresses || useManualSelection) && (
-              <div className="space-y-4">
-                {/* State Selection */}
-                <div>
-                  <label className="block text-xs font-semibold text-gray-600 mb-2 uppercase tracking-wide">
-                    State *
-                  </label>
-                  <select
-                    value={manualAddressForm.state_id || ""}
-                    onChange={(e) => handleLocationChange(e, "state")}
-                    className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-                  >
-                    <option value="">Select a state</option>
-                    {states.map((state) => (
-                      <option key={state.id} value={state.id}>
-                        {state.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* City Selection */}
-                <div>
-                  <label className="block text-xs font-semibold text-gray-600 mb-2 uppercase tracking-wide">
-                    City *
-                  </label>
-                  <select
-                    value={manualAddressForm.city_id || ""}
-                    onChange={(e) => handleLocationChange(e, "city")}
-                    disabled={!manualAddressForm.state_id || isCitiesLoading}
-                    className="w-full px-4 py-3 rounded-2xl border bg-gray-50 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent disabled:bg-gray-50 disabled:text-gray-400 disabled:cursor-not-allowed"
-                  >
-                    <option value="">
-                      {isCitiesLoading
-                        ? "Loading cities..."
-                        : !manualAddressForm.state_id
-                        ? "Select a state first"
-                        : "Select a city"}
-                    </option>
-                    {cities.map((city) => (
-                      <option key={city.id} value={city.id}>
-                        {city.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* Zone Selection */}
-                <div>
-                  <label className="block text-xs font-semibold text-gray-600 mb-2 uppercase tracking-wide">
-                    Zone *
-                  </label>
-                  <select
-                    value={manualAddressForm.zone_id || ""}
-                    onChange={(e) => handleLocationChange(e, "zone")}
-                    disabled={!manualAddressForm.city_id || isZonesLoading}
-                    className="w-full px-4 py-3 rounded-2xl border bg-gray-50 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent disabled:bg-gray-50 disabled:text-gray-400 disabled:cursor-not-allowed"
-                  >
-                    <option value="">
-                      {isZonesLoading
-                        ? "Loading zones..."
-                        : !manualAddressForm.city_id
-                        ? "Select a city first"
-                        : "Select a zone"}
-                    </option>
-                    {zones.map((zone) => (
-                      <option key={zone.id} value={zone.id}>
-                        {zone.name || zone.zone_name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                {selectedLocation && (
-                  <div className="mt-2 flex items-center gap-2 px-3 py-2 bg-orange-50 border border-orange-100 rounded-xl text-xs text-orange-700">
-                    <FiMapPin className="w-3.5 h-3.5 flex-shrink-0" />
-                    <span>
-                      Delivering to: <strong>{selectedLocation.name}</strong>
-                    </span>
+            {orderType === "delivery" &&
+              (!hasSavedAddresses || useManualSelection) && (
+                <div className="space-y-4">
+                  {/* State Selection */}
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-600 mb-2 uppercase tracking-wide">
+                      State *
+                    </label>
+                    <select
+                      value={manualAddressForm.state_id || ""}
+                      onChange={(e) => handleLocationChange(e, "state")}
+                      className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                    >
+                      <option value="">Select a state</option>
+                      {states.map((state) => (
+                        <option key={state.id} value={state.id}>
+                          {state.name}
+                        </option>
+                      ))}
+                    </select>
                   </div>
-                )}
-              </div>
-            )}
+
+                  {/* City Selection */}
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-600 mb-2 uppercase tracking-wide">
+                      City *
+                    </label>
+                    <select
+                      value={manualAddressForm.city_id || ""}
+                      onChange={(e) => handleLocationChange(e, "city")}
+                      disabled={!manualAddressForm.state_id || isCitiesLoading}
+                      className="w-full px-4 py-3 rounded-2xl border bg-gray-50 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent disabled:bg-gray-50 disabled:text-gray-400 disabled:cursor-not-allowed"
+                    >
+                      <option value="">
+                        {isCitiesLoading
+                          ? "Loading cities..."
+                          : !manualAddressForm.state_id
+                            ? "Select a state first"
+                            : "Select a city"}
+                      </option>
+                      {cities.map((city) => (
+                        <option key={city.id} value={city.id}>
+                          {city.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Zone Selection */}
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-600 mb-2 uppercase tracking-wide">
+                      Zone *
+                    </label>
+                    <select
+                      value={manualAddressForm.zone_id || ""}
+                      onChange={(e) => handleLocationChange(e, "zone")}
+                      disabled={!manualAddressForm.city_id || isZonesLoading}
+                      className="w-full px-4 py-3 rounded-2xl border bg-gray-50 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent disabled:bg-gray-50 disabled:text-gray-400 disabled:cursor-not-allowed"
+                    >
+                      <option value="">
+                        {isZonesLoading
+                          ? "Loading zones..."
+                          : !manualAddressForm.city_id
+                            ? "Select a city first"
+                            : "Select a zone"}
+                      </option>
+                      {zones.map((zone) => (
+                        <option key={zone.id} value={zone.id}>
+                          {zone.name || zone.zone_name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {selectedLocation && (
+                    <div className="mt-2 flex items-center gap-2 px-3 py-2 bg-orange-50 border border-orange-100 rounded-xl text-xs text-orange-700">
+                      <FiMapPin className="w-3.5 h-3.5 flex-shrink-0" />
+                      <span>
+                        Delivering to: <strong>{selectedLocation.name}</strong>
+                      </span>
+                    </div>
+                  )}
+                </div>
+              )}
 
             {/* ── Delivery address + ZIP ── */}
             {orderType === "delivery" && (
@@ -610,19 +639,28 @@ function OrderTypeForm() {
                       handleChange(e);
                       handleLocationChange(e, "street_address");
                       // Clear saved address if the user edits the address manually
-                      if (selectedSavedAddress && e.target.value !== selectedSavedAddress.street_address) {
+                      if (
+                        selectedSavedAddress &&
+                        e.target.value !== selectedSavedAddress.street_address
+                      ) {
                         setSelectedSavedAddress(null);
                         setUseManualSelection(true);
                       }
                     }}
                     readOnly={!!selectedSavedAddress}
-                    placeholder={selectedSavedAddress ? selectedSavedAddress.street_address : (useManualSelection ? "Enter your street address" : "Admin Block A")}
-                    className={`w-full px-4 py-3 rounded-2xl border text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent ${
-                      selectedSavedAddress 
-                        ? "border-gray-200 bg-gray-100 text-gray-600 cursor-not-allowed" 
+                    placeholder={
+                      selectedSavedAddress
+                        ? selectedSavedAddress.street_address
                         : useManualSelection
-                        ? "border-gray-200 bg-white"
-                        : "border-gray-200 bg-gray-50"
+                          ? "Enter your street address"
+                          : "Admin Block A"
+                    }
+                    className={`w-full px-4 py-3 rounded-2xl border text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent ${
+                      selectedSavedAddress
+                        ? "border-gray-200 bg-gray-100 text-gray-600 cursor-not-allowed"
+                        : useManualSelection
+                          ? "border-gray-200 bg-white"
+                          : "border-gray-200 bg-gray-50"
                     }`}
                   />
                 </div>
@@ -780,7 +818,7 @@ function OrderTypeForm() {
                 Enter a delivery address to continue
               </p>
             )}
-            
+
             {!isLoadingTax && taxList.length === 0 && (
               <p className="text-center text-xs text-green-600 mt-3">
                 No taxes for this order
