@@ -7,7 +7,7 @@ import { useCallback, useEffect, useState } from "react";
 function useDeviceType() {
   const [deviceType, setDeviceType] = useState("desktop");
 
-  useEffect(() => {
+  useEffect(() => {    
     const detectDevice = () => {
       const width = window.screen.width;
       const ua = navigator.userAgent.toLowerCase();
@@ -44,7 +44,7 @@ const PAPER_SIZE_MAP = {
   desktop: "A5",
 };
 
-const OrderDetailsModal = ({ isOpen, onClose, order }) => {
+const OrderDetailsModal = ({ isOpen, onClose, order }) => {  
   // ✅ ALL hooks must be called unconditionally, before any early returns
   const deviceType = useDeviceType();
   const paperSize = PAPER_SIZE_MAP[deviceType];
@@ -70,6 +70,8 @@ const OrderDetailsModal = ({ isOpen, onClose, order }) => {
       console.error("Print failed:", err);
     }
   }, [order, paperSize]); // ✅ paperSize added to dependency array
+
+  
 
   // ✅ Early return comes AFTER all hook calls
   if (!isOpen || !order) return null;
@@ -150,6 +152,20 @@ const OrderDetailsModal = ({ isOpen, onClose, order }) => {
               <p className="text-sm text-gray-500 mb-1">Order Number</p>
               <p className="text-base font-medium text-gray-900">
                 #{order?.order_number ?? "N/A"}
+              </p>
+            </div>
+
+            <div>
+              <p className="text-sm text-gray-500 mb-1">Customer Name</p>
+              <p className="text-base font-medium text-gray-900">
+                {order?.customer_name ?? "N/A"}
+              </p>
+            </div>
+
+            <div>
+              <p className="text-sm text-gray-500 mb-1">Customer Phone</p>
+              <p className="text-base font-medium text-gray-900">
+                {order?.customer_phone ?? "N/A"}
               </p>
             </div>
 

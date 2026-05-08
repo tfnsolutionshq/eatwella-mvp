@@ -16,6 +16,7 @@ import {
   FiNavigation,
 } from "react-icons/fi";
 import api from "../../utils/api";
+import { useToast } from "../../context/ToastContext";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // DEV TOGGLE
@@ -823,6 +824,7 @@ const DeliveryLocationManagement = () => {
   const [activeTab, setActiveTab] = useState("states");
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
+  const { showToast } = useToast();
   const [fetchError, setFetchError] = useState("");
 
   // Cross-tab reference maps (kept in memory for labelling)
@@ -1018,7 +1020,7 @@ const DeliveryLocationManagement = () => {
         ),
       );
     } catch (err) {
-      alert(err.response?.data?.message || "Failed to update availability.");
+      showToast(err.response?.data?.message || "Failed to update availability.", "error");
     } finally {
       setTogglingId(null);
     }

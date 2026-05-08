@@ -3,10 +3,12 @@ import { useAuth } from "../../context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { ModalWrapper, ErrorBanner } from "../../Components/UserDashboard/shared";
 import api from "../../utils/api";
+import { useToast } from "../../context/ToastContext";
 
 function SettingsPage() {
   const { logout } = useAuth();
   const navigate = useNavigate();
+  const { showToast } = useToast();
   
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -26,7 +28,7 @@ function SettingsPage() {
       await api.put("/customer/change-password", passwordData);
       setShowPasswordModal(false);
       setPasswordData({ current_password: "", new_password: "" });
-      alert("Password changed successfully");
+      showToast("Password changed successfully", "success");
     } catch (err) {
       setError(err.response?.data?.message || "Failed to change password");
     } finally {

@@ -6,6 +6,7 @@ import { Link } from "react-router-dom";
 import { checkWorkingHourAvailability } from "../../utils/checkWorkingHours";
 import WorkingHoursClosedModal from "../Modals/WorkingHoursInfoModal";
 import Marquee from "react-fast-marquee";
+import api from "../../utils/api";
 
 function Menu() {
   const [activeTab, setActiveTab] = useState("all");
@@ -26,12 +27,8 @@ function Menu() {
     setIsLoading(true);
     try {
       const [categoriesRes, menuRes] = await Promise.all([
-        axios.get("https://api.eatwella.ng/api/categories", {
-          headers: { Accept: "application/json" },
-        }),
-        axios.get("https://api.eatwella.ng/api/menus", {
-          headers: { Accept: "application/json" },
-        }),
+        api.get("/categories"),
+        api.get("/menus"),
       ]);
       setCategories(categoriesRes.data.data);
       setMenuItems(menuRes.data.data);
@@ -47,12 +44,8 @@ function Menu() {
     setIsLoading(true);
     try {
       const url =
-        categoryId === "all"
-          ? "https://api.eatwella.ng/api/menus"
-          : `https://api.eatwella.ng/api/menus?category_id=${categoryId}`;
-      const { data } = await axios.get(url, {
-        headers: { Accept: "application/json" },
-      });
+        categoryId === "all" ? "/menus" : `/menus?category_id=${categoryId}`;
+      const { data } = await api.get(url);
       setMenuItems(data.data);
     } catch (err) {
       console.error("Failed to fetch menu items:", err);

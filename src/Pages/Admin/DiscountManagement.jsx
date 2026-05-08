@@ -3,12 +3,14 @@ import DashboardLayout from "../../DashboardLayout/DashboardLayout";
 import CreateDiscountModal from "../../Components/Modals/CreateDiscountModal";
 import { FiPlus, FiPercent, FiEdit2, FiTrash2 } from "react-icons/fi";
 import api from "../../utils/api";
+import { useToast } from "../../context/ToastContext";
 
 const DiscountManagement = () => {
   const [discounts, setDiscounts] = useState([]);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [editingDiscount, setEditingDiscount] = useState(null);
   const [loading, setLoading] = useState(true);
+  const { showToast } = useToast();
 
   useEffect(() => {
     fetchDiscounts();
@@ -31,7 +33,7 @@ const DiscountManagement = () => {
       await api.put(`/admin/discounts/${id}`, { is_active: !isActive });
       fetchDiscounts();
     } catch (err) {
-      alert(err.response?.data?.message || "Failed to update discount");
+      showToast(err.response?.data?.message || "Failed to update discount", "error");
     }
   };
 
@@ -41,7 +43,7 @@ const DiscountManagement = () => {
       await api.delete(`/admin/discounts/${id}`);
       fetchDiscounts();
     } catch (err) {
-      alert(err.response?.data?.message || "Failed to delete discount");
+      showToast(err.response?.data?.message || "Failed to delete discount", "error");
     }
   };
 

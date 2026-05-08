@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import DashboardLayout from "../../DashboardLayout/DashboardLayout";
 import {
   FiDollarSign,
@@ -16,14 +16,35 @@ function Payments() {
   const [totals, setTotals] = useState(null);
   const [payments, setPayments] = useState([]);
   const [loading, setLoading] = useState(true);
+  
+  // Pagination state (mirrors Menu.jsx)
+  const [page, setPage] = useState(1);
+  const [pagination, setPagination] = useState({
+    current_page: 1,
+    last_page: 1,
+    total: 0,
+    from: 0,
+    to: 0,
+    per_page: 15,
+  });
 
+  // Initial load
   useEffect(() => {
     const fetchPayments = async () => {
       setLoading(true);
       try {
-        const { data } = await api.get("/admin/payments");
+        const { data } = await api.get("/admin/payments?page=1");
         setTotals(data.totals);
-        setPayments(data.payments.data);
+        const paymentsData = data.payments.data ?? [];
+        setPayments(paymentsData);
+        setPagination({
+          current_page: data.payments.current_page ?? 1,
+          last_page: data.payments.last_page ?? 1,
+          total: data.payments.total ?? paymentsData.length,
+          from: data.payments.from ?? (paymentsData.length ? 1 : 0),
+          to: data.payments.to ?? paymentsData.length,
+          per_page: data.payments.per_page ?? 15,
+        });
       } catch (err) {
         console.error("Failed to fetch payments:", err);
       } finally {
@@ -32,6 +53,56 @@ function Payments() {
     };
     fetchPayments();
   }, []);
+
+  // Fetch payments for specific page
+  const fetchPayments = useCallback(
+    async (pageNumber = 1) => {
+      setLoading(true);
+      try {
+        const { data } = await api.get(`/admin/payments?page=${pageNumber}`);
+        const paymentsData = data.payments.data ?? [];
+        setPayments(paymentsData);
+        setPagination({
+          current_page: data.payments.current_page ?? pageNumber,
+          last_page: data.payments.last_page ?? 1,
+          total: data.payments.total ?? paymentsData.length,
+          from: data.payments.from ?? (paymentsData.length ? 1 : 0),
+          to: data.payments.to ?? paymentsData.length,
+          per_page: data.payments.per_page ?? 15,
+        });
+      } catch (err) {
+        console.error("Failed to fetch payments:", err);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [],
+  );
+
+  // Update payments when page changes
+  useEffect(() => {
+    fetchPayments(page);
+  }, [page, fetchPayments]);
+
+  // Pagination helpers (mirrors Menu.jsx)
+  const getVisiblePageNumbers = () => {
+    const totalPages = pagination.last_page;
+    if (totalPages <= 7) {
+      return Array.from({ length: totalPages }, (_, idx) => idx + 1);
+    }
+
+    const current = pagination.current_page;
+    const maxPages = 6;
+    let start = Math.max(2, current - Math.floor(maxPages / 2));
+    let end = start + maxPages - 1;
+
+    if (end > totalPages - 1) {
+      end = totalPages - 1;
+      start = Math.max(2, end - maxPages + 1);
+    }
+
+    return Array.from({ length: end - start + 1 }, (_, idx) => start + idx);
+  };
 
   const stats = [
     {
@@ -268,6 +339,67 @@ function Payments() {
                   )}
                 </tbody>
               </table>
+            </div>
+          </div>
+        )}
+
+        {/* Pagination controls (mirrors Menu.jsx) */}
+        {!loading && pagination.last_page > 1 && (
+          <div className="mt-8 flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-gray-200 pt-6">
+            <div className="text-sm text-gray-500">
+              Showing {pagination.from} to {pagination.to} of{" "}
+              {pagination.total} payments
+            </div>
+            <div className="flex flex-wrap items-center justify-center gap-2">
+              <button
+                disabled={pagination.current_page === 1}
+                onClick={() => setPage((prev) => Math.max(1, prev - 1))}
+                className="px-4 py-2 border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                Previous
+              </button>
+              <button
+                disabled={pagination.current_page === 1}
+                onClick={() => setPage(1)}
+                className="px-4 py-2 border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                First
+              </button>
+              {getVisiblePageNumbers().map((pageNumber) => (
+                <button
+                  key={pageNumber}
+                  onClick={() => setPage(pageNumber)}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium border border-gray-200 transition-colors ${
+                    pagination.current_page === pageNumber
+                      ? "bg-orange-500 text-white border-orange-500"
+                      : "text-gray-700 hover:bg-gray-100"
+                  }`}
+                >
+                  {pageNumber}
+                </button>
+              ))}
+              <button
+                disabled={
+                  pagination.current_page === pagination.last_page
+                }
+                onClick={() => setPage(pagination.last_page)}
+                className="px-4 py-2 border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                Last
+              </button>
+              <button
+                disabled={
+                  pagination.current_page === pagination.last_page
+                }
+                onClick={() =>
+                  setPage((prev) =>
+                    Math.min(pagination.last_page, prev + 1),
+                  )
+                }
+                className="px-4 py-2 border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                Next
+              </button>
             </div>
           </div>
         )}

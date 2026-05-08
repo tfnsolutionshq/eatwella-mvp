@@ -14,26 +14,10 @@ export default function Header({ onMenuClick }) {
         <FiMenu className="w-6 h-6" />
       </button>
 
-      {/* Search Bar */}
-      <div className="flex items-center gap-3 flex-1 max-w-xl">
-        <div className="relative w-full hidden sm:block">
-          <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-          <input
-            type="text"
-            placeholder="Search orders, customers, items..."
-            className="w-full bg-gray-50 border-none rounded-xl py-2.5 pl-10 pr-4 text-sm text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-orange-100 outline-none"
-          />
-        </div>
-        {/* Mobile Search Icon */}
-        <button className="sm:hidden p-2 hover:bg-gray-100 rounded-lg text-gray-600">
-          <FiSearch className="w-6 h-6" />
-        </button>
-      </div>
-
       {/* Right Section - User Profile */}
-      <div className="flex items-center gap-4">
-        <div className="flex items-center gap-3">
-          <div className="text-right hidden sm:block">
+      <div className="flex items-center gap-4 w-full">
+        <div className="flex items-center gap-3 ml-auto">
+          <div className="text-right">
             <p className="text-sm font-semibold text-gray-900 leading-none">
               {user.name}
             </p>

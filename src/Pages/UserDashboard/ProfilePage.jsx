@@ -188,7 +188,7 @@ function ProfilePage() {
       const { data } = await api.get("/customer/addresses");
       setAddresses(Array.isArray(data) ? data : []);
     } catch (err) {
-      alert(err.response?.data?.message || "Failed to delete address");
+      showToast(err.response?.data?.message || "Failed to delete address", "error");
     } finally {
       setShowDeleteAddressModal(false);
       setAddressToDelete(null);

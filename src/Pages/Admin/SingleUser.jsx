@@ -18,6 +18,7 @@ import {
 } from "react-icons/fi";
 import { useNavigate, useParams } from "react-router-dom";
 import api from "../../utils/api";
+import { useToast } from "../../context/ToastContext";
 
 const Field = ({
   label,
@@ -455,6 +456,7 @@ const SingleUser = () => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showSuspendModal, setShowSuspendModal] = useState(false);
   const [showUnsuspendModal, setShowUnsuspendModal] = useState(false);
+  const { showToast } = useToast();
 
   useEffect(() => {
     fetchUser();
@@ -467,7 +469,7 @@ const SingleUser = () => {
       setUser(data);
     } catch (err) {
       console.error("Failed to fetch user:", err);
-      alert("Failed to load user details");
+      showToast("Failed to load user details", "error");
     } finally {
       setLoading(false);
     }
@@ -482,7 +484,7 @@ const SingleUser = () => {
       }
     } catch (err) {
       console.error("Failed to update user:", err);
-      alert("Failed to update user. Please try again.");
+      showToast("Failed to update user. Please try again.", "error");
     }
   };
 
@@ -492,11 +494,12 @@ const SingleUser = () => {
       await api.delete(`/admin/users`, { data: { ids: [userId] } });
       navigate("/admin/users");
     } catch (err) {
-      alert(
+      showToast(
         err.response?.data?.message ||
           err.response?.data?.error ||
           JSON.stringify(err.response?.data) ||
           "Failed to delete user. Please try again.",
+        "error"
       );
     }
   };
@@ -508,7 +511,7 @@ const SingleUser = () => {
       fetchUser();
     } catch (err) {
       console.error("Failed to suspend user:", err);
-      alert("Failed to suspend user. Please try again.");
+      showToast("Failed to suspend user. Please try again.", "error");
     }
   };
 
@@ -519,7 +522,7 @@ const SingleUser = () => {
       fetchUser();
     } catch (err) {
       console.error("Failed to unsuspend user:", err);
-      alert("Failed to unsuspend user. Please try again.");
+      showToast("Failed to unsuspend user. Please try again.", "error");
     }
   };
 

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import DashboardLayout from "../../DashboardLayout/DashboardLayout";
 import OrderDetailsModal from "../../Components/Modals/OrderDetailsModal";
 import DeliveryPhotoModal from "../../Components/Modals/DeliveryPhotoModal";
@@ -27,6 +27,7 @@ import {
   XCircle,
   Ban,
   XSquare,
+  Search,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import api from "../../utils/api";
@@ -227,6 +228,8 @@ const OrderManagement = () => {
     ...Object.keys(STATUS_CONFIG),
   ];
   const [activeTab, setActiveTab] = useState(roleTabs[0]);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [isSearching, setIsSearching] = useState(false);
 
   const [orders, setOrders] = useState([]);
   const [allKitchenOrders, setAllKitchenOrders] = useState([]);
@@ -323,16 +326,35 @@ const OrderManagement = () => {
 
   useEffect(() => {
     fetchOrders();
-  }, [page, activeTab]);
+  }, [page, activeTab, searchQuery]);
 
   useEffect(() => {
     const interval = setInterval(() => {
       fetchOrders(true);
     }, 60000);
     return () => clearInterval(interval);
-  }, [page, activeTab, user.role]);
+  }, [page, activeTab, user.role, searchQuery]);
 
   // ── Data fetching ──────────────────────────────────────────────────────────
+
+  // Search state
+  const [searchInput, setSearchInput] = useState("");
+
+  // Debounced search effect
+  useEffect(() => {
+    const timerId = setTimeout(() => {
+      setSearchQuery(searchInput);
+      setPage(1); // Reset to first page when searching
+    }, 300); // 300ms delay
+
+    return () => clearTimeout(timerId);
+  }, [searchInput]);
+
+  const handleClearSearch = () => {
+    setSearchInput("");
+    setSearchQuery("");
+    setPage(1);
+  };
 
   const fetchOrders = async (silent = false) => {
     if (silent) {
@@ -359,10 +381,43 @@ const OrderManagement = () => {
         rawOrders = sortDescending(rawOrders);
         setAllKitchenOrders(rawOrders);
 
+        // Apply search filter if search query exists
+        let filteredOrders = rawOrders;
+        if (searchQuery.trim()) {
+          const searchLower = searchQuery.toLowerCase().trim();
+          filteredOrders = rawOrders.filter((order) => {
+            // Search by Order ID
+            if (order.order_number?.toLowerCase().includes(searchLower)) {
+              return true;
+            }
+            // Search by customer phone
+            if (order.customer_phone?.toLowerCase().includes(searchLower)) {
+              return true;
+            }
+            // Search by customer email
+            if (order.customer_email?.toLowerCase().includes(searchLower)) {
+              return true;
+            }
+            // Search by customer name
+            if (order.customer_name?.toLowerCase().includes(searchLower)) {
+              return true;
+            }
+            // Search by transaction reference
+            if (order.transaction_reference?.toLowerCase().includes(searchLower)) {
+              return true;
+            }
+            // Search by payment reference
+            if (order.payment_reference?.toLowerCase().includes(searchLower)) {
+              return true;
+            }
+            return false;
+          });
+        }
+
         const tabFiltered =
           activeTab === "all"
-            ? rawOrders
-            : rawOrders.filter((order) => order.status === activeTab);
+            ? filteredOrders
+            : filteredOrders.filter((order) => order.status === activeTab);
 
         const total = tabFiltered.length;
         const perPage = pagination.per_page;
@@ -388,17 +443,99 @@ const OrderManagement = () => {
         return;
       }
 
+      // Build params - always fetch all data for client-side filtering when searching
       const params = { page, per_page: pagination.per_page };
       let response;
 
-      if (user.role === "admin") {
-        response = await api.get("/admin/orders", { params });
-      } else if (user.role === "supervisor") {
-        response = await api.get("/supervisor/orders", { params });
-      } else if (user.role === "delivery_agent") {
-        response = await api.get("/delivery-agent/orders", { params });
-      } else if (user.role === "attendant") {
-        response = await api.get("/attendant/orders", { params });
+      if (searchQuery.trim()) {
+        // When searching, fetch a larger dataset to filter client-side
+        setIsSearching(true);
+        const searchParams = { ...params, per_page: 100 }; // Fetch more records for search
+        
+        if (user.role === "admin") {
+          response = await api.get("/admin/orders", { params: searchParams });
+        } else if (user.role === "supervisor") {
+          response = await api.get("/supervisor/orders", { params: searchParams });
+        } else if (user.role === "attendant") {
+          response = await api.get("/attendant/orders", { params: searchParams });
+        } else if (user.role === "delivery_agent") {
+          response = await api.get("/delivery-agent/orders", { params: searchParams });
+        }
+
+        // Apply client-side filtering for multi-field search
+        const rawData = response?.data;
+        const allData = rawData?.data ?? rawData;
+        const allOrders = Array.isArray(allData) ? allData : [];
+        
+        const searchLower = searchQuery.toLowerCase().trim();
+        const filteredOrders = allOrders.filter((order) => {
+          // Search by Order ID
+          if (order.order_number?.toLowerCase().includes(searchLower)) {
+            return true;
+          }
+          // Search by customer phone
+          if (order.customer_phone?.toLowerCase().includes(searchLower)) {
+            return true;
+          }
+          // Search by customer email
+          if (order.customer_email?.toLowerCase().includes(searchLower)) {
+            return true;
+          }
+          // Search by customer name
+          if (order.customer_name?.toLowerCase().includes(searchLower)) {
+            return true;
+          }
+          // Search by transaction reference
+          if (order.transaction_reference?.toLowerCase().includes(searchLower)) {
+            return true;
+          }
+          // Search by payment reference
+          if (order.payment_reference?.toLowerCase().includes(searchLower)) {
+            return true;
+          }
+          return false;
+        });
+
+        // Apply status tab filtering
+        const tabFiltered =
+          activeTab === "all"
+            ? filteredOrders
+            : filteredOrders.filter((order) => order.status === activeTab);
+
+        // Apply pagination to filtered results
+        const total = tabFiltered.length;
+        const perPage = pagination.per_page;
+        const lastPage = Math.max(1, Math.ceil(total / perPage));
+        const currentPage = Math.min(page, lastPage);
+        const from = total === 0 ? 0 : (currentPage - 1) * perPage + 1;
+        const to = Math.min(total, currentPage * perPage);
+        const pageOrders = tabFiltered.slice(
+          (currentPage - 1) * perPage,
+          currentPage * perPage,
+        );
+
+        setOrders(pageOrders);
+        setPagination({
+          current_page: currentPage,
+          last_page: lastPage,
+          total,
+          from,
+          to,
+          per_page: pagination.per_page,
+        });
+        if (currentPage !== page) setPage(currentPage);
+        return;
+      } else {
+        // Use regular endpoints when no search query
+        if (user.role === "admin") {
+          response = await api.get("/admin/orders", { params });
+        } else if (user.role === "supervisor") {
+          response = await api.get("/supervisor/orders", { params });
+        } else if (user.role === "delivery_agent") {
+          response = await api.get("/delivery-agent/orders", { params });
+        } else if (user.role === "attendant") {
+          response = await api.get("/attendant/orders", { params });
+        }
       }
 
       const rawData = response?.data;
@@ -416,12 +553,14 @@ const OrderManagement = () => {
       });
     } catch (err) {
       console.error("Failed to fetch orders:", err);
+      showToast("Failed to fetch orders", "error");
     } finally {
       if (silent) {
         setIsRefreshing(false);
       } else {
         setIsLoadingOrders(false);
       }
+      setIsSearching(false);
     }
   };
 
@@ -1174,11 +1313,35 @@ const OrderManagement = () => {
                 Monitor and manage all orders
               </p>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+              {/* Search Input */}
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Search by Order ID, Phone, Email, Name or Ref..."
+                  onChange={(e) => setSearchInput(e.target.value)}
+                  value={searchInput}
+                  className="pl-10 pr-10 py-2 w-full sm:w-80 border border-gray-200 rounded-lg text-sm font-medium text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent transition-colors shadow-sm"
+                />
+                {searchInput && (
+                  <button
+                    onClick={handleClearSearch}
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
+                {isSearching && (
+                  <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                    <div className="w-4 h-4 border-2 border-gray-300 border-t-orange-500 rounded-full animate-spin" />
+                  </div>
+                )}
+              </div>
               <button
                 onClick={() => fetchOrders(true)}
                 disabled={isRefreshing}
-                className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors shadow-sm disabled:opacity-50"
+                className="flex items-center justify-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors shadow-sm disabled:opacity-50"
               >
                 {isRefreshing ? (
                   <>
@@ -1243,6 +1406,29 @@ const OrderManagement = () => {
             </div>
           </div>
 
+          {/* Search Results Indicator */}
+          {searchQuery.trim() && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 flex items-center justify-between">
+              <div className="flex items-center gap-2 text-sm text-blue-700">
+                <Search className="w-4 h-4" />
+                <span>
+                  Searching across Order ID, Phone, Email, Name & Ref for "{searchQuery}" 
+                  {!isSearching && (
+                    <span className="font-medium ml-1">
+                      ({pagination.total} {pagination.total === 1 ? 'order' : 'orders'} found)
+                    </span>
+                  )}
+                </span>
+              </div>
+              <button
+                onClick={handleClearSearch}
+                className="text-blue-600 hover:text-blue-800 text-sm font-medium transition-colors"
+              >
+                Clear search
+              </button>
+            </div>
+          )}
+
           {/* Orders grid */}
           {isLoadingOrders && !isRefreshing ? (
             <div className="flex flex-col items-center justify-center py-32 gap-4">
@@ -1256,7 +1442,22 @@ const OrderManagement = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                 {filteredOrders.length === 0 ? (
                   <div className="col-span-full text-center py-16 text-gray-400 text-sm">
-                    No orders found.
+                    {searchQuery.trim() ? (
+                      <>
+                        <div className="mb-2">
+                          <Search className="w-12 h-12 mx-auto text-gray-300" />
+                        </div>
+                        <div className="font-medium">No orders found for "{searchQuery}"</div>
+                        <div className="text-xs mt-1">Try searching with Order ID, Phone, Email, Name or Reference</div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="mb-2">
+                          <Package className="w-12 h-12 mx-auto text-gray-300" />
+                        </div>
+                        <div>No orders found.</div>
+                      </>
+                    )}
                   </div>
                 ) : (
                   filteredOrders.map((order) => {

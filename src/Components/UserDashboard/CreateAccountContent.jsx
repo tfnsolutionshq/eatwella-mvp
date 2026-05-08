@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { FiMapPin, FiCheckCircle } from "react-icons/fi";
 import axios from "axios";
+import api from "../../utils/api";
 
 function CreateAccountContent() {
   const location = useLocation();
@@ -40,7 +41,7 @@ function CreateAccountContent() {
     // Fetch states for manual address selection
     const fetchStates = async () => {
       try {
-        const statesRes = await axios.get("https://api.eatwella.ng/api/states");
+        const statesRes = await api.get("/states");
         setStates(statesRes.data);
       } catch (err) {
         console.error("Failed to fetch states:", err);
@@ -55,9 +56,7 @@ function CreateAccountContent() {
     setCities([]);
     setZones([]);
     try {
-      const cityRes = await axios.get(
-        `https://api.eatwella.ng/api/cities?state_id=${stateId}`,
-      );
+      const cityRes = await api.get(`/cities?state_id=${stateId}`);
       setCities(cityRes.data);
     } finally {
       setIsCitiesLoading(false);
@@ -68,9 +67,7 @@ function CreateAccountContent() {
     setIsZonesLoading(true);
     setZones([]);
     try {
-      const zoneRes = await axios.get(
-        `https://api.eatwella.ng/api/zones?city_id=${cityId}`,
-      );
+      const zoneRes = await api.get(`/zones?city_id=${cityId}`);
       const activeZones = zoneRes.data.filter((zone) => zone.is_active);
       setZones(activeZones);
     } finally {
@@ -211,16 +208,7 @@ function CreateAccountContent() {
         payload.closest_landmark = closestLandmark;
       }
 
-      const response = await axios.post(
-        "https://api.eatwella.ng/api/customer/register",
-        payload,
-        {
-          headers: {
-            Accept: "application/json",
-            "Content-Type": "application/json",
-          },
-        },
-      );
+      const response = await api.post("/customer/register", payload);
       const data = response.data;
       if (data?.token) {
         localStorage.setItem("customer_token", data.token);

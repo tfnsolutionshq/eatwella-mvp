@@ -9,6 +9,7 @@ import {
   FiAlertCircle,
   FiX,
 } from "react-icons/fi";
+import { useToast } from "../../context/ToastContext";
 
 const TaxRuleModal = ({
   isOpen,
@@ -326,6 +327,7 @@ function TaxAndVat() {
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingRule, setEditingRule] = useState(null);
+  const { showToast } = useToast();
 
   const fetchData = async () => {
     try {
@@ -381,7 +383,7 @@ function TaxAndVat() {
       // fetchData()
     } catch (error) {
       console.error("Failed to toggle status:", error);
-      alert("Failed to update status");
+      showToast("Failed to update status", "error");
     }
   };
 
@@ -394,7 +396,7 @@ function TaxAndVat() {
       setTaxes((prev) => prev.filter((rule) => rule.id !== id));
     } catch (error) {
       console.error("Failed to delete tax rule:", error);
-      alert("Failed to delete tax rule");
+      showToast("Failed to delete tax rule", "error");
     }
   };
 

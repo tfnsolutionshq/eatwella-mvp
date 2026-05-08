@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import axios from "axios";
+import api from "../../utils/api";
 
 function LoginContent() {
   const location = useLocation();
@@ -25,16 +26,7 @@ function LoginContent() {
 
     try {
       setLoading(true);
-      const response = await axios.post(
-        "https://api.eatwella.ng/api/customer/login",
-        { email, password },
-        {
-          headers: {
-            Accept: "application/json",
-            "Content-Type": "application/json",
-          },
-        },
-      );
+      const response = await api.post("/customer/login", { email, password });
       const data = response.data;
       if (data?.token && data?.user) {
         login(data.token, data.user);

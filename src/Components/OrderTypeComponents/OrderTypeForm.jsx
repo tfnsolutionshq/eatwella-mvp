@@ -4,6 +4,7 @@ import { FiMapPin, FiChevronDown, FiCheckCircle, FiHome } from "react-icons/fi";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useCart } from "../../context/CartContext";
 import { useAuth } from "../../context/AuthContext";
+import { useToast } from "../../context/ToastContext";
 import api from "../../utils/api";
 import { checkWorkingHourAvailability } from "../../utils/checkWorkingHours";
 import WorkingHoursClosedModal from "../Modals/WorkingHoursInfoModal";
@@ -37,6 +38,7 @@ function OrderTypeForm() {
   const location = useLocation();
   const { cart } = useCart();
   const { user } = useAuth();
+  const { showToast } = useToast(); // Added useToast hook
   const orderType = location.state?.orderType || "pickup";
   const paymentMethod = location.state?.paymentMethod;
 
@@ -342,11 +344,11 @@ function OrderTypeForm() {
 
   const handleSubmit = async () => {
     if (!formData.fullName || !formData.email || !formData.phone) {
-      alert("Please fill in all required fields");
+      showToast("Please fill in all required fields", "error");
       return;
     }
     if (orderType === "delivery" && !selectedLocation) {
-      alert("Please select a delivery location");
+      showToast("Please select a delivery location", "error");
       return;
     }
 
@@ -382,11 +384,11 @@ function OrderTypeForm() {
       if (response.data.payment?.authorization_url) {
         window.location.href = response.data.payment.authorization_url;
       } else {
-        alert("Failed to initialize payment gateway");
+        showToast("Failed to initialize payment gateway", "error");
       }
     } catch (error) {
       console.error("Payment error:", error);
-      alert(error.response?.data?.message || "Failed to process payment");
+      showToast(error.response?.data?.message || "Failed to process payment", "error");
     } finally {
       setIsSubmitting(false);
     }
