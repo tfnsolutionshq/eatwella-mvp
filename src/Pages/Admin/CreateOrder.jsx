@@ -12,10 +12,12 @@ import { useNavigate } from "react-router-dom";
 import SearchInput from "../../Components/SearchInput";
 import { useSearch } from "../../hooks/useSearch";
 import api from "../../utils/api";
+import { useAuth } from "../../context/AuthContext";
 import { useToast } from "../../context/ToastContext";
 
 const CreateOrder = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const { showToast } = useToast();
   const [menus, setMenus] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -29,21 +31,20 @@ const CreateOrder = () => {
     isLoading: isSearchLoading,
     error: searchError,
     handleSearchChange,
-    clearSearch
+    clearSearch,
   } = useSearch();
-  const [orderType, setOrderType] = useState("pickup");
+  const [orderType, setOrderType] = useState("dine");
   const [formData, setFormData] = useState({
     customerName: "",
     customerEmail: "",
     customerPhone: "",
-    tableNumber: "",
     deliveryAddress: "",
     deliveryCity: "",
     deliveryZip: "",
   });
   const [paymentMode, setPaymentMode] = useState("cash");
   const [posService, setPosService] = useState("OPay");
-  const [bankAccount, setBankAccount] = useState("OPay");
+  const [bankAccount, setBankAccount] = useState("");
   const [loading, setLoading] = useState(false);
   const [menuLoading, setMenuLoading] = useState(false);
 
@@ -75,6 +76,19 @@ const CreateOrder = () => {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
+  // Clear packaging when order type changes to dine-in
+  useEffect(() => {
+    if (orderType === "dine") {
+      setCart(
+        cart.map((item) => ({
+          ...item,
+          packaging_id: null,
+          packaging: null,
+        }))
+      );
+    }
+  }, [orderType]);
 
   const fetchCategories = async () => {
     try {
@@ -131,11 +145,11 @@ const CreateOrder = () => {
     fetchMenus(selectedCategory, pageNumber);
   };
 
-  const displayMenus = searchTerm 
-    ? searchResults 
-    : selectedCategory === "all" 
-      ? menus 
-      : menus.filter(menu => menu.category_id === selectedCategory);
+  const displayMenus = searchTerm
+    ? searchResults
+    : selectedCategory === "all"
+      ? menus
+      : menus.filter((menu) => menu.category_id === selectedCategory);
 
   const getVisiblePageNumbers = () => {
     const { last_page, current_page } = pagination;
@@ -267,15 +281,15 @@ const CreateOrder = () => {
         orderData.bank_account = bankAccount;
       }
 
-      if (orderType === "dine") {
-        orderData.table_number = formData.tableNumber;
-      } else if (orderType === "delivery") {
+      if (orderType === "delivery") {
         orderData.customer_phone = formData.customerPhone;
         orderData.delivery_address = formData.deliveryAddress;
         orderData.delivery_city = formData.deliveryCity;
         orderData.delivery_zip = formData.deliveryZip;
         orderData.delivery_zone_id = 1;
       }
+
+      console.log("Here we are: ", orderData);
 
       await api.post("/checkout", orderData);
       showToast("Order created successfully!");
@@ -296,7 +310,17 @@ const CreateOrder = () => {
     <DashboardLayout>
       <div className="p-4 sm:p-6 space-y-6 bg-gray-50/50 min-h-full max-w-full overflow-x-hidden">
         <button
-          onClick={() => navigate("/admin/orders")}
+          onClick={() => {
+            if (user.role === "attendant") {
+              navigate("/attendant/orders");
+            }
+            if (user.role === "admin") {
+              navigate("/admin/orders");
+            }
+            if (user.role === "supervisor") {
+              navigate("/supervisor/orders");
+            }
+          }}
           className="flex items-center gap-2 text-gray-600 hover:text-gray-800"
         >
           <FiArrowLeft />
@@ -373,7 +397,9 @@ const CreateOrder = () => {
                     </div>
                   ) : (
                     <p className="text-sm text-gray-400">
-                      {searchTerm ? "This item does not exist" : "No items found in this category."}
+                      {searchTerm
+                        ? "This item does not exist"
+                        : "No items found in this category."}
                     </p>
                   )}
                 </div>
@@ -385,18 +411,18 @@ const CreateOrder = () => {
                         key={menu.id}
                         className="border border-gray-200 rounded-xl hover:border-orange-500 transition-colors"
                       >
-                        <div className="flex gap-3 p-3 min-w-0">
-                          {menu.images && menu.images.length > 0 && (
-                            <img
-                              src={menu.images[0]}
-                              alt={menu.name}
-                              className="w-16 h-16 lg:w-20 lg:h-20 object-cover rounded-lg flex-shrink-0"
-                              onError={(e) => {
-                                e.target.src =
-                                  "https://via.placeholder.com/80x80";
-                              }}
-                            />
-                          )}
+                        <div className="flex gap-3 p-3 min-w-0">                          
+                            {menu.images && menu.images.length > 0 && (
+                              <img
+                                src={menu.images[0]}
+                                alt={menu.name}
+                                className="w-16 h-16 lg:w-20 lg:h-20 object-cover rounded-lg flex-shrink-0"
+                                onError={(e) => {
+                                  e.target.src =
+                                    "https://via.placeholder.com/80x80";
+                                }}
+                              />
+                            )}                          
                           <div className="flex-1 min-w-0 overflow-hidden">
                             <div className="flex justify-between items-start gap-2 mb-1">
                               <h3 className="font-bold text-gray-900 text-xs lg:text-sm truncate flex-1 min-w-0">
@@ -406,7 +432,7 @@ const CreateOrder = () => {
                                 ₦{Number(menu.price).toLocaleString()}
                               </span>
                             </div>
-                            <p className="text-xs text-gray-500 line-clamp-2 mb-2 hidden lg:block">
+                            <p className="text-xs text-gray-500 line-clamp-2 mb-2">
                               {menu.description}
                             </p>
                             <button
@@ -518,7 +544,7 @@ const CreateOrder = () => {
           {/* ── Sidebar ── */}
           <div className="space-y-4 min-w-0">
             {/* Cart */}
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 lg:p-6 overflow-hidden min-w-0">
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 lg:p-6 min-w-0">
               <h2 className="text-lg font-bold text-gray-900 mb-3 lg:mb-4 flex items-center gap-2">
                 <FiShoppingCart />
                 Cart ({cart.length})
@@ -533,7 +559,7 @@ const CreateOrder = () => {
                   {cart.map((item) => (
                     <div
                       key={item.menu.id}
-                      className="p-3 bg-gray-50 rounded-xl space-y-3 min-w-0 overflow-hidden"
+                      className="p-3 bg-gray-50 rounded-xl space-y-3 min-w-0"
                     >
                       {/* Item row */}
                       <div className="flex items-start gap-3 min-w-0">
@@ -575,71 +601,73 @@ const CreateOrder = () => {
                       </div>
 
                       {/* Packaging dropdown */}
-                      <div className="relative" data-packaging-dropdown>
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setOpenPackagingDropdown(
-                              openPackagingDropdown === item.menu.id
-                                ? null
-                                : item.menu.id,
-                            )
-                          }
-                          disabled={loadingPackaging}
-                          className={`w-full flex items-center justify-between gap-2 px-3 py-2.5 rounded-lg border text-xs transition-colors focus:outline-none focus:ring-2 focus:ring-orange-300 touch-manipulation ${
-                            item.packaging
-                              ? "border-orange-300 bg-orange-50 text-orange-700"
-                              : "border-gray-200 bg-white text-gray-400 hover:border-gray-300"
-                          } disabled:opacity-60 disabled:cursor-not-allowed`}
-                        >
-                          <span className="truncate">
-                            {loadingPackaging
-                              ? "Loading packaging…"
-                              : item.packaging
-                                ? `${item.packaging.size_name} — ₦${Number(item.packaging.price).toLocaleString()}`
-                                : "Select packaging (optional)"}
-                          </span>
-                          <FiChevronDown
-                            className={`w-4 h-4 flex-shrink-0 transition-transform duration-200 ${
-                              openPackagingDropdown === item.menu.id
-                                ? "rotate-180"
-                                : ""
-                            }`}
-                          />
-                        </button>
+                      {orderType !== "dine" && (
+                        <div className="relative" data-packaging-dropdown>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setOpenPackagingDropdown(
+                                openPackagingDropdown === item.menu.id
+                                  ? null
+                                  : item.menu.id,
+                              )
+                            }
+                            disabled={loadingPackaging}
+                            className={`w-full flex items-center justify-between gap-2 px-3 py-2.5 rounded-lg border text-xs transition-colors focus:outline-none focus:ring-2 focus:ring-orange-300 touch-manipulation ${
+                              item.packaging
+                                ? "border-orange-300 bg-orange-50 text-orange-700"
+                                : "border-gray-200 bg-white text-gray-400 hover:border-gray-300"
+                            } disabled:opacity-60 disabled:cursor-not-allowed`}
+                          >
+                            <span className="truncate">
+                              {loadingPackaging
+                                ? "Loading packaging…"
+                                : item.packaging
+                                  ? `${item.packaging.size_name} — ₦${Number(item.packaging.price).toLocaleString()}`
+                                  : "Select packaging"}
+                            </span>
+                            <FiChevronDown
+                              className={`w-4 h-4 flex-shrink-0 transition-transform duration-200 ${
+                                openPackagingDropdown === item.menu.id
+                                  ? "rotate-180"
+                                  : ""
+                              }`}
+                            />
+                          </button>
 
-                        {openPackagingDropdown === item.menu.id && (
-                          <div className="absolute z-20 mt-1 w-full bg-white border border-gray-100 rounded-xl shadow-xl overflow-hidden max-h-48 overflow-y-auto left-0 right-0">
-                            {packagingOptions.length === 0 ? (
-                              <p className="px-3 py-3 text-xs text-gray-400 text-center">
-                                No packaging options available.
-                              </p>
-                            ) : (
-                              packagingOptions.map((pkg) => (
-                                <button
-                                  key={pkg.id}
-                                  type="button"
-                                  onClick={() =>
-                                    selectPackaging(item.menu.id, pkg)
-                                  }
-                                  className={`w-full px-3 py-3 text-left flex items-center justify-between hover:bg-orange-50 transition-colors touch-manipulation ${
-                                    item.packaging?.id === pkg.id
-                                      ? "bg-orange-50"
-                                      : ""
-                                  }`}
-                                >
-                                  <span className="text-xs font-medium text-gray-700 capitalize">
-                                    {pkg.size_name}
-                                  </span>
-                                  <span className="text-xs font-bold text-orange-500 ml-3 shrink-0">
-                                    +₦{Number(pkg.price).toLocaleString()}
-                                  </span>
-                                </button>
-                              ))
-                            )}
-                          </div>
-                        )}
-                      </div>
+                          {openPackagingDropdown === item.menu.id && (
+                            <div className="absolute z-50 mt-1 w-full bg-white border border-gray-100 rounded-xl shadow-xl max-h-48 overflow-y-auto left-0 right-0">
+                              {packagingOptions.length === 0 ? (
+                                <p className="px-3 py-3 text-xs text-gray-400 text-center">
+                                  No packaging options available.
+                                </p>
+                              ) : (
+                                packagingOptions.map((pkg) => (
+                                  <button
+                                    key={pkg.id}
+                                    type="button"
+                                    onClick={() =>
+                                      selectPackaging(item.menu.id, pkg)
+                                    }
+                                    className={`w-full px-3 py-3 text-left flex items-center justify-between hover:bg-orange-50 transition-colors touch-manipulation ${
+                                      item.packaging?.id === pkg.id
+                                        ? "bg-orange-50"
+                                        : ""
+                                    }`}
+                                  >
+                                    <span className="text-xs font-medium text-gray-700 capitalize">
+                                      {pkg.size_name}
+                                    </span>
+                                    <span className="text-xs font-bold text-orange-500 ml-3 shrink-0">
+                                      +₦{Number(pkg.price).toLocaleString()}
+                                    </span>
+                                  </button>
+                                ))
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      )}
 
                       {/* Per-item total */}
                       <div className="flex justify-between items-center pt-1">

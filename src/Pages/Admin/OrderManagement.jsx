@@ -307,7 +307,8 @@ const OrderManagement = () => {
       return next;
     });
 
-  const setCancelling = (id) => setCancellingIds((prev) => new Set(prev).add(id));
+  const setCancelling = (id) =>
+    setCancellingIds((prev) => new Set(prev).add(id));
   const clearCancelling = (id) =>
     setCancellingIds((prev) => {
       const next = new Set(prev);
@@ -403,7 +404,9 @@ const OrderManagement = () => {
               return true;
             }
             // Search by transaction reference
-            if (order.transaction_reference?.toLowerCase().includes(searchLower)) {
+            if (
+              order.transaction_reference?.toLowerCase().includes(searchLower)
+            ) {
               return true;
             }
             // Search by payment reference
@@ -451,22 +454,28 @@ const OrderManagement = () => {
         // When searching, fetch a larger dataset to filter client-side
         setIsSearching(true);
         const searchParams = { ...params, per_page: 100 }; // Fetch more records for search
-        
+
         if (user.role === "admin") {
           response = await api.get("/admin/orders", { params: searchParams });
         } else if (user.role === "supervisor") {
-          response = await api.get("/supervisor/orders", { params: searchParams });
+          response = await api.get("/supervisor/orders", {
+            params: searchParams,
+          });
         } else if (user.role === "attendant") {
-          response = await api.get("/attendant/orders", { params: searchParams });
+          response = await api.get("/attendant/orders", {
+            params: searchParams,
+          });
         } else if (user.role === "delivery_agent") {
-          response = await api.get("/delivery-agent/orders", { params: searchParams });
+          response = await api.get("/delivery-agent/orders", {
+            params: searchParams,
+          });
         }
 
         // Apply client-side filtering for multi-field search
         const rawData = response?.data;
         const allData = rawData?.data ?? rawData;
         const allOrders = Array.isArray(allData) ? allData : [];
-        
+
         const searchLower = searchQuery.toLowerCase().trim();
         const filteredOrders = allOrders.filter((order) => {
           // Search by Order ID
@@ -486,7 +495,9 @@ const OrderManagement = () => {
             return true;
           }
           // Search by transaction reference
-          if (order.transaction_reference?.toLowerCase().includes(searchLower)) {
+          if (
+            order.transaction_reference?.toLowerCase().includes(searchLower)
+          ) {
             return true;
           }
           // Search by payment reference
@@ -722,12 +733,14 @@ const OrderManagement = () => {
 
   const confirmCancelOrder = async () => {
     if (!cancelModal.order) return;
-    
+
     setCancelling(cancelModal.order.id);
     closeCancelModal();
-    
+
     try {
-      await api.put(`/admin/orders/${cancelModal.order.id}`, { status: "cancelled" });
+      await api.put(`/admin/orders/${cancelModal.order.id}`, {
+        status: "cancelled",
+      });
       showToast("Order cancelled successfully", "success");
       fetchOrders(true);
       if (selectedOrder?.id === cancelModal.order.id) {
@@ -1043,14 +1056,11 @@ const OrderManagement = () => {
             icon={Truck}
           />,
         );
-      
+
       // Add cancel button for all non-cancelled orders
       if (status !== "cancelled" && status !== "completed") {
         buttons.push(
-          <CancelBtn
-            key="cancel"
-            onClick={() => openCancelModal(order)}
-          />,
+          <CancelBtn key="cancel" onClick={() => openCancelModal(order)} />,
         );
       }
     }
@@ -1151,10 +1161,15 @@ const OrderManagement = () => {
   // ── Filtered orders ────────────────────────────────────────────────────────
 
   const filteredOrders =
-    activeTab === "all" 
+    activeTab === "all"
       ? orders.filter((o) => {
           // For kitchen, delivery agent, and attendant roles, exclude cancelled orders from "All Orders"
-          if ((user.role === "kitchen" || user.role === "delivery_agent" || user.role === "attendant") && o.status === "cancelled") {
+          if (
+            (user.role === "kitchen" ||
+              user.role === "delivery_agent" ||
+              user.role === "attendant") &&
+            o.status === "cancelled"
+          ) {
             return false;
           }
           return true;
@@ -1254,7 +1269,7 @@ const OrderManagement = () => {
                   </p>
                 </div>
               </div>
-              
+
               {cancelModal.order && (
                 <div className="bg-gray-50 rounded-lg p-3 mb-4">
                   <div className="flex justify-between items-center">
@@ -1277,7 +1292,8 @@ const OrderManagement = () => {
               )}
 
               <div className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-lg p-3">
-                <strong>Warning:</strong> Cancelling this order will process any necessary refunds and notify the customer.
+                <strong>Warning:</strong> Cancelling this order will process any
+                necessary refunds and notify the customer.
               </div>
             </div>
 
@@ -1294,7 +1310,9 @@ const OrderManagement = () => {
                 disabled={cancellingIds.has(cancelModal.order?.id)}
                 className="flex-1 px-4 py-2.5 rounded-xl bg-red-500 text-white text-sm font-medium hover:bg-red-600 transition-colors shadow-sm shadow-red-200 disabled:bg-red-500/50 disabled:cursor-not-allowed"
               >
-                {cancellingIds.has(cancelModal.order?.id) ? "Cancelling…" : "Cancel Order"}
+                {cancellingIds.has(cancelModal.order?.id)
+                  ? "Cancelling…"
+                  : "Cancel Order"}
               </button>
             </div>
           </div>
@@ -1355,9 +1373,21 @@ const OrderManagement = () => {
                   </>
                 )}
               </button>
-              {user?.role === "attendant" && (
+              {(user?.role === "attendant" ||
+                user?.role === "admin" ||
+                user?.role === "supervisor") && (
                 <button
-                  onClick={() => navigate("/attendant/create-order")}
+                  onClick={() => {
+                    if (user.role === "attendant") {
+                      navigate("/attendant/create-order");
+                    }
+                    if (user.role === "admin") {
+                      navigate("/admin/create-order");
+                    }
+                    if (user.role === "supervisor") {
+                      navigate("/supervisor/create-order");
+                    }
+                  }}
                   className="flex items-center gap-2 px-4 py-2 bg-orange-500 text-white rounded-lg text-sm font-medium hover:bg-orange-600 transition-colors shadow-sm shadow-orange-200"
                 >
                   <Plus className="w-4 h-4" />
@@ -1375,7 +1405,12 @@ const OrderManagement = () => {
                   tab === "all"
                     ? orders.filter((o) => {
                         // For kitchen, delivery agent, and attendant roles, exclude cancelled orders from "All Orders" count
-                        if ((user.role === "kitchen" || user.role === "delivery_agent" || user.role === "attendant") && o.status === "cancelled") {
+                        if (
+                          (user.role === "kitchen" ||
+                            user.role === "delivery_agent" ||
+                            user.role === "attendant") &&
+                          o.status === "cancelled"
+                        ) {
                           return false;
                         }
                         return true;
@@ -1412,10 +1447,12 @@ const OrderManagement = () => {
               <div className="flex items-center gap-2 text-sm text-blue-700">
                 <Search className="w-4 h-4" />
                 <span>
-                  Searching across Order ID, Phone, Email, Name & Ref for "{searchQuery}" 
+                  Searching across Order ID, Phone, Email, Name & Ref for "
+                  {searchQuery}"
                   {!isSearching && (
                     <span className="font-medium ml-1">
-                      ({pagination.total} {pagination.total === 1 ? 'order' : 'orders'} found)
+                      ({pagination.total}{" "}
+                      {pagination.total === 1 ? "order" : "orders"} found)
                     </span>
                   )}
                 </span>
@@ -1447,8 +1484,13 @@ const OrderManagement = () => {
                         <div className="mb-2">
                           <Search className="w-12 h-12 mx-auto text-gray-300" />
                         </div>
-                        <div className="font-medium">No orders found for "{searchQuery}"</div>
-                        <div className="text-xs mt-1">Try searching with Order ID, Phone, Email, Name or Reference</div>
+                        <div className="font-medium">
+                          No orders found for "{searchQuery}"
+                        </div>
+                        <div className="text-xs mt-1">
+                          Try searching with Order ID, Phone, Email, Name or
+                          Reference
+                        </div>
                       </>
                     ) : (
                       <>
