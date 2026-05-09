@@ -9,7 +9,7 @@ function CartPage() {
     <>
       <SEO 
         title="Your Cart" 
-        description="Review your order and proceed to checkout. EatWella - Healthy meals delivered."
+        description="Review your order and proceed to checkout. Eatwella - Healthy meals delivered."
       />
       <CartHeader />
       <CartItems />

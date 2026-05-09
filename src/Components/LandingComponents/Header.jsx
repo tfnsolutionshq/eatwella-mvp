@@ -1,6 +1,5 @@
 import React from "react";
 import Navbar from "./Navbar";
-import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import headergroup from "../../assets/headergroup.png";
 
@@ -83,18 +82,18 @@ function Header() {
               variants={itemVariants}
               className="flex flex-col md:flex-row gap-4 justify-center lg:justify-start"
             >
-              <Link
-                to="/menu"
+              <a
+                href="/menu"
                 className="bg-orange-500 hover:bg-orange-600 text-white px-8 py-3 rounded-full font-bold transition-colors shadow-lg hover:shadow-orange-500/30 transform hover:-translate-y-1"
               >
                 Eat Now
-              </Link>
-              <Link
-                to="/track-order"
+              </a>
+              <a
+                href="/track-order"
                 className="bg-green-800 hover:bg-green-900 text-white px-8 py-3 rounded-full font-bold transition-colors shadow-lg hover:shadow-green-900/30 transform hover:-translate-y-1"
               >
                 Track an Order
-              </Link>
+              </a>
             </motion.div>
           </motion.div>
 
@@ -108,7 +107,7 @@ function Header() {
             <motion.img
               animate={floatingAnimation}
               src={headergroup}
-              alt="EatWella Group Meal"
+              alt="Eatwella Group Meal"
               className="w-full max-w-[350px] md:max-w-[450px] lg:max-w-[600px] object-contain drop-shadow-2xl"
             />
           </motion.div>

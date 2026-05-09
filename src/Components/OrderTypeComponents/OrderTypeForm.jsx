@@ -369,10 +369,13 @@ function OrderTypeForm() {
       };
 
       if (orderType === "delivery") {
-        payload.delivery_city = selectedLocation.city;
+        payload.delivery_city = selectedLocation.city.name;
         payload.delivery_address = formData.deliveryAddress;
         payload.delivery_zone_id = selectedLocation.id;
       }
+
+      // delete payload.callback_url;
+      // console.log("over here: ", payload);
 
       const response = await api.post("/checkout", payload);
 
@@ -388,7 +391,10 @@ function OrderTypeForm() {
       }
     } catch (error) {
       console.error("Payment error:", error);
-      showToast(error.response?.data?.message || "Failed to process payment", "error");
+      showToast(
+        error.response?.data?.message || "Failed to process payment",
+        "error",
+      );
     } finally {
       setIsSubmitting(false);
     }

@@ -64,6 +64,14 @@ function Navbar() {
           Vacancy
         </NavLink>
         <NavLink
+          to="/riders"
+          className={({ isActive }) =>
+            `text-white font-medium transition-colors hover:text-green-100 inline-flex px-3 py-1 rounded-full ${isActive ? "ring-2 ring-white" : ""}`
+          }
+        >
+          Riders
+        </NavLink>
+        <NavLink
           to="/cart"
           className={({ isActive }) =>
             `text-white font-medium transition-colors hover:text-green-100 inline-flex px-3 py-1 rounded-full ${isActive ? "ring-2 ring-white" : ""}`
@@ -237,6 +245,15 @@ function Navbar() {
               }
             >
               Vacancy
+            </NavLink>
+            <NavLink
+              to="/riders"
+              onClick={() => setIsMenuOpen(false)}
+              className={({ isActive }) =>
+                `text-gray-800 hover:text-orange-500 font-medium text-lg transition-colors inline-flex px-3 py-1 rounded-full ${isActive ? "ring-2 ring-white" : ""}`
+              }
+            >
+              Riders
             </NavLink>
             {/* <Link 
               to="/loyalty-board" 

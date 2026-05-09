@@ -9,7 +9,7 @@ function TrackOrderPage() {
     <div className="flex flex-col min-h-screen">
         <SEO 
           title="Track Order" 
-          description="Track the status of your EatWella order in real-time. Enter your order ID to see updates."
+          description="Track the status of your Eatwella order in real-time. Enter your order ID to see updates."
         />
         <TrackOrderHeader />
         <div className="flex-grow bg-gray-50">

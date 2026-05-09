@@ -369,7 +369,7 @@ const OrderDetailsModal = ({ isOpen, onClose, order }) => {
               </div>
             </div>
 
-            {order?.status === "completed" && (
+
               <div className="pt-4 border-t border-gray-100">
                 <button
                   onClick={handlePrint}
@@ -379,7 +379,6 @@ const OrderDetailsModal = ({ isOpen, onClose, order }) => {
                   <span>Print Receipt</span>
                 </button>
               </div>
-            )}
           </div>
         </div>
       </div>

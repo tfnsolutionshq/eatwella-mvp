@@ -283,7 +283,7 @@ function Homepage() {
     <>
       <SEO
         title="Home"
-        description="EatWella - Delicious, healthy, and affordable meals delivered to your doorstep. Experience the best of Nigerian cuisine."
+        description="Eatwella - Delicious, healthy, and affordable meals delivered to your doorstep. Experience the best of Nigerian cuisine."
       />
 
       <CampaignBanner campaigns={campaigns} isLoading={isLoading} />

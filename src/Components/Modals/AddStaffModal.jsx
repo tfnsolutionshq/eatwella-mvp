@@ -23,7 +23,21 @@ const AddStaffModal = ({ isOpen, onClose, onSuccess }) => {
       onSuccess();
       onClose();
     } catch (err) {
-      setError(err.response?.data?.message || "Failed to create cashier");
+      if (error.response) {
+        console.log("Status:", error.response.status);
+        console.log("Data:", error.response.data);
+        console.log("Validation errors:", error.response.data.errors);
+        showToast(
+          error.response.data?.message || "Failed to create menu item",
+          "error",
+        );
+      } else if (error.request) {
+        console.log("No response received:", error.request);
+        showToast("Network error. Please try again.", "error");
+      } else {
+        console.log("Error setting up request:", error.message);
+        showToast("An unexpected error occurred", "error");
+      }
     } finally {
       setLoading(false);
     }

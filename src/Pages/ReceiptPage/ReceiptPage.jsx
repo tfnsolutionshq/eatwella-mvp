@@ -8,7 +8,7 @@ function ReceiptPage() {
     <>
       <SEO
         title="Order Receipt"
-        description="View your order receipt and details. Thank you for ordering from EatWella."
+        description="View your order receipt and details. Thank you for ordering from Eatwella."
       />
       <ReceiptHeader />
       <ReceiptDetails />

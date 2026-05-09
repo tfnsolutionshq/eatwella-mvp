@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import ReactDOM from "react-dom";
 import DashboardLayout from "../../DashboardLayout/DashboardLayout";
 import StarterKit from "@tiptap/starter-kit";
 import { useEditor, EditorContent } from "@tiptap/react";
@@ -700,16 +701,52 @@ function CampaignFormModal({ mode, initialData, onClose, onSave }) {
 // ─── Row action menu ──────────────────────────────────────────────────────────
 function ActionMenu({ campaign, onEdit, onDelete, onPreview, onToggleStatus }) {
   const [open, setOpen] = useState(false);
-  const ref = useRef();
-
+  const [menuStyle, setMenuStyle] = useState({});
+  const buttonRef = useRef();
+ 
+  // Close on outside click or scroll
   useEffect(() => {
-    const handler = (e) => {
-      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
+    if (!open) return;
+ 
+    const close = () => setOpen(false);
+    document.addEventListener("mousedown", close);
+    document.addEventListener("scroll", close, true); // capture scroll anywhere
+    return () => {
+      document.removeEventListener("mousedown", close);
+      document.removeEventListener("scroll", close, true);
     };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, []);
-
+  }, [open]);
+ 
+  const handleOpen = (e) => {
+    e.stopPropagation();
+    if (open) {
+      setOpen(false);
+      return;
+    }
+ 
+    // Calculate position from the trigger button
+    const rect = buttonRef.current.getBoundingClientRect();
+    const menuWidth = 176; // w-44 = 11rem = 176px
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const spaceRight = window.innerWidth - rect.right;
+ 
+    // Flip up if not enough room below (needs ~160px for 4 items)
+    const flipUp = spaceBelow < 170;
+    // Flip left if not enough room to the right
+    const flipLeft = spaceRight < menuWidth;
+ 
+    setMenuStyle({
+      position: "fixed",
+      top: flipUp ? undefined : rect.bottom + 6,
+      bottom: flipUp ? window.innerHeight - rect.top + 6 : undefined,
+      left: flipLeft ? undefined : rect.right - menuWidth,
+      right: flipLeft ? window.innerWidth - rect.right : undefined,
+      zIndex: 9999,
+    });
+ 
+    setOpen(true);
+  };
+ 
   const actions = [
     {
       label: "Preview",
@@ -745,34 +782,54 @@ function ActionMenu({ campaign, onEdit, onDelete, onPreview, onToggleStatus }) {
       danger: true,
     },
   ];
-
+ 
+  const menu = open
+    ? ReactDOM.createPortal(
+        // Backdrop captures clicks outside the menu without closing other UI
+        <div
+          onMouseDown={(e) => {
+            // Prevent the document mousedown listener from double-firing
+            e.stopPropagation();
+            setOpen(false);
+          }}
+          style={{ position: "fixed", inset: 0, zIndex: 9998 }}
+        >
+          <div
+            style={menuStyle}
+            onMouseDown={(e) => e.stopPropagation()} // keep menu open while clicking inside
+            className="bg-white border border-gray-100 rounded-2xl shadow-xl py-1 w-44 overflow-hidden"
+          >
+            {actions.map(({ label, icon: Icon, onClick, danger }) => (
+              <button
+                key={label}
+                onClick={onClick}
+                className={`w-full flex items-center gap-2.5 px-4 py-2.5 text-sm font-medium transition-colors ${
+                  danger
+                    ? "text-red-600 hover:bg-red-50"
+                    : "text-gray-700 hover:bg-gray-50"
+                }`}
+              >
+                <Icon className="w-4 h-4 flex-shrink-0" />
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>,
+        document.body,
+      )
+    : null;
+ 
   return (
-    <div className="relative" ref={ref}>
+    <>
       <button
-        onClick={() => setOpen((o) => !o)}
+        ref={buttonRef}
+        onClick={handleOpen}
         className="w-8 h-8 rounded-full hover:bg-gray-100 flex items-center justify-center transition-colors"
       >
         <FiMoreVertical className="w-4 h-4 text-gray-500" />
       </button>
-      {open && (
-        <div className="absolute right-0 top-10 z-20 bg-white border border-gray-100 rounded-2xl shadow-xl py-1 w-44 overflow-hidden">
-          {actions.map(({ label, icon: Icon, onClick, danger }) => (
-            <button
-              key={label}
-              onClick={onClick}
-              className={`w-full flex items-center gap-2.5 px-4 py-2.5 text-sm font-medium transition-colors ${
-                danger
-                  ? "text-red-600 hover:bg-red-50"
-                  : "text-gray-700 hover:bg-gray-50"
-              }`}
-            >
-              <Icon className="w-4 h-4 flex-shrink-0" />
-              {label}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
+      {menu}
+    </>
   );
 }
 
