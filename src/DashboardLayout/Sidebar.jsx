@@ -45,6 +45,13 @@ export default function Sidebar({ isOpen, onToggle }) {
       roles: ["admin", "supervisor", "attendant", "delivery_agent", "kitchen"],
     },
     {
+      id: "bank-details",
+      label: "Bank Details",
+      icon: FiCreditCard,
+      path: "/admin/bank-details",
+      roles: ["delivery_agent"],
+    },
+    {
       id: "menu",
       label: "Menu Management",
       icon: MdRestaurant,

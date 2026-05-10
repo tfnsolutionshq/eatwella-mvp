@@ -15,6 +15,7 @@ import {
   FiAlertTriangle,
   FiSlash,
   FiCheckCircle,
+  FiCreditCard,
 } from "react-icons/fi";
 import { useNavigate, useParams } from "react-router-dom";
 import api from "../../utils/api";
@@ -457,10 +458,31 @@ const SingleUser = () => {
   const [showSuspendModal, setShowSuspendModal] = useState(false);
   const [showUnsuspendModal, setShowUnsuspendModal] = useState(false);
   const { showToast } = useToast();
+  
+  // Delivery agent specific states
+  const [agentOrders, setAgentOrders] = useState(null);
+  const [agentOrdersLoading, setAgentOrdersLoading] = useState(false);
+  const [searchType, setSearchType] = useState('all'); // 'all', 'single', 'range'
+  const [singleDate, setSingleDate] = useState('');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
 
   useEffect(() => {
     fetchUser();
   }, [userId]);
+  
+  useEffect(() => {
+    if (user?.role === 'delivery_agent') {
+      // Only fetch if conditions are met
+      if (searchType === 'all') {
+        fetchAgentOrders(1); // Fetch all orders
+      } else if (searchType === 'single' && singleDate) {
+        fetchAgentOrders(1); // Fetch single date orders
+      } else if (searchType === 'range' && dateFrom && dateTo) {
+        fetchAgentOrders(1); // Fetch date range orders
+      }
+    }
+  }, [user, searchType, singleDate, dateFrom, dateTo]);
 
   const fetchUser = async () => {
     try {
@@ -513,6 +535,39 @@ const SingleUser = () => {
       console.error("Failed to suspend user:", err);
       showToast("Failed to suspend user. Please try again.", "error");
     }
+  };
+
+  const fetchAgentOrders = async (page = 1) => {
+    try {
+      setAgentOrdersLoading(true);
+      let url = `/admin/riders/${userId}/orders?page=${page}`;
+      
+      if (searchType === 'single' && singleDate) {
+        url += `&date=${singleDate}`;
+      } else if (searchType === 'range' && dateFrom && dateTo) {
+        url += `&date_from=${dateFrom}&date_to=${dateTo}`;
+      }
+      
+      const { data } = await api.get(url);
+      setAgentOrders(data);
+    } catch (err) {
+      console.error("Failed to fetch agent orders:", err);
+      showToast("Failed to load agent orders", "error");
+    } finally {
+      setAgentOrdersLoading(false);
+    }
+  };
+
+  const handleSearchTypeChange = (type) => {
+    setSearchType(type);
+    setSingleDate('');
+    setDateFrom('');
+    setDateTo('');
+    setAgentOrders(null); // Clear previous results
+  };
+  
+  const handlePageChange = (page) => {
+    fetchAgentOrders(page);
   };
 
   const handleUnsuspendUser = async () => {
@@ -628,7 +683,7 @@ const SingleUser = () => {
                     <span
                       className={`px-3 py-1 rounded-full text-xs font-medium ${getRoleBadge(user.role)}`}
                     >
-                      {user.role.charAt(0).toUpperCase() + user.role.slice(1)}
+                      {user.role.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
                     </span>
                     {/* Suspended status badge */}
                     {isSuspended && (
@@ -736,6 +791,276 @@ const SingleUser = () => {
                 </div>
               </div>
             </div>
+
+            {/* Bank Details - Only for Delivery Agents */}
+            {user.role === 'delivery_agent' && user.bank_details && user.bank_details.length > 0 && (
+              <div>
+                <h2 className="text-lg font-bold text-gray-900 mb-4">
+                  Bank Details
+                </h2>
+                <div className="space-y-3">
+                  {user.bank_details.map((bank) => (
+                    <div
+                      key={bank.id}
+                      className="p-4 bg-gray-50 rounded-xl border border-gray-100"
+                    >
+                      <div className="flex items-start gap-3">
+                        <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
+                          <FiCreditCard className="w-5 h-5 text-blue-600" />
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-sm font-semibold text-gray-900 mb-1">
+                            {bank.bank_name}
+                          </p>
+                          <p className="text-sm text-gray-600 mb-1">
+                            Account Name: {bank.account_name}
+                          </p>
+                          <p className="text-sm text-gray-600">
+                            Account Number: {bank.account_number}
+                          </p>
+                          <p className="text-xs text-gray-400 mt-2">
+                            Added{" "}
+                            {new Date(bank.created_at).toLocaleDateString(
+                              "en-US",
+                              {
+                                year: "numeric",
+                                month: "short",
+                                day: "numeric",
+                              },
+                            )}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Delivery Agent Orders - Only for Delivery Agents */}
+            {user.role === 'delivery_agent' && (
+              <div>
+                <h2 className="text-lg font-bold text-gray-900 mb-4">
+                  Delivery Orders
+                </h2>
+                
+                {/* Search Filters */}
+                <div className="mb-6 p-4 bg-gray-50 rounded-xl border border-gray-100">
+                  <h3 className="text-sm font-semibold text-gray-700 mb-3">Search Orders</h3>
+                  <div className="flex flex-wrap gap-3 mb-3">
+                    <button
+                      onClick={() => handleSearchTypeChange('all')}
+                      className={`px-3 py-1.5 rounded-lg text-sm font-medium transition ${
+                        searchType === 'all'
+                          ? 'bg-orange-500 text-white'
+                          : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200'
+                      }`}
+                    >
+                      All Orders
+                    </button>
+                    <button
+                      onClick={() => handleSearchTypeChange('single')}
+                      className={`px-3 py-1.5 rounded-lg text-sm font-medium transition ${
+                        searchType === 'single'
+                          ? 'bg-orange-500 text-white'
+                          : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200'
+                      }`}
+                    >
+                      Single Date
+                    </button>
+                    <button
+                      onClick={() => handleSearchTypeChange('range')}
+                      className={`px-3 py-1.5 rounded-lg text-sm font-medium transition ${
+                        searchType === 'range'
+                          ? 'bg-orange-500 text-white'
+                          : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200'
+                      }`}
+                    >
+                      Date Range
+                    </button>
+                  </div>
+                  
+                  <div className="flex flex-wrap gap-3">
+                    {searchType === 'single' && (
+                      <input
+                        type="date"
+                        value={singleDate}
+                        onChange={(e) => setSingleDate(e.target.value)}
+                        className="px-3 py-2 rounded-lg border border-gray-200 bg-white text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent"
+                      />
+                    )}
+                    {searchType === 'range' && (
+                      <>
+                        <input
+                          type="date"
+                          value={dateFrom}
+                          onChange={(e) => setDateFrom(e.target.value)}
+                          placeholder="From"
+                          className="px-3 py-2 rounded-lg border border-gray-200 bg-white text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent"
+                        />
+                        <input
+                          type="date"
+                          value={dateTo}
+                          onChange={(e) => setDateTo(e.target.value)}
+                          placeholder="To"
+                          className="px-3 py-2 rounded-lg border border-gray-200 bg-white text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent"
+                        />
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                {/* Orders Display */}
+                {agentOrdersLoading ? (
+                  <div className="p-8 text-center text-gray-500">
+                    Loading orders...
+                  </div>
+                ) : searchType === 'single' && !singleDate ? (
+                  <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-8 text-center">
+                    <FiCalendar className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                    <p className="text-gray-500">Please select a date to search orders</p>
+                  </div>
+                ) : searchType === 'range' && (!dateFrom || !dateTo) ? (
+                  <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-8 text-center">
+                    <FiCalendar className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                    <p className="text-gray-500">Please select both from and to dates to search orders</p>
+                  </div>
+                ) : agentOrders?.orders?.data?.length > 0 ? (
+                  <div className="space-y-4">
+                    {agentOrders.orders.data.map((order) => (
+                      <div
+                        key={order.id}
+                        className="p-4 bg-gray-50 rounded-xl border border-gray-100"
+                      >
+                        <div className="flex items-start justify-between mb-3">
+                          <div className="flex items-center gap-2">
+                            <FiShoppingBag className="w-4 h-4 text-gray-400" />
+                            <span className="font-bold text-gray-900">
+                              #{order.order_number}
+                            </span>
+                          </div>
+                          <span
+                            className={`px-2.5 py-1 rounded-full text-xs font-medium ${getStatusColor(order.status)}`}
+                          >
+                            {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
+                          </span>
+                        </div>
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
+                          <div>
+                            <p className="text-xs text-gray-500 mb-1">Customer</p>
+                            <p className="text-sm font-medium text-gray-900">{order.customer_name}</p>
+                            <p className="text-xs text-gray-600">{order.customer_phone}</p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-gray-500 mb-1">Delivery Address</p>
+                            <p className="text-sm text-gray-900">{order.delivery_address}</p>
+                            <p className="text-xs text-gray-600">
+                              {order.delivery_zone?.city?.state?.name}, {order.delivery_zone?.city?.name}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="space-y-2 mb-3">
+                          {order.order_items?.map((item) => (
+                            <div
+                              key={item.id}
+                              className="flex justify-between text-sm"
+                            >
+                              <span className="text-gray-600">
+                                <span className="text-gray-400 mr-2">
+                                  {item.quantity}x
+                                </span>
+                                {item.menu?.name}
+                              </span>
+                              <span className="font-medium text-gray-900">
+                                {new Intl.NumberFormat("en-NG", {
+                                  style: "currency",
+                                  currency: "NGN",
+                                  minimumFractionDigits: 0,
+                                }).format(Math.ceil(item.subtotal))}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+
+                        <div className="flex items-center justify-between pt-3 border-t border-gray-200">
+                          <div className="text-xs text-gray-500">
+                            {new Date(order.created_at).toLocaleDateString(
+                              "en-US",
+                              {
+                                year: "numeric",
+                                month: "short",
+                                day: "numeric",
+                              },
+                            )}{" "}
+                            • Assigned: {new Date(order.assigned_at).toLocaleTimeString(
+                              "en-US",
+                              {
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              }
+                            )}
+                            {order.completed_at && (
+                              <> • Completed: {new Date(order.completed_at).toLocaleTimeString(
+                                "en-US",
+                                {
+                                  hour: '2-digit',
+                                minute: '2-digit'
+                                }
+                              )}</>
+                            )}
+                            {order.completion_time_minutes && (
+                              <> • {order.completion_time_minutes.toFixed(1)} min</>
+                            )}
+                          </div>
+                          <span className="text-lg font-bold text-orange-500">
+                            {new Intl.NumberFormat("en-NG", {
+                              style: "currency",
+                              currency: "NGN",
+                              minimumFractionDigits: 0,
+                            }).format(Math.ceil(order.final_amount))}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                    
+                    {/* Pagination */}
+                    {agentOrders.orders.last_page > 1 && (
+                      <div className="flex items-center justify-between pt-4 border-t border-gray-200">
+                        <div className="text-sm text-gray-500">
+                          Showing {agentOrders.orders.from}-{agentOrders.orders.to} of {agentOrders.orders.total} orders
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => handlePageChange(agentOrders.orders.current_page - 1)}
+                            disabled={agentOrders.orders.current_page === 1}
+                            className="px-3 py-1.5 rounded-lg text-sm font-medium border border-gray-200 text-gray-600 hover:bg-gray-100 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            Previous
+                          </button>
+                          <span className="text-sm text-gray-600 px-2">
+                            Page {agentOrders.orders.current_page} of {agentOrders.orders.last_page}
+                          </span>
+                          <button
+                            onClick={() => handlePageChange(agentOrders.orders.current_page + 1)}
+                            disabled={agentOrders.orders.current_page === agentOrders.orders.last_page}
+                            className="px-3 py-1.5 rounded-lg text-sm font-medium border border-gray-200 text-gray-600 hover:bg-gray-100 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            Next
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-8 text-center">
+                    <FiShoppingBag className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                    <p className="text-gray-500">No orders found</p>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Primary Address */}
             {(user.street_address || user.state || user.postal_code) && (
@@ -891,7 +1216,7 @@ const SingleUser = () => {
           </div>
         </div>
 
-        {user.orders && user.orders.length === 0 && (
+        {user.role !== 'delivery_agent' && user.orders && user.orders.length === 0 && (
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-8 text-center">
             <FiShoppingBag className="w-12 h-12 text-gray-300 mx-auto mb-3" />
             <p className="text-gray-500">No orders yet</p>

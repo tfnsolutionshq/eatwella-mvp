@@ -61,6 +61,14 @@ const CreateOrder = () => {
   const [loadingPackaging, setLoadingPackaging] = useState(false);
   const [openPackagingDropdown, setOpenPackagingDropdown] = useState(null);
 
+  // User registration state
+  const [userType, setUserType] = useState("unregistered");
+  const [userSearchEmail, setUserSearchEmail] = useState("");
+  const [userSearchResults, setUserSearchResults] = useState([]);
+  const [loadingUserSearch, setLoadingUserSearch] = useState(false);
+  const [selectedUser, setSelectedUser] = useState(null);
+  const [openUserDropdown, setOpenUserDropdown] = useState(null);
+
   useEffect(() => {
     fetchCategories();
     fetchPackagingOptions();
@@ -71,6 +79,9 @@ const CreateOrder = () => {
     const handleClickOutside = (e) => {
       if (!e.target.closest("[data-packaging-dropdown]")) {
         setOpenPackagingDropdown(null);
+      }
+      if (!e.target.closest("[data-user-dropdown]")) {
+        setOpenUserDropdown(null);
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
@@ -85,7 +96,7 @@ const CreateOrder = () => {
           ...item,
           packaging_id: null,
           packaging: null,
-        }))
+        })),
       );
     }
   }, [orderType]);
@@ -134,6 +145,90 @@ const CreateOrder = () => {
     } finally {
       setLoadingPackaging(false);
     }
+  };
+
+  const searchUsers = async (email) => {
+    if (!email.trim()) {
+      setUserSearchResults([]);
+      return;
+    }
+
+    setLoadingUserSearch(true);
+    try {
+      const { data } = await api.get(`/admin/users?search=${email.trim()}`);
+      setUserSearchResults(data.data || []);
+    } catch (err) {
+      console.error("Failed to search users:", err);
+      setUserSearchResults([]);
+    } finally {
+      setLoadingUserSearch(false);
+    }
+  };
+
+  const handleUserSearchChange = (e) => {
+    const email = e.target.value;
+    setUserSearchEmail(email);
+
+    // Clear selected user when email changes
+    if (selectedUser) {
+      setSelectedUser(null);
+      setFormData({
+        ...formData,
+        customerName: "",
+        customerEmail: "",
+      });
+    }
+
+    // Clear search results when input changes
+    setUserSearchResults([]);
+  };
+
+  const handleUserSearch = async () => {
+    if (!userSearchEmail.trim()) {
+      showToast("Please enter an email to search", "error");
+      return;
+    }
+
+    setLoadingUserSearch(true);
+    try {
+      const { data } = await api.get(
+        `/admin/users?search=${userSearchEmail.trim()}`,
+      );
+      setUserSearchResults(data.data || []);
+
+      if (data.data?.length === 0) {
+        showToast("No users found with that email", "error");
+      }
+    } catch (err) {
+      console.error("Failed to search users:", err);
+      setUserSearchResults([]);
+      showToast("Failed to search users", "error");
+    } finally {
+      setLoadingUserSearch(false);
+    }
+  };
+
+  const selectUser = (user) => {
+    setSelectedUser(user);
+    setFormData({
+      ...formData,
+      customerName: user.name,
+      customerEmail: user.email,
+    });
+    setUserSearchEmail(user.email);
+    setUserSearchResults([]);
+    setOpenUserDropdown(null);
+  };
+
+  const clearSelectedUser = () => {
+    setSelectedUser(null);
+    setUserSearchEmail("");
+    setUserSearchResults([]);
+    setFormData({
+      ...formData,
+      customerName: "",
+      customerEmail: "",
+    });
   };
 
   const handleCategoryChange = (categoryId) => {
@@ -242,8 +337,9 @@ const CreateOrder = () => {
   // ── Checkout ────────────────────────────────────────────────────────────────
 
   const handleCheckout = async () => {
-    if (!formData.customerName || !formData.customerEmail) {
-      showToast("Please fill in customer details", "error");
+    // Validate user selection
+    if (userType === "registered" && !selectedUser) {
+      showToast("Please select a registered user", "error");
       return;
     }
 
@@ -265,14 +361,21 @@ const CreateOrder = () => {
       const orderData = {
         order_type: orderType,
         payment_type: paymentMode,
-        customer_name: formData.customerName,
-        customer_email: formData.customerEmail,
+        customer_name: selectedUser ? selectedUser.name : formData.customerName,
+        customer_email: selectedUser
+          ? selectedUser.email
+          : formData.customerEmail,
         items: cart.map((item) => ({
           menu_id: item.menu.id,
           quantity: item.quantity,
           packaging_id: item.packaging_id ?? null,
         })),
       };
+
+      // Add user ID if registered user is selected
+      if (userType === "registered" && selectedUser) {
+        orderData.user_id = selectedUser.id;
+      }
 
       // Add POS service and bank account details
       if (paymentMode === "POS") {
@@ -289,11 +392,17 @@ const CreateOrder = () => {
         orderData.delivery_zone_id = 1;
       }
 
-      console.log("Here we are: ", orderData);
-
       await api.post("/checkout", orderData);
       showToast("Order created successfully!");
-      navigate("/attendant/orders");
+      if (user.role === "attendant") {
+        navigate("/attendant/orders");
+      }
+      if (user.role === "admin") {
+        navigate("/admin/orders");
+      }
+      if (user.role === "supervisor") {
+        navigate("/supervisor/orders");
+      }
     } catch (err) {
       showToast(
         err.response?.data?.message || "Failed to create order",
@@ -411,18 +520,18 @@ const CreateOrder = () => {
                         key={menu.id}
                         className="border border-gray-200 rounded-xl hover:border-orange-500 transition-colors"
                       >
-                        <div className="flex gap-3 p-3 min-w-0">                          
-                            {menu.images && menu.images.length > 0 && (
-                              <img
-                                src={menu.images[0]}
-                                alt={menu.name}
-                                className="w-16 h-16 lg:w-20 lg:h-20 object-cover rounded-lg flex-shrink-0"
-                                onError={(e) => {
-                                  e.target.src =
-                                    "https://via.placeholder.com/80x80";
-                                }}
-                              />
-                            )}                          
+                        <div className="flex gap-3 p-3 min-w-0">
+                          {menu.images && menu.images.length > 0 && (
+                            <img
+                              src={menu.images[0]}
+                              alt={menu.name}
+                              className="w-16 h-16 lg:w-20 lg:h-20 object-cover rounded-lg flex-shrink-0"
+                              onError={(e) => {
+                                e.target.src =
+                                  "https://via.placeholder.com/80x80";
+                              }}
+                            />
+                          )}
                           <div className="flex-1 min-w-0 overflow-hidden">
                             <div className="flex justify-between items-start gap-2 mb-1">
                               <h3 className="font-bold text-gray-900 text-xs lg:text-sm truncate flex-1 min-w-0">
@@ -699,6 +808,144 @@ const CreateOrder = () => {
                 Order Details
               </h2>
               <div className="space-y-3 lg:space-y-4">
+                {/* User Type Selection */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Customer Type
+                  </label>
+                  <div className="flex flex-col gap-2">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="userType"
+                        value="registered"
+                        checked={userType === "registered"}
+                        onChange={(e) => {
+                          setUserType(e.target.value);
+                          clearSelectedUser();
+                        }}
+                        className="w-4 h-4 text-orange-500 focus:ring-orange-300 border-gray-300"
+                      />
+                      <span className="text-sm text-gray-700">
+                        Registered User
+                      </span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="userType"
+                        value="unregistered"
+                        checked={userType === "unregistered"}
+                        onChange={(e) => {
+                          setUserType(e.target.value);
+                          clearSelectedUser();
+                        }}
+                        className="w-4 h-4 text-orange-500 focus:ring-orange-300 border-gray-300"
+                      />
+                      <span className="text-sm text-gray-700">
+                        Unregistered User
+                      </span>
+                    </label>
+                  </div>
+                </div>
+
+                {/* User Search for Registered Users */}
+                {userType === "registered" && (
+                  <div className="relative" data-user-dropdown>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Search Registered User
+                    </label>
+                    <div className="flex gap-2">
+                      <div className="relative flex-1">
+                        <input
+                          type="email"
+                          value={userSearchEmail}
+                          onChange={handleUserSearchChange}
+                          placeholder="Enter user email..."
+                          className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2.5 px-4 text-sm text-gray-900 focus:ring-2 focus:ring-orange-100 focus:border-orange-500 outline-none"
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleUserSearch}
+                        disabled={loadingUserSearch || !userSearchEmail.trim()}
+                        className="px-4 py-2.5 bg-orange-500 text-white rounded-xl text-sm font-medium hover:bg-orange-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed touch-manipulation flex items-center gap-2"
+                      >
+                        {loadingUserSearch ? (
+                          <>
+                            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                            Searching...
+                          </>
+                        ) : (
+                          "Search"
+                        )}
+                      </button>
+                    </div>
+
+                    {/* User Search Results Dropdown */}
+                    {userSearchResults.length > 0 && (
+                      <div className="absolute z-50 mt-1 w-full bg-white border border-gray-100 rounded-xl shadow-xl max-h-48 overflow-y-auto left-0 right-0">
+                        {userSearchResults.map((user) => (
+                          <button
+                            key={user.id}
+                            type="button"
+                            onClick={() => selectUser(user)}
+                            className="w-full px-3 py-3 text-left flex items-center justify-between hover:bg-orange-50 transition-colors touch-manipulation border-b border-gray-50 last:border-b-0"
+                          >
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs font-medium text-gray-900 truncate">
+                                {user.name}
+                              </p>
+                              <p className="text-xs text-gray-500 truncate">
+                                {user.email}
+                              </p>
+                              {user.phone && (
+                                <p className="text-xs text-gray-400 truncate">
+                                  {user.phone}
+                                </p>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-2 shrink-0 ml-2">
+                              {user.loyalty_points > 0 && (
+                                <span className="text-xs font-bold text-orange-500 bg-orange-50 px-2 py-1 rounded">
+                                  {user.loyalty_points} pts
+                                </span>
+                              )}
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Selected User Display */}
+                {selectedUser && (
+                  <div className="p-3 bg-orange-50 border border-orange-200 rounded-xl">
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-gray-900 truncate">
+                          {selectedUser.name}
+                        </p>
+                        <p className="text-xs text-gray-600 truncate">
+                          {selectedUser.email}
+                        </p>
+                        {selectedUser.phone && (
+                          <p className="text-xs text-gray-500 truncate">
+                            {selectedUser.phone}
+                          </p>
+                        )}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={clearSelectedUser}
+                        className="p-1.5 hover:bg-orange-100 text-orange-600 rounded-lg touch-manipulation ml-2"
+                      >
+                        <FiTrash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                )}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Order Type
@@ -712,37 +959,6 @@ const CreateOrder = () => {
                     <option value="pickup">Pickup</option>
                     <option value="delivery">Delivery</option>
                   </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Customer Name
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.customerName}
-                    onChange={(e) =>
-                      setFormData({ ...formData, customerName: e.target.value })
-                    }
-                    className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2.5 px-4 text-sm text-gray-900 focus:ring-2 focus:ring-orange-100 focus:border-orange-500 outline-none"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Email
-                  </label>
-                  <input
-                    type="email"
-                    value={formData.customerEmail}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        customerEmail: e.target.value,
-                      })
-                    }
-                    className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2.5 px-4 text-sm text-gray-900 focus:ring-2 focus:ring-orange-100 focus:border-orange-500 outline-none"
-                  />
                 </div>
 
                 <div>

@@ -23,6 +23,7 @@ import CareerOpenings from "./Pages/Admin/CareerOpenings";
 import LoyaltySettings from "./Pages/Admin/LoyaltySettings";
 import AllUsers from "./Pages/Admin/AllUsers";
 import SingleUser from "./Pages/Admin/SingleUser";
+import BankDetails from "./Pages/Admin/BankDetails";
 import Payments from "./Pages/Admin/Payments";
 import TaxAndVat from "./Pages/Admin/TaxAndVat";
 import CreateOrder from "./Pages/Admin/CreateOrder";
@@ -126,6 +127,7 @@ function AppRoutes() {
         <Route element={<StaffGuard />}>
           <Route path={`${p}/create-order`} element={<CreateOrder />} />
           <Route path={`${p}/orders`} element={<OrderManagement />} />
+          <Route path="/admin/bank-details" element={<BankDetails />} />
         </Route>
 
         <Route path="*" element={<NotFound />} />
