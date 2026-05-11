@@ -39,6 +39,8 @@ function CartItems() {
   const [addingToCart, setAddingToCart] = useState({});
   const [packagingOptions, setPackagingOptions] = useState([]);
   const [packagingLoading, setPackagingLoading] = useState(true);
+  const [availabilitySettings, setAvailabilitySettings] = useState(null);
+  const [availabilityLoading, setAvailabilityLoading] = useState(true);
 
   const cartItems = cart?.items || [];
 
@@ -54,7 +56,89 @@ function CartItems() {
 
   useEffect(() => {
     fetchPackagingOptions();
+    fetchAvailabilitySettings();
   }, []);
+
+  // Auto-select first available order type when availability settings are loaded
+  useEffect(() => {
+    if (!availabilityLoading && availabilitySettings) {
+      const availableTypes = getAvailableOrderTypes();
+      if (availableTypes.length > 0 && !availableTypes.find(type => type.key === selectedOrderType)) {
+        setSelectedOrderType(availableTypes[0].key);
+      }
+    }
+  }, [availabilityLoading, availabilitySettings, selectedOrderType]);
+
+  const fetchAvailabilitySettings = async () => {
+    try {
+      const res = await api.get("/availability-hours");
+      setAvailabilitySettings(res.data?.availability_hours || []);
+    } catch (err) {
+      console.error("Failed to fetch availability settings:", err);
+    } finally {
+      setAvailabilityLoading(false);
+    }
+  };
+
+  const getAvailableOrderTypes = () => {
+    if (!availabilitySettings || availabilityLoading) {
+      return [
+        {
+          key: "dine-in",
+          label: "Dine-in",
+          desc: "Enjoy your meal at our restaurant",
+          Icon: MdHome,
+        },
+        {
+          key: "pickup",
+          label: "Pickup",
+          desc: "Pickup your order from restaurant",
+          Icon: MdRestaurant,
+        },
+        {
+          key: "delivery",
+          label: "Delivery",
+          desc: "We'll deliver to your address",
+          Icon: MdDeliveryDining,
+        },
+      ];
+    }
+
+    const today = new Date().toLocaleDateString('en-US', { weekday: 'long' });
+    const todaySettings = availabilitySettings.find(setting => setting.day === today);
+    
+    if (!todaySettings || !todaySettings.enabled) {
+      return [];
+    }
+
+    const orderTypes = [];
+    if (todaySettings.order_types?.dine) {
+      orderTypes.push({
+        key: "dine-in",
+        label: "Dine-in",
+        desc: "Enjoy your meal at our restaurant",
+        Icon: MdHome,
+      });
+    }
+    if (todaySettings.order_types?.pickup) {
+      orderTypes.push({
+        key: "pickup",
+        label: "Pickup",
+        desc: "Pickup your order from restaurant",
+        Icon: MdRestaurant,
+      });
+    }
+    if (todaySettings.order_types?.delivery) {
+      orderTypes.push({
+        key: "delivery",
+        label: "Delivery",
+        desc: "We'll deliver to your address",
+        Icon: MdDeliveryDining,
+      });
+    }
+
+    return orderTypes;
+  };
 
   // Auto-assign default packaging for takeaway items once options are loaded
   useEffect(() => {
@@ -168,6 +252,30 @@ function CartItems() {
     setAddingToCart((prev) => ({ ...prev, [id]: true }));
     try {
       await addToCart(id, 1);
+      
+      // After adding to cart, check if the item requires packaging and auto-assign default packaging
+      if (selectedOrderType !== "dine-in" && packagingOptions.length > 0) {
+        // Wait a moment for the cart to be updated, then fetch the updated cart
+        await new Promise(resolve => setTimeout(resolve, 100));
+        await fetchCart();
+        
+        // Find the newly added item (it will be the last item if it matches our menu ID)
+        const updatedCart = cart?.items || [];
+        const newItem = updatedCart.find(item => item.menu.id === id);
+        
+        if (newItem && newItem.menu.requires_takeaway && !newItem.packaging) {
+          const defaultPackaging = packagingOptions[0];
+          if (defaultPackaging) {
+            const result = await updateCartItem(newItem.id, newItem.quantity, defaultPackaging.id);
+            if (!result.success) {
+              console.error("Failed to set default packaging for new item:", result.message);
+            } else {
+              // Refresh the cart again to ensure the price is updated with packaging
+              await fetchCart();
+            }
+          }
+        }
+      }
     } catch (err) {
       console.error("Failed to add to cart:", err);
     } finally {
@@ -567,44 +675,46 @@ function CartItems() {
         <div className="grid lg:grid-cols-2 gap-8 items-stretch">
           <div className="bg-white rounded-3xl p-6 overflow-y-auto h-[400px]">
             <h3 className="font-black text-xl mb-6">Select Order Type</h3>
-            {[
-              {
-                key: "dine-in",
-                label: "Dine-in",
-                desc: "Enjoy your meal at our restaurant",
-                Icon: MdHome,
-              },
-              {
-                key: "pickup",
-                label: "Pickup",
-                desc: "Pickup your order from the restaurant",
-                Icon: MdRestaurant,
-              },
-              {
-                key: "delivery",
-                label: "Delivery",
-                desc: "We'll deliver to your address",
-                Icon: MdDeliveryDining,
-              },
-            ].map(({ key, label, desc, Icon }) => (
-              <div
-                key={key}
-                onClick={() => setSelectedOrderType(key)}
-                className={`p-4 rounded-2xl mb-4 cursor-pointer border-2 transition-colors ${
-                  selectedOrderType === key
-                    ? "border-orange-500 bg-orange-50"
-                    : "border-gray-200"
-                }`}
-              >
-                <div className="flex items-center gap-3">
-                  <Icon className="text-orange-500 text-2xl" />
-                  <div>
-                    <h4 className="font-bold">{label}</h4>
-                    <p className="text-sm text-gray-600">{desc}</p>
+            {availabilityLoading ? (
+              <div className="space-y-4">
+                {[...Array(3)].map((_, i) => (
+                  <div key={i} className="p-4 rounded-2xl border-2 border-gray-200">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 bg-gray-200 rounded-lg animate-pulse" />
+                      <div className="flex-1">
+                        <div className="h-4 w-24 bg-gray-200 rounded animate-pulse mb-2" />
+                        <div className="h-3 w-32 bg-gray-200 rounded animate-pulse" />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : getAvailableOrderTypes().length === 0 ? (
+              <div className="text-center py-8">
+                <p className="text-gray-500 text-sm mb-2">No order types available today</p>
+                <p className="text-gray-400 text-xs">Please check back during operating hours</p>
+              </div>
+            ) : (
+              getAvailableOrderTypes().map(({ key, label, desc, Icon }) => (
+                <div
+                  key={key}
+                  onClick={() => setSelectedOrderType(key)}
+                  className={`p-4 rounded-2xl mb-4 cursor-pointer border-2 transition-colors ${
+                    selectedOrderType === key
+                      ? "border-orange-500 bg-orange-50"
+                      : "border-gray-200"
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <Icon className="text-orange-500 text-2xl" />
+                    <div>
+                      <h4 className="font-bold">{label}</h4>
+                      <p className="text-sm text-gray-600">{desc}</p>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              ))
+            )}
           </div>
 
           <div className="bg-white rounded-3xl p-6 overflow-y-auto h-[400px] flex flex-col justify-between">

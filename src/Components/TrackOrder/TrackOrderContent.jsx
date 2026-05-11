@@ -98,7 +98,7 @@ function TrackOrderContent() {
 
     const interval = setInterval(() => {
       fetchOrderById(formData.orderId);
-    }, 60000);
+    }, 30000);
 
     return () => clearInterval(interval);
   }, [step, formData.orderId]);
@@ -345,7 +345,7 @@ function TrackOrderContent() {
               {
                 icon: Package,
                 label: "Order Type",
-                value: orderData.order_type,
+                value: orderData.order_type === "dine" ? "Dine-In" : orderData.order_type,
                 capitalize: true,
               },
               { icon: Mail, label: "Email", value: orderData.customer_email },

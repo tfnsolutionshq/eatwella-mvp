@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { FiX, FiUser, FiMail, FiLock } from "react-icons/fi";
+import { FiX, FiUser, FiMail, FiLock, FiEye, FiEyeOff } from "react-icons/fi";
 import api from "../../utils/api";
 
 const AddStaffModal = ({ isOpen, onClose, onSuccess }) => {
@@ -11,6 +11,7 @@ const AddStaffModal = ({ isOpen, onClose, onSuccess }) => {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -129,15 +130,22 @@ const AddStaffModal = ({ isOpen, onClose, onSuccess }) => {
             <div className="relative">
               <FiLock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
               <input
-                type="password"
+                type={showPassword ? "text" : "password"}
                 value={formData.password}
                 onChange={(e) =>
                   setFormData({ ...formData, password: e.target.value })
                 }
                 placeholder="Enter password"
                 required
-                className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2.5 pl-10 pr-4 text-sm text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-orange-100 focus:border-orange-500 outline-none"
+                className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2.5 pl-10 pr-12 text-sm text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-orange-100 focus:border-orange-500 outline-none"
               />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                {showPassword ? <FiEyeOff className="w-5 h-5" /> : <FiEye className="w-5 h-5" />}
+              </button>
             </div>
           </div>
 

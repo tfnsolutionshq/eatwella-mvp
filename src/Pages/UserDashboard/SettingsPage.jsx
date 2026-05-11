@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useAuth } from "../../context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { ModalWrapper, ErrorBanner } from "../../Components/UserDashboard/shared";
+import { FiEye, FiEyeOff } from "react-icons/fi";
 import api from "../../utils/api";
 import { useToast } from "../../context/ToastContext";
 
@@ -19,6 +20,9 @@ function SettingsPage() {
   const [deletePassword, setDeletePassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showDeletePasswordVisible, setShowDeletePasswordVisible] = useState(false);
 
   const handleChangePassword = async (e) => {
     e.preventDefault();
@@ -102,18 +106,28 @@ function SettingsPage() {
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     {label}
                   </label>
-                  <input
-                    type="password"
-                    value={passwordData[key]}
-                    onChange={(e) =>
-                      setPasswordData({
-                        ...passwordData,
-                        [key]: e.target.value,
-                      })
-                    }
-                    required
-                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-orange-500"
-                  />
+                  <div className="relative">
+                    <input
+                      type={key === "current_password" ? (showCurrentPassword ? "text" : "password") : (showNewPassword ? "text" : "password")}
+                      value={passwordData[key]}
+                      onChange={(e) =>
+                        setPasswordData({
+                          ...passwordData,
+                          [key]: e.target.value,
+                        })
+                      }
+                      placeholder={key === "current_password" ? "Enter current password" : "Enter new password"}
+                      required
+                      className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-orange-500 pr-12"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => key === "current_password" ? setShowCurrentPassword(!showCurrentPassword) : setShowNewPassword(!showNewPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                    >
+                      {key === "current_password" ? (showCurrentPassword ? <FiEyeOff className="w-5 h-5" /> : <FiEye className="w-5 h-5" />) : (showNewPassword ? <FiEyeOff className="w-5 h-5" /> : <FiEye className="w-5 h-5" />)}
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -164,13 +178,22 @@ function SettingsPage() {
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Password
                 </label>
-                <input
-                  type="password"
-                  value={deletePassword}
-                  onChange={(e) => setDeletePassword(e.target.value)}
-                  required
-                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-red-500"
-                />
+                <div className="relative">
+                  <input
+                    type={showDeletePasswordVisible ? "text" : "password"}
+                    value={deletePassword}
+                    onChange={(e) => setDeletePassword(e.target.value)}
+                    required
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-red-500 pr-12"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowDeletePasswordVisible(!showDeletePasswordVisible)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                  >
+                    {showDeletePasswordVisible ? <FiEyeOff className="w-5 h-5" /> : <FiEye className="w-5 h-5" />}
+                  </button>
+                </div>
               </div>
             </div>
             <div className="p-6 border-t border-gray-100 flex gap-3">

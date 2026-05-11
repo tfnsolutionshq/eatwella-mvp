@@ -78,7 +78,7 @@ function TestimonialSection() {
   useEffect(() => {
     const interval = setInterval(() => {
       nextSlide()
-    }, 5000)
+    }, 30000)
     return () => clearInterval(interval)
   }, [activeIndex, itemsPerPage])
 

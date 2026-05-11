@@ -16,6 +16,21 @@ import {
   FiBell,
 } from "react-icons/fi";
 import { MdRestaurant, MdQrCodeScanner } from "react-icons/md";
+import { 
+  Building, 
+  DollarSign, 
+  Tag, 
+  FileText, 
+  UserCheck, 
+  Map, 
+  MapPin,
+  Store, 
+  Receipt,
+  Shield,
+  TrendingUp,
+  Utensils,
+  Badge
+} from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useState } from "react";
 import { useAuth } from "../context/AuthContext";
@@ -47,14 +62,14 @@ export default function Sidebar({ isOpen, onToggle }) {
     {
       id: "bank-details",
       label: "Bank Details",
-      icon: FiCreditCard,
+      icon: Building,
       path: "/admin/bank-details",
       roles: ["delivery_agent"],
     },
     {
       id: "menu",
       label: "Menu Management",
-      icon: MdRestaurant,
+      icon: Utensils,
       path: "/admin/menu",
       roles: ["admin"],
     },
@@ -75,7 +90,7 @@ export default function Sidebar({ isOpen, onToggle }) {
     {
       id: "locations",
       label: "Locations",
-      icon: FiMapPin,
+      icon: MapPin,
       path: "/admin/locations",
       roles: ["admin"],
     },
@@ -89,21 +104,21 @@ export default function Sidebar({ isOpen, onToggle }) {
     {
       id: "vacancies",
       label: "Vacancies",
-      icon: FiBriefcase,
+      icon: UserCheck,
       path: "/admin/careers",
       roles: ["admin"],
     },
     {
       id: "career-openings",
       label: "Career Openings",
-      icon: FiBriefcase,
+      icon: TrendingUp,
       path: "/admin/career-openings",
       roles: ["admin"],
     },
     {
       id: "loyalty-settings",
       label: "Loyalty Settings",
-      icon: FiAward,
+      icon: Badge,
       path: "/admin/loyalty-settings",
       roles: ["admin"],
     },
@@ -124,21 +139,21 @@ export default function Sidebar({ isOpen, onToggle }) {
     {
       id: "payments",
       label: "Payments",
-      icon: FiCreditCard,
+      icon: Receipt,
       path: `${p}/payments`,
       roles: ["admin"],
     },
     {
       id: "tax-vat",
       label: "Tax & VAT",
-      icon: FiPercent,
+      icon: FileText,
       path: "/admin/tax-vat",
       roles: ["admin"],
     },
     {
       id: "discounts",
       label: "Discounts",
-      icon: FiPercent,
+      icon: Tag,
       path: "/admin/discounts",
       roles: ["admin"],
     },

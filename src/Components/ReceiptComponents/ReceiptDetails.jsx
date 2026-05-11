@@ -158,6 +158,12 @@ function ReceiptDetails() {
     return "bg-yellow-100 text-yellow-700";
   })();
 
+  // Format phone number: replace +234 with 0 for display
+  const formatPhoneNumber = (phone) => {
+    if (!phone) return "N/A";
+    return phone.replace(/^\+234/, '0');
+  };
+
   // ── Loading state ──
   if (isLoading) {
     return (
@@ -358,7 +364,7 @@ function ReceiptDetails() {
             <div className="flex justify-between">
               <span className="text-gray-500">Phone:</span>
               <span className="text-gray-900">
-                {order.customer_phone || "N/A"}
+                {formatPhoneNumber(order.customer_phone)}
               </span>
             </div>
             {order.table_number && (
@@ -398,17 +404,31 @@ function ReceiptDetails() {
               </div>
             ))}
           </div>
-          <div className="flex justify-between font-semibold mt-4">
-            <span>Tax Charges:</span>
-            <span>
-              {new Intl.NumberFormat("en-NG", {
-                style: "currency",
-                currency: "NGN",
-                minimumFractionDigits: 0,
-              }).format(order.tax_details.VAT.amount)}{" "}
-              ({order.tax_details.VAT.type})
-            </span>
-          </div>
+          {order.delivery_fee && order.order_type === "delivery" && (
+            <div className="flex justify-between font-semibold mt-4">
+              <span>Delivery Fee:</span>
+              <span>
+                {new Intl.NumberFormat("en-NG", {
+                  style: "currency",
+                  currency: "NGN",
+                  minimumFractionDigits: 0,
+                }).format(order.delivery_fee)}
+              </span>
+            </div>
+          )}
+          {order.tax_details?.VAT && (
+            <div className="flex justify-between font-semibold mt-4">
+              <span>Tax Charges:</span>
+              <span>
+                {new Intl.NumberFormat("en-NG", {
+                  style: "currency",
+                  currency: "NGN",
+                  minimumFractionDigits: 0,
+                }).format(order.tax_details.VAT.amount)}{" "}
+                ({order.tax_details.VAT.type})
+              </span>
+            </div>
+          )}
         </div>
 
         <div className="border-t pt-4 mb-4">
@@ -419,7 +439,7 @@ function ReceiptDetails() {
                 style: "currency",
                 currency: "NGN",
                 minimumFractionDigits: 0,
-              }).format(subtotal + (order.tax_details?.VAT?.amount ?? 0))}
+              }).format(subtotal + (order.order_type === "delivery" ? Number(order.delivery_fee ?? 0) : 0) + Number(order.tax_details?.VAT?.amount ?? 0))}
             </span>
           </div>
           <div className="flex justify-between font-semibold">

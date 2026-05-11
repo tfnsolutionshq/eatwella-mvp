@@ -253,6 +253,9 @@ const OrderManagement = () => {
   // Separate loading state for "Start Processing" actions (keyed by order ID)
   const [processingIds, setProcessingIds] = useState(new Set());
 
+  // Separate loading state for "Mark as Ready" actions (keyed by order ID)
+  const [markingReadyIds, setMarkingReadyIds] = useState(new Set());
+
   // Separate loading state for "Mark as Completed" actions (keyed by order ID)
   const [completingIds, setCompletingIds] = useState(new Set());
 
@@ -298,6 +301,15 @@ const OrderManagement = () => {
       return next;
     });
 
+  const setMarkingReady = (id) =>
+    setMarkingReadyIds((prev) => new Set(prev).add(id));
+  const clearMarkingReady = (id) =>
+    setMarkingReadyIds((prev) => {
+      const next = new Set(prev);
+      next.delete(id);
+      return next;
+    });
+
   const setCompleting = (id) =>
     setCompletingIds((prev) => new Set(prev).add(id));
   const clearCompleting = (id) =>
@@ -332,7 +344,7 @@ const OrderManagement = () => {
   useEffect(() => {
     const interval = setInterval(() => {
       fetchOrders(true);
-    }, 60000);
+    }, 30000);
     return () => clearInterval(interval);
   }, [page, activeTab, user.role, searchQuery]);
 
@@ -714,7 +726,7 @@ const OrderManagement = () => {
       }
     } catch (err) {
       setPinError(
-        err.response?.data?.message || "Incorrect PIN. Please try again.",
+        err.response?.data?.message || "Incorrect PIN. Please try again",
       );
     } finally {
       setIsVerifyingPin(false);
@@ -781,13 +793,14 @@ const OrderManagement = () => {
 
   // ── Status updates ─────────────────────────────────────────────────────────
 
-  const handleStatusUpdate = async (order) => {
+  const handleStatusUpdate = async (order, actionType) => {
     const { id: orderId, status } = order;
 
-    // Use different loading states based on the action
-    const isProcessingAction = status === "confirmed";
-    if (isProcessingAction) {
+    // Use different loading states based on the action type
+    if (actionType === "processing") {
       setProcessing(orderId);
+    } else if (actionType === "ready") {
+      setMarkingReady(orderId);
     } else {
       setChanging(orderId);
     }
@@ -802,7 +815,15 @@ const OrderManagement = () => {
           showToast("Order marked as ready", "success");
         }
       } else if (user.role === "admin") {
-        const nextStatus = status === "confirmed" ? "processing" : "ready";
+        let nextStatus;
+        if (actionType === "processing") {
+          nextStatus = "processing";
+        } else if (actionType === "ready") {
+          nextStatus = "ready";
+        } else {
+          // Default fallback logic
+          nextStatus = status === "confirmed" ? "processing" : "ready";
+        }
         await api.put(`/admin/orders/${orderId}`, { status: nextStatus });
         showToast(
           nextStatus === "processing"
@@ -822,8 +843,10 @@ const OrderManagement = () => {
         "error",
       );
     } finally {
-      if (isProcessingAction) {
+      if (actionType === "processing") {
         clearProcessing(orderId);
+      } else if (actionType === "ready") {
+        clearMarkingReady(orderId);
       } else {
         clearChanging(orderId);
       }
@@ -886,8 +909,9 @@ const OrderManagement = () => {
 
   const renderActionButtons = (order) => {
     const { id, status, order_type } = order;
-    const busy = changingIds.has(id);
+    const busy = changingIds.has(id) || processingIds.has(id) || completingIds.has(id) || sendingToKitchenIds.has(id) || cancellingIds.has(id) || markingReadyIds.has(id);
     const isProcessing = processingIds.has(id);
+    const isMarkingReady = markingReadyIds.has(id);
     const isCompleting = completingIds.has(id);
     const sendingToKitchen = sendingToKitchenIds.has(id);
     const isCancelling = cancellingIds.has(id);
@@ -900,6 +924,9 @@ const OrderManagement = () => {
       if (actionType === "processing") {
         isDisabled = isProcessing;
         loadingText = "Processing...";
+      } else if (actionType === "ready") {
+        isDisabled = isMarkingReady;
+        loadingText = "Marking Ready...";
       } else if (actionType === "completing") {
         isDisabled = isCompleting;
         loadingText = "Completing...";
@@ -927,7 +954,7 @@ const OrderManagement = () => {
     const CancelBtn = ({ onClick }) => (
       <button
         onClick={onClick}
-        disabled={busy || cancellingIds.has(id)}
+        disabled={cancellingIds.has(id)}
         className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-red-500 rounded-xl text-sm font-medium text-white hover:bg-red-600 transition-colors shadow-sm shadow-red-200 disabled:bg-red-500/50 disabled:cursor-not-allowed"
       >
         {cancellingIds.has(id) ? (
@@ -984,7 +1011,8 @@ const OrderManagement = () => {
           <OrangeBtn
             key="ready"
             label="Mark as Ready"
-            onClick={() => handleStatusUpdate(order)}
+            onClick={() => handleStatusUpdate(order, "ready")}
+            actionType="ready"
             icon={PackageCheck}
           />,
         );
@@ -1013,6 +1041,15 @@ const OrderManagement = () => {
             icon={ChefHat}
           />,
         );
+        buttons.push(
+          <OrangeBtn
+            key="ready"
+            label="Mark as Ready"
+            onClick={() => handleStatusUpdate(order, "ready")}
+            actionType="ready"
+            icon={PackageCheck}
+          />,
+        );
         // Admin can also complete confirmed orders directly for counter items
         buttons.push(
           <OrangeBtn
@@ -1029,11 +1066,12 @@ const OrderManagement = () => {
           <OrangeBtn
             key="ready"
             label="Mark as Ready"
-            onClick={() => handleStatusUpdate(order)}
+            onClick={() => handleStatusUpdate(order, "ready")}
+            actionType="ready"
             icon={PackageCheck}
           />,
         );
-      if (status === "ready" && order_type === "delivery")
+      if ((status === "confirmed" || status === "ready") && order_type === "delivery")
         buttons.push(
           <AssignBtn key="assign" onClickFn={() => openAssignModal(order)} />,
         );
@@ -1057,8 +1095,10 @@ const OrderManagement = () => {
           />,
         );
 
-      // Add cancel button for all non-cancelled orders
-      if (status !== "cancelled" && status !== "completed") {
+      // Add cancel button for all non-cancelled orders (except those paid via Paystack/gateway)
+      if (status !== "cancelled" && status !== "completed" && 
+          order.payment_type !== "gateway" && 
+          !order.payment_type?.toLowerCase().includes("paystack")) {
         buttons.push(
           <CancelBtn key="cancel" onClick={() => openCancelModal(order)} />,
         );
@@ -1093,7 +1133,7 @@ const OrderManagement = () => {
           />,
         );
       }
-      if (status === "ready" && order_type === "delivery")
+      if ((status === "confirmed" || status === "ready") && order_type === "delivery")
         buttons.push(
           <AssignBtn key="assign" onClickFn={() => openAssignModal(order)} />,
         );
@@ -1135,6 +1175,15 @@ const OrderManagement = () => {
         buttons.push(<SendToKitchenBtn key="send-kitchen" />);
         buttons.push(
           <OrangeBtn
+            key="ready"
+            label="Mark as Ready"
+            onClick={() => handleStatusUpdate(order, "ready")}
+            actionType="ready"
+            icon={PackageCheck}
+          />,
+        );
+        buttons.push(
+          <OrangeBtn
             key="complete-confirmed"
             label="Mark as Completed"
             onClick={() => handleCompleteFromConfirmed(id)}
@@ -1143,6 +1192,16 @@ const OrderManagement = () => {
           />,
         );
       }
+      if (status === "processing")
+        buttons.push(
+          <OrangeBtn
+            key="ready"
+            label="Mark as Ready"
+            onClick={() => handleStatusUpdate(order, "ready")}
+            actionType="ready"
+            icon={PackageCheck}
+          />,
+        );
       if (status === "ready" && order_type !== "delivery")
         buttons.push(
           <OrangeBtn

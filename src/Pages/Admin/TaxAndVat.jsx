@@ -228,47 +228,8 @@ const TaxRuleModal = ({
                   className="w-full px-3 py-2 rounded-lg border border-gray-200 focus:border-orange-500 focus:ring-2 focus:ring-orange-100 outline-none transition-all text-sm"
                 />
               </div>
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-gray-700">
-                  Priority (Order)
-                </label>
-                <input
-                  type="number"
-                  value={formData.priority}
-                  onChange={(e) =>
-                    setFormData({ ...formData, priority: e.target.value })
-                  }
-                  placeholder="1"
-                  className="w-full px-3 py-2 rounded-lg border border-gray-200 focus:border-orange-500 focus:ring-2 focus:ring-orange-100 outline-none transition-all text-sm"
-                />
-              </div>
             </div>
 
-            <div className="space-y-1">
-              <label className="text-xs font-bold text-gray-700 block">
-                Tax Calculation Method
-              </label>
-              <div className="flex bg-gray-100 p-1 rounded-lg w-fit">
-                <button
-                  type="button"
-                  onClick={() =>
-                    setFormData({ ...formData, is_inclusive: false })
-                  }
-                  className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all ${!formData.is_inclusive ? "bg-orange-500 text-white shadow-sm" : "text-gray-600 hover:text-gray-900"}`}
-                >
-                  Exclusive
-                </button>
-                <button
-                  type="button"
-                  onClick={() =>
-                    setFormData({ ...formData, is_inclusive: true })
-                  }
-                  className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all ${formData.is_inclusive ? "bg-orange-500 text-white shadow-sm" : "text-gray-600 hover:text-gray-900"}`}
-                >
-                  Inclusive
-                </button>
-              </div>
-            </div>
 
             <div className="flex items-center gap-2 pt-2">
               <label className="flex items-center gap-2 cursor-pointer">

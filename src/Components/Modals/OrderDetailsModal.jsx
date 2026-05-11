@@ -71,7 +71,11 @@ const OrderDetailsModal = ({ isOpen, onClose, order }) => {
     }
   }, [order, paperSize]); // ✅ paperSize added to dependency array
 
-  
+  // Format phone number: replace +234 with 0 for display
+  const formatPhoneNumber = (phone) => {
+    if (!phone) return "N/A";
+    return phone.replace(/^\+234/, '0');
+  };
 
   // ✅ Early return comes AFTER all hook calls
   if (!isOpen || !order) return null;
@@ -119,7 +123,7 @@ const OrderDetailsModal = ({ isOpen, onClose, order }) => {
               <p className="text-sm text-gray-500 mb-1">Order Type</p>
               <p className="text-base font-medium text-gray-900">
                 {order?.order_type === "dine"
-                  ? "Dine-in"
+                  ? "Dine-In"
                   : order?.order_type
                     ? order.order_type.charAt(0).toUpperCase() +
                       order.order_type.slice(1)
@@ -165,7 +169,7 @@ const OrderDetailsModal = ({ isOpen, onClose, order }) => {
             <div>
               <p className="text-sm text-gray-500 mb-1">Customer Phone</p>
               <p className="text-base font-medium text-gray-900">
-                {order?.customer_phone ?? "N/A"}
+                {formatPhoneNumber(order?.customer_phone)}
               </p>
             </div>
 
@@ -347,11 +351,36 @@ const OrderDetailsModal = ({ isOpen, onClose, order }) => {
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-gray-500">Discount</span>
                   <span className="text-sm font-medium text-green-600">
-                    {new Intl.NumberFormat("en-NG", {
+                    -{new Intl.NumberFormat("en-NG", {
                       style: "currency",
                       currency: "NGN",
                       minimumFractionDigits: 0,
                     }).format(order.discount_amount)}
+                  </span>
+                </div>
+              )}
+              {(order?.delivery_fee ?? 0) > 0 && (
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-500">Delivery Fee</span>
+                  <span className="text-sm font-medium text-gray-900">
+                    {new Intl.NumberFormat("en-NG", {
+                      style: "currency",
+                      currency: "NGN",
+                      minimumFractionDigits: 0,
+                    }).format(order.delivery_fee)}
+                  </span>
+                </div>
+              )}
+              {order?.tax_details?.VAT && (
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-500">Tax Charges</span>
+                  <span className="text-sm font-medium text-gray-900">
+                    {new Intl.NumberFormat("en-NG", {
+                      style: "currency",
+                      currency: "NGN",
+                      minimumFractionDigits: 0,
+                    }).format(order.tax_details.VAT.amount)}{" "}
+                    ({order.tax_details.VAT.type})
                   </span>
                 </div>
               )}

@@ -89,7 +89,8 @@ const ReceiptPDFDocument = ({ order, paperSize = "A5" }) => {
 
   const vatAmount = order.tax_details?.VAT?.amount ?? 0;
   const vatType = order.tax_details?.VAT?.type ?? "VAT";
-  const totalAmount = subtotal + vatAmount;
+  const deliveryFee = Number(order.delivery_fee ?? 0);
+  const totalAmount = subtotal + deliveryFee + vatAmount;
 
   const statusValue = (order?.status || "pending").toLowerCase();
   const statusLabel =
@@ -281,10 +282,16 @@ const ReceiptPDFDocument = ({ order, paperSize = "A5" }) => {
   const receiptAddress =
     order.receiptAddress || order.delivery_address || "N/A";
 
+  // Format phone number: replace +234 with 0 for display
+  const formatPhoneNumber = (phone) => {
+    if (!phone) return "N/A";
+    return phone.replace(/^\+234/, '0');
+  };
+
   const detailRows = [
     ["Customer", order.customer_name || "Guest"],
     ["Email", order.customer_email || "N/A"],
-    ["Phone", order.customer_phone || "N/A"],
+    ["Phone", formatPhoneNumber(order.customer_phone)],
     ["Address", receiptAddress],
     ...(order.attendant
       ? [
@@ -294,8 +301,10 @@ const ReceiptPDFDocument = ({ order, paperSize = "A5" }) => {
       : []),
     [
       "Order Type",
-      order.order_type.charAt(0).toUpperCase() + order.order_type.slice(1) ||
-        "N/A",
+      order.order_type === "dine" 
+        ? "Dine-In" 
+        : order.order_type.charAt(0).toUpperCase() + order.order_type.slice(1) ||
+          "N/A",
     ],
     order.table_number ? ["Table", `#${order.table_number}`] : null,
   ].filter(Boolean);
@@ -365,6 +374,12 @@ const ReceiptPDFDocument = ({ order, paperSize = "A5" }) => {
 
           {/* ── Tax + Total ── */}
           <View style={S.totalsSection}>
+            {deliveryFee > 0 && (
+              <View style={S.vatRow}>
+                <Text style={S.vatLabel}>Delivery Fee</Text>
+                <Text style={S.vatValue}>{formatNGN(deliveryFee)}</Text>
+              </View>
+            )}
             <View style={S.vatRow}>
               <Text style={S.vatLabel}>Tax ({vatType})</Text>
               <Text style={S.vatValue}>{formatNGN(vatAmount)}</Text>

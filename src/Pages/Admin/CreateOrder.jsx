@@ -43,7 +43,7 @@ const CreateOrder = () => {
     deliveryZip: "",
   });
   const [paymentMode, setPaymentMode] = useState("cash");
-  const [posService, setPosService] = useState("OPay");
+  const [posService, setPosService] = useState("opay");
   const [bankAccount, setBankAccount] = useState("");
   const [loading, setLoading] = useState(false);
   const [menuLoading, setMenuLoading] = useState(false);
@@ -63,7 +63,7 @@ const CreateOrder = () => {
 
   // User registration state
   const [userType, setUserType] = useState("unregistered");
-  const [userSearchEmail, setUserSearchEmail] = useState("");
+  const [userSearchPhone, setUserSearchPhone] = useState("");
   const [userSearchResults, setUserSearchResults] = useState([]);
   const [loadingUserSearch, setLoadingUserSearch] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
@@ -147,15 +147,15 @@ const CreateOrder = () => {
     }
   };
 
-  const searchUsers = async (email) => {
-    if (!email.trim()) {
+  const searchUsers = async (phone) => {
+    if (!phone.trim()) {
       setUserSearchResults([]);
       return;
     }
 
     setLoadingUserSearch(true);
     try {
-      const { data } = await api.get(`/admin/users?search=${email.trim()}`);
+      const { data } = await api.get(`/admin/users?search=${phone.trim()}`);
       setUserSearchResults(data.data || []);
     } catch (err) {
       console.error("Failed to search users:", err);
@@ -166,10 +166,10 @@ const CreateOrder = () => {
   };
 
   const handleUserSearchChange = (e) => {
-    const email = e.target.value;
-    setUserSearchEmail(email);
+    const phone = e.target.value;
+    setUserSearchPhone(phone);
 
-    // Clear selected user when email changes
+    // Clear selected user when phone changes
     if (selectedUser) {
       setSelectedUser(null);
       setFormData({
@@ -184,20 +184,20 @@ const CreateOrder = () => {
   };
 
   const handleUserSearch = async () => {
-    if (!userSearchEmail.trim()) {
-      showToast("Please enter an email to search", "error");
+    if (!userSearchPhone.trim()) {
+      showToast("Please enter a phone number to search", "error");
       return;
     }
 
     setLoadingUserSearch(true);
     try {
       const { data } = await api.get(
-        `/admin/users?search=${userSearchEmail.trim()}`,
+        `/admin/users?search=${userSearchPhone.trim()}`,
       );
       setUserSearchResults(data.data || []);
 
       if (data.data?.length === 0) {
-        showToast("No users found with that email", "error");
+        showToast("No users found with that phone number", "error");
       }
     } catch (err) {
       console.error("Failed to search users:", err);
@@ -215,14 +215,14 @@ const CreateOrder = () => {
       customerName: user.name,
       customerEmail: user.email,
     });
-    setUserSearchEmail(user.email);
+    setUserSearchPhone(user.phone || "");
     setUserSearchResults([]);
     setOpenUserDropdown(null);
   };
 
   const clearSelectedUser = () => {
     setSelectedUser(null);
-    setUserSearchEmail("");
+    setUserSearchPhone("");
     setUserSearchResults([]);
     setFormData({
       ...formData,
@@ -378,7 +378,7 @@ const CreateOrder = () => {
       }
 
       // Add POS service and bank account details
-      if (paymentMode === "POS") {
+      if (paymentMode === "pos") {
         orderData.pos_service = posService;
       } else if (paymentMode === "transfer") {
         orderData.bank_account = bankAccount;
@@ -794,7 +794,7 @@ const CreateOrder = () => {
                     <div className="flex justify-between items-center">
                       <span className="font-bold text-gray-900">Total</span>
                       <span className="text-xl font-bold text-orange-500">
-                        ₦{calculateTotal()}
+                        ₦{calculateTotal().toLocaleString()}
                       </span>
                     </div>
                   </div>
@@ -858,17 +858,17 @@ const CreateOrder = () => {
                     <div className="flex gap-2">
                       <div className="relative flex-1">
                         <input
-                          type="email"
-                          value={userSearchEmail}
+                          type="tel"
+                          value={userSearchPhone}
                           onChange={handleUserSearchChange}
-                          placeholder="Enter user email..."
+                          placeholder="Enter user phone number..."
                           className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2.5 px-4 text-sm text-gray-900 focus:ring-2 focus:ring-orange-100 focus:border-orange-500 outline-none"
                         />
                       </div>
                       <button
                         type="button"
                         onClick={handleUserSearch}
-                        disabled={loadingUserSearch || !userSearchEmail.trim()}
+                        disabled={loadingUserSearch || !userSearchPhone.trim()}
                         className="px-4 py-2.5 bg-orange-500 text-white rounded-xl text-sm font-medium hover:bg-orange-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed touch-manipulation flex items-center gap-2"
                       >
                         {loadingUserSearch ? (
@@ -897,11 +897,11 @@ const CreateOrder = () => {
                                 {user.name}
                               </p>
                               <p className="text-xs text-gray-500 truncate">
-                                {user.email}
+                                {user.phone || "No phone number"}
                               </p>
-                              {user.phone && (
+                              {user.email && (
                                 <p className="text-xs text-gray-400 truncate">
-                                  {user.phone}
+                                  {user.email}
                                 </p>
                               )}
                             </div>
@@ -971,12 +971,12 @@ const CreateOrder = () => {
                     className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2.5 px-4 text-sm text-gray-900 focus:ring-2 focus:ring-orange-100 focus:border-orange-500 outline-none"
                   >
                     <option value="cash">Cash</option>
-                    <option value="POS">POS</option>
+                    <option value="pos">POS</option>
                     <option value="transfer">Transfer</option>
                   </select>
                 </div>
 
-                {paymentMode === "POS" && (
+                {paymentMode === "pos" && (
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       POS Service
