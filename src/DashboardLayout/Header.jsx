@@ -6,10 +6,10 @@ export default function Header({ onMenuClick }) {
 
   return (
     <header className="bg-white border-b border-gray-100 px-6 py-4 flex items-center justify-between gap-4">
-      {/* Mobile Menu Button */}
+      {/* Menu Button - Left side of user name */}
       <button
         onClick={onMenuClick}
-        className="lg:hidden p-2 hover:bg-gray-100 rounded-lg text-gray-600"
+        className="p-2 hover:bg-gray-100 rounded-lg text-gray-600"
       >
         <FiMenu className="w-6 h-6" />
       </button>

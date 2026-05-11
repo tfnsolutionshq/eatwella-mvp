@@ -712,8 +712,8 @@ const OrderManagement = () => {
     setPinError(null);
     try {
       const endpoint =
-        user.role === "supervisor"
-          ? `/supervisor/orders/${orderId}/complete`
+        user.role === "supervisor" || user.role === "admin"
+          ? `/supervisor/orders/${orderId}/complete`      
           : `/delivery-agent/orders/${orderId}/complete`;
       await api.post(endpoint, { delivery_pin: pin });
       showToast("Delivery completed successfully", "success");
@@ -909,7 +909,13 @@ const OrderManagement = () => {
 
   const renderActionButtons = (order) => {
     const { id, status, order_type } = order;
-    const busy = changingIds.has(id) || processingIds.has(id) || completingIds.has(id) || sendingToKitchenIds.has(id) || cancellingIds.has(id) || markingReadyIds.has(id);
+    const busy =
+      changingIds.has(id) ||
+      processingIds.has(id) ||
+      completingIds.has(id) ||
+      sendingToKitchenIds.has(id) ||
+      cancellingIds.has(id) ||
+      markingReadyIds.has(id);
     const isProcessing = processingIds.has(id);
     const isMarkingReady = markingReadyIds.has(id);
     const isCompleting = completingIds.has(id);
@@ -1071,7 +1077,10 @@ const OrderManagement = () => {
             icon={PackageCheck}
           />,
         );
-      if ((status === "confirmed" || status === "ready") && order_type === "delivery")
+      if (
+        (status === "confirmed" || status === "ready") &&
+        order_type === "delivery"
+      )
         buttons.push(
           <AssignBtn key="assign" onClickFn={() => openAssignModal(order)} />,
         );
@@ -1096,9 +1105,12 @@ const OrderManagement = () => {
         );
 
       // Add cancel button for all non-cancelled orders (except those paid via Paystack/gateway)
-      if (status !== "cancelled" && status !== "completed" && 
-          order.payment_type !== "gateway" && 
-          !order.payment_type?.toLowerCase().includes("paystack")) {
+      if (
+        status !== "cancelled" &&
+        status !== "completed" &&
+        order.payment_type !== "gateway" &&
+        !order.payment_type?.toLowerCase().includes("paystack")
+      ) {
         buttons.push(
           <CancelBtn key="cancel" onClick={() => openCancelModal(order)} />,
         );
@@ -1133,7 +1145,10 @@ const OrderManagement = () => {
           />,
         );
       }
-      if ((status === "confirmed" || status === "ready") && order_type === "delivery")
+      if (
+        (status === "confirmed" || status === "ready") &&
+        order_type === "delivery"
+      )
         buttons.push(
           <AssignBtn key="assign" onClickFn={() => openAssignModal(order)} />,
         );
@@ -1145,6 +1160,15 @@ const OrderManagement = () => {
             onClick={() => handleNonDeliveryComplete(id)}
             actionType="completing"
             icon={CheckCircle}
+          />,
+        );
+      if (status === "ready" && order_type === "delivery")
+        buttons.push(
+          <OrangeBtn
+            key="complete-delivery"
+            label="Complete Delivery"
+            onClick={() => openPinModal(id)}
+            icon={Truck}
           />,
         );
       if (status === "dispatched")
