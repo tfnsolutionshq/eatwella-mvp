@@ -104,36 +104,36 @@ function Payments() {
     return Array.from({ length: end - start + 1 }, (_, idx) => start + idx);
   };
 
-  const stats = [
+  const stats = totals ? [
     {
       label: "Total Revenue",
       value: new Intl.NumberFormat("en-NG", {
         style: "currency",
         currency: "NGN",
         minimumFractionDigits: 0,
-      }).format(Math.ceil(totals?.total_revenue ?? 0)),
+      }).format(Math.ceil(totals.total_revenue)),
       icon: FiDollarSign,
       color: "bg-green-500",
     },
     {
       label: "Pending",
-      value: totals?.total_pending ?? 0,
+      value: totals.total_pending,
       icon: FiClock,
       color: "bg-orange-500",
     },
     {
       label: "Completed",
-      value: totals?.total_completed ?? 0,
+      value: totals.total_completed,
       icon: FiCreditCard,
       color: "bg-blue-500",
     },
     {
       label: "Transactions",
-      value: totals?.total_transactions ?? 0,
+      value: totals.total_transactions,
       icon: FiLayout,
       color: "bg-purple-500",
     },
-  ];
+  ] : [];
 
   const statColors = [
     "bg-green-500",

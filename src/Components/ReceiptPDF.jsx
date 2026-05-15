@@ -90,7 +90,8 @@ const ReceiptPDFDocument = ({ order, paperSize = "A5" }) => {
   const vatAmount = order.tax_details?.VAT?.amount ?? 0;
   const vatType = order.tax_details?.VAT?.type ?? "VAT";
   const deliveryFee = Number(order.delivery_fee ?? 0);
-  const totalAmount = subtotal + deliveryFee + vatAmount;
+  const discountAmount = Number(order.discount_amount ?? 0);
+  const totalAmount = subtotal + deliveryFee + vatAmount - discountAmount;
 
   const statusValue = (order?.status || "pending").toLowerCase();
   const statusLabel =
@@ -378,6 +379,14 @@ const ReceiptPDFDocument = ({ order, paperSize = "A5" }) => {
               <View style={S.vatRow}>
                 <Text style={S.vatLabel}>Delivery Fee</Text>
                 <Text style={S.vatValue}>{formatNGN(deliveryFee)}</Text>
+              </View>
+            )}
+            {discountAmount > 0 && (
+              <View style={S.vatRow}>
+                <Text style={[S.vatLabel, { color: "#16a34a" }]}>Discount</Text>
+                <Text style={[S.vatValue, { color: "#16a34a" }]}>
+                  -{formatNGN(discountAmount)}
+                </Text>
               </View>
             )}
             <View style={S.vatRow}>

@@ -1,7 +1,9 @@
-import React, { useState } from "react";
+import { useState } from "react";
+import { BiBasket } from "react-icons/bi";
 import { FiMenu, FiX, FiUser, FiLogOut, FiChevronDown } from "react-icons/fi";
 import { Link, NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
+import { useCart } from "../../context/CartContext";
 import api from "../../utils/api";
 import logo from "../../assets/eatwellalogo.png";
 
@@ -9,6 +11,7 @@ function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const { user, logout } = useAuth();
+  const { cartItemCount } = useCart();
   const navigate = useNavigate();
 
   const avatarUrl =
@@ -37,7 +40,7 @@ function Navbar() {
       </Link>
 
       {/* Desktop Menu */}
-      <div className="hidden md:flex items-center gap-4">
+      <div className="hidden lg:flex items-center gap-4">
         <NavLink
           to="/"
           end
@@ -61,7 +64,7 @@ function Navbar() {
             `text-white font-medium transition-colors hover:text-green-100 inline-flex px-3 py-1 rounded-full ${isActive ? "ring-2 ring-white" : ""}`
           }
         >
-          Vacancy
+          Careers
         </NavLink>
         <NavLink
           to="/riders"
@@ -70,14 +73,6 @@ function Navbar() {
           }
         >
           Riders
-        </NavLink>
-        <NavLink
-          to="/cart"
-          className={({ isActive }) =>
-            `text-white font-medium transition-colors hover:text-green-100 inline-flex px-3 py-1 rounded-full ${isActive ? "ring-2 ring-white" : ""}`
-          }
-        >
-          Your Food Basket
         </NavLink>
         <NavLink
           to="/track-order"
@@ -95,6 +90,13 @@ function Navbar() {
             Login
           </Link>
         )}
+        <NavLink
+          to="/cart"
+          className="bg-orange-500 hover:bg-orange-600 text-white p-3  rounded-full shadow-lg transition-colors flex ml-3"
+        >
+          <BiBasket className="w-6 h-6 mr-3" />
+          {cartItemCount > 0 ? <span>{cartItemCount}</span> : <span>0</span>}
+        </NavLink>
         {user && (
           <div className="relative">
             <button
@@ -144,7 +146,7 @@ function Navbar() {
       </div>
 
       {/* Mobile Menu Button */}
-      <div className="md:hidden flex items-center gap-4">
+      <div className="lg:hidden flex items-center gap-4">
         {user && (
           <div className="relative">
             <button
@@ -197,14 +199,14 @@ function Navbar() {
       {/* Mobile Menu Overlay */}
       {isMenuOpen && (
         <div
-          className="fixed inset-0 bg-black/50 z-40 md:hidden"
+          className="fixed inset-0 bg-black/50 z-40 lg:hidden"
           onClick={() => setIsMenuOpen(false)}
         />
       )}
 
       {/* Mobile Menu Drawer */}
       <div
-        className={`fixed top-0 right-0 h-full w-64 bg-white z-50 transform transition-transform duration-300 ease-in-out md:hidden ${isMenuOpen ? "translate-x-0" : "translate-x-full"}`}
+        className={`fixed top-0 right-0 h-full w-64 bg-white z-50 transform transition-transform duration-300 ease-in-out lg:hidden ${isMenuOpen ? "translate-x-0" : "translate-x-full"}`}
       >
         <div className="flex flex-col h-full p-6">
           <div className="flex justify-between items-center mb-8">
@@ -244,7 +246,7 @@ function Navbar() {
                 `text-gray-800 hover:text-orange-500 font-medium text-lg transition-colors inline-flex px-3 py-1 rounded-full ${isActive ? "ring-2 ring-white" : ""}`
               }
             >
-              Vacancy
+              Careers
             </NavLink>
             <NavLink
               to="/riders"
@@ -255,13 +257,6 @@ function Navbar() {
             >
               Riders
             </NavLink>
-            {/* <Link 
-              to="/loyalty-board" 
-              onClick={() => setIsMenuOpen(false)}
-              className="text-gray-800 hover:text-orange-500 font-medium text-lg transition-colors"
-            >
-              Loyalty Board
-            </Link> */}
             <NavLink
               to="/track-order"
               onClick={() => setIsMenuOpen(false)}

@@ -177,7 +177,7 @@ const DiscountManagement = () => {
                           <span className="font-medium text-orange-500">
                             {discount.type === "percentage"
                               ? `${discount.value}%`
-                              : `$${discount.value}`}
+                              : `₦${discount.value}`}
                           </span>
                         </div>
                         <div className="flex justify-between text-sm">
@@ -276,7 +276,7 @@ const DiscountManagement = () => {
                           <span className="font-medium text-gray-700">
                             {discount.type === "percentage"
                               ? `${discount.value}%`
-                              : `$${discount.value}`}
+                              : `₦${discount.value}`}
                           </span>
                         </div>
                       </div>

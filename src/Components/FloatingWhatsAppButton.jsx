@@ -9,7 +9,10 @@ const WHATSAPP_MESSAGE = "Hello! I'd like to place an order."; // Pre-filled mes
 function WhatsAppChatButton() {
   const location = useLocation();
 
-  const isExcluded = location.pathname.startsWith("/admin");
+  const isExcluded = location.pathname.startsWith("/admin") || 
+                     location.pathname.startsWith("/attendant") || 
+                     location.pathname.startsWith("/supervisor") || 
+                     location.pathname.startsWith("/delivery-agent");
 
   if (isExcluded) return null;
 

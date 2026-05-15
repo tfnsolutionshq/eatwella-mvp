@@ -280,11 +280,13 @@ const CreateOrder = () => {
             : item,
         ),
       );
+      showToast(`${menu.name} quantity updated to ${existing.quantity + 1}`, "success");
     } else {
       setCart([
         ...cart,
         { menu, quantity: 1, packaging_id: null, packaging: null },
       ]);
+      showToast(`${menu.name} added to cart`, "success");
     }
   };
 
@@ -442,6 +444,24 @@ const CreateOrder = () => {
             Add items and customer details
           </p>
         </div>
+
+        {/* Mobile Cart Icon - Only visible on mobile screens for staff users */}
+        {(user.role === "attendant" || user.role === "admin" || user.role === "supervisor") && cart.length > 0 && (
+          <button
+            onClick={() => {
+              const cartSection = document.getElementById("cart-section");
+              if (cartSection) {
+                cartSection.scrollIntoView({ behavior: "smooth", block: "start" });
+              }
+            }}
+            className="lg:hidden fixed bottom-6 right-6 bg-orange-500 text-white p-4 rounded-full shadow-lg hover:bg-orange-600 transition-all duration-200 z-40 flex items-center gap-2"
+          >
+            <FiShoppingCart className="w-5 h-5" />
+            <span className="bg-white text-orange-500 text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
+              {cart.reduce((sum, item) => sum + item.quantity, 0)}
+            </span>
+          </button>
+        )}
 
         <div className="grid lg:grid-cols-3 gap-4 lg:gap-6 max-w-full">
           {/* ── Menu panel ── */}
@@ -653,7 +673,7 @@ const CreateOrder = () => {
           {/* ── Sidebar ── */}
           <div className="space-y-4 min-w-0">
             {/* Cart */}
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 lg:p-6 min-w-0">
+            <div id="cart-section" className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 lg:p-6 min-w-0">
               <h2 className="text-lg font-bold text-gray-900 mb-3 lg:mb-4 flex items-center gap-2">
                 <FiShoppingCart />
                 Cart ({cart.length})

@@ -1,3 +1,8 @@
 node_modules
 notes.md
 dist
+.env.development
+.env.production
+.env.staging
+dist_staging
+dist_production

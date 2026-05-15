@@ -23,8 +23,8 @@ const TaxRuleModal = ({
     type: "VAT",
     description: "",
     rate: "",
-    priority: "",
-    is_inclusive: false,
+    priority: 1,           // Default priority as integer
+    is_inclusive: false,  // Default is_inclusive as boolean
     is_active: true,
     category_ids: [],
     branches: [],
@@ -61,8 +61,8 @@ const TaxRuleModal = ({
           type: "VAT",
           description: "",
           rate: "",
-          priority: "",
-          is_inclusive: false,
+          priority: 1,           // Default priority as integer
+          is_inclusive: false,  // Default is_inclusive as boolean
           is_active: true,
           category_ids: [],
           branches: [],
@@ -288,6 +288,9 @@ function TaxAndVat() {
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingRule, setEditingRule] = useState(null);
+  const [deleteModal, setDeleteModal] = useState({ open: false, rule: null });
+  const [toggleModal, setToggleModal] = useState({ open: false, rule: null });
+  const [actionLoading, setActionLoading] = useState(false);
   const { showToast } = useToast();
 
   const fetchData = async () => {
@@ -324,40 +327,62 @@ function TaxAndVat() {
     setEditingRule(null);
   };
 
-  const handleToggleStatus = async (id) => {
-    if (
-      !window.confirm(
-        "Are you sure you want to toggle the status of this tax rule?",
-      )
-    )
-      return;
+  const handleToggleStatus = (rule) => {
+    setToggleModal({ open: true, rule });
+  };
+
+  const closeToggleModal = () => {
+    setToggleModal({ open: false, rule: null });
+  };
+
+  const confirmToggleStatus = async () => {
+    if (!toggleModal.rule) return;
+
+    setActionLoading(true);
+    closeToggleModal();
 
     try {
-      await api.patch(`/admin/taxes/${id}/toggle`);
-      // Optimistic update or refetch
+      await api.patch(`/admin/taxes/${toggleModal.rule.id}/toggle`);
       setTaxes((prev) =>
         prev.map((rule) =>
-          rule.id === id ? { ...rule, is_active: !rule.is_active } : rule,
+          rule.id === toggleModal.rule.id ? { ...rule, is_active: !rule.is_active } : rule,
         ),
       );
-      // Or just refetch to be safe
-      // fetchData()
+      showToast(
+        `Tax rule ${toggleModal.rule.is_active ? "deactivated" : "activated"} successfully`,
+        "success"
+      );
     } catch (error) {
       console.error("Failed to toggle status:", error);
       showToast("Failed to update status", "error");
+    } finally {
+      setActionLoading(false);
     }
   };
 
-  const handleDelete = async (id) => {
-    if (!window.confirm("Are you sure you want to delete this tax rule?"))
-      return;
+  const handleDelete = (rule) => {
+    setDeleteModal({ open: true, rule });
+  };
+
+  const closeDeleteModal = () => {
+    setDeleteModal({ open: false, rule: null });
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteModal.rule) return;
+
+    setActionLoading(true);
+    closeDeleteModal();
 
     try {
-      await api.delete(`/admin/taxes/${id}`);
-      setTaxes((prev) => prev.filter((rule) => rule.id !== id));
+      await api.delete(`/admin/taxes/${deleteModal.rule.id}`);
+      setTaxes((prev) => prev.filter((rule) => rule.id !== deleteModal.rule.id));
+      showToast("Tax rule deleted successfully", "success");
     } catch (error) {
       console.error("Failed to delete tax rule:", error);
       showToast("Failed to delete tax rule", "error");
+    } finally {
+      setActionLoading(false);
     }
   };
 
@@ -483,7 +508,7 @@ function TaxAndVat() {
                       {/* Actions */}
                       <div className="flex items-center gap-2 self-start">
                         <button
-                          onClick={() => handleToggleStatus(rule.id)}
+                          onClick={() => handleToggleStatus(rule)}
                           className={`px-4 py-2 text-sm font-bold rounded-lg border transition-colors ${rule.is_active ? "text-red-600 bg-red-50 hover:bg-red-100 border-red-200" : "text-green-600 bg-green-50 hover:bg-green-100 border-green-200"}`}
                         >
                           {rule.is_active ? "Deactivate" : "Activate"}
@@ -495,7 +520,7 @@ function TaxAndVat() {
                           <FiEdit2 size={20} />
                         </button>
                         <button
-                          onClick={() => handleDelete(rule.id)}
+                          onClick={() => handleDelete(rule)}
                           className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
                         >
                           <FiTrash2 size={20} />
@@ -547,6 +572,194 @@ function TaxAndVat() {
         categories={categories}
         initialData={editingRule}
       />
+
+      {/* Toggle Status Confirmation Modal */}
+      {toggleModal.open && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+            onClick={closeToggleModal}
+          />
+          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+              <div>
+                <h2 className="text-lg font-bold text-gray-900">
+                  {toggleModal.rule?.is_active ? "Deactivate Tax Rule" : "Activate Tax Rule"}
+                </h2>
+                {toggleModal.rule && (
+                  <p className="text-xs text-gray-400 mt-0.5">
+                    {toggleModal.rule.name}
+                  </p>
+                )}
+              </div>
+              <button
+                onClick={closeToggleModal}
+                className="p-2 rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors"
+              >
+                <FiX className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="px-6 py-4">
+              <div className="flex items-center gap-3 mb-4">
+                <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                  toggleModal.rule?.is_active ? "bg-orange-100" : "bg-green-100"
+                }`}>
+                  {toggleModal.rule?.is_active ? (
+                    <FiAlertCircle className="w-5 h-5 text-orange-500" />
+                  ) : (
+                    <FiPercent className="w-5 h-5 text-green-500" />
+                  )}
+                </div>
+                <div>
+                  <p className="font-semibold text-gray-900">
+                    Are you sure you want to {toggleModal.rule?.is_active ? "deactivate" : "activate"} this tax rule?
+                  </p>
+                  <p className="text-sm text-gray-500 mt-1">
+                    {toggleModal.rule?.is_active 
+                      ? "This tax will no longer be applied to new orders." 
+                      : "This tax will be applied to new orders according to its rules."}
+                  </p>
+                </div>
+              </div>
+
+              {toggleModal.rule && (
+                <div className="bg-gray-50 rounded-lg p-3 mb-4">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-600">Tax Rate:</span>
+                    <span className="font-bold text-orange-500">
+                      {toggleModal.rule.rate}%
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center mt-2">
+                    <span className="text-sm text-gray-600">Type:</span>
+                    <span className="text-sm font-medium text-gray-900">
+                      {toggleModal.rule.type}
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              <div className={`text-xs rounded-lg p-3 ${
+                toggleModal.rule?.is_active 
+                  ? "text-amber-600 bg-amber-50 border border-amber-200" 
+                  : "text-green-600 bg-green-50 border border-green-200"
+              }`}>
+                <strong>Note:</strong> {toggleModal.rule?.is_active 
+                  ? "Deactivating this tax will not affect existing orders."
+                  : "Activating this tax will apply it to new orders going forward."}
+              </div>
+            </div>
+
+            <div className="px-6 py-4 border-t border-gray-100 flex gap-3">
+              <button
+                onClick={closeToggleModal}
+                disabled={actionLoading}
+                className="flex-1 px-4 py-2.5 rounded-xl border border-gray-200 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmToggleStatus}
+                disabled={actionLoading}
+                className={`flex-1 px-4 py-2.5 rounded-xl text-white text-sm font-medium transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed ${
+                  toggleModal.rule?.is_active 
+                    ? "bg-orange-500 hover:bg-orange-600 shadow-orange-200" 
+                    : "bg-green-500 hover:bg-green-600 shadow-green-200"
+                }`}
+              >
+                {actionLoading
+                  ? (toggleModal.rule?.is_active ? "Deactivating…" : "Activating…")
+                  : (toggleModal.rule?.is_active ? "Deactivate" : "Activate")}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {deleteModal.open && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+            onClick={closeDeleteModal}
+          />
+          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+              <div>
+                <h2 className="text-lg font-bold text-gray-900">
+                  Delete Tax Rule
+                </h2>
+                {deleteModal.rule && (
+                  <p className="text-xs text-gray-400 mt-0.5">
+                    {deleteModal.rule.name}
+                  </p>
+                )}
+              </div>
+              <button
+                onClick={closeDeleteModal}
+                className="p-2 rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors"
+              >
+                <FiX className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="px-6 py-4">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center">
+                  <FiTrash2 className="w-5 h-5 text-red-500" />
+                </div>
+                <div>
+                  <p className="font-semibold text-gray-900">
+                    Are you sure you want to delete this tax rule?
+                  </p>
+                  <p className="text-sm text-gray-500 mt-1">
+                    This action cannot be undone.
+                  </p>
+                </div>
+              </div>
+
+              {deleteModal.rule && (
+                <div className="bg-gray-50 rounded-lg p-3 mb-4">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-600">Tax Rate:</span>
+                    <span className="font-bold text-orange-500">
+                      {deleteModal.rule.rate}%
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center mt-2">
+                    <span className="text-sm text-gray-600">Type:</span>
+                    <span className="text-sm font-medium text-gray-900">
+                      {deleteModal.rule.type}
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              <div className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg p-3">
+                <strong>Warning:</strong> Deleting this tax rule will permanently remove it from the system and cannot be recovered.
+              </div>
+            </div>
+
+            <div className="px-6 py-4 border-t border-gray-100 flex gap-3">
+              <button
+                onClick={closeDeleteModal}
+                disabled={actionLoading}
+                className="flex-1 px-4 py-2.5 rounded-xl border border-gray-200 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Keep Rule
+              </button>
+              <button
+                onClick={confirmDelete}
+                disabled={actionLoading}
+                className="flex-1 px-4 py-2.5 rounded-xl bg-red-500 text-white text-sm font-medium hover:bg-red-600 transition-colors shadow-sm shadow-red-200 disabled:bg-red-500/50 disabled:cursor-not-allowed"
+              >
+                {actionLoading ? "Deleting…" : "Delete Rule"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </DashboardLayout>
   );
 }

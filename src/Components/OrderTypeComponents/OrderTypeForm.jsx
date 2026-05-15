@@ -98,43 +98,59 @@ function OrderTypeForm() {
     (Number(item.menu.price) + Number(item.packaging?.price ?? 0)) *
     item.quantity;
 
+  // Base food price only (excluding packaging)
+  const baseSubtotal = cartItems.reduce(
+    (sum, item) => sum + Number(item.menu.price) * item.quantity,
+    0,
+  );
+
+  // Packaging fees only
+  const totalPackagingFee = cartItems.reduce(
+    (sum, item) => sum + (item.packaging?.price ?? 0) * item.quantity,
+    0,
+  );
+
   // Items + packaging
-  const subtotal = cartItems.reduce((sum, item) => sum + getItemTotal(item), 0);
+  const subtotal = baseSubtotal + totalPackagingFee;
 
   // Delivery (separate)
   const deliveryFee =
     orderType === "delivery" ? Number(selectedLocation?.delivery_fee ?? 0) : 0;
 
-  // Discount (applies ONLY to subtotal)
+  // Discount (applies ONLY to base food price)
   const discountValue = Number(cart?.discount?.value ?? 0);
   const discountType = cart?.discount?.type ?? null;
 
   let discountAmount = 0;
 
   if (discountType === "percentage") {
-    discountAmount = (discountValue / 100) * subtotal;
+    discountAmount = (discountValue / 100) * baseSubtotal;
   } else if (discountType === "fixed") {
     discountAmount = discountValue;
   }
 
   // Prevent negative edge case
-  const safeDiscount = Math.min(discountAmount, subtotal);
+  const safeDiscount = Math.min(discountAmount, baseSubtotal);
 
-  // Apply discount correctly
-  const subtotalAfterDiscount = subtotal - safeDiscount;
+  // Apply discount correctly to base price only
+  const baseSubtotalAfterDiscount = baseSubtotal - safeDiscount;
 
-  // Tax should apply AFTER discount (this is industry standard)
+  // Tax should apply to base food price AFTER discount (excluding packaging)
   const totalTaxAmount = taxList.reduce(
-    (sum, tax) => sum + (tax.rate / 100) * subtotalAfterDiscount,
+    (sum, tax) => sum + (tax.rate / 100) * baseSubtotalAfterDiscount,
     0,
   );
 
-  // Final total
-  const grandTotal = subtotalAfterDiscount + deliveryFee + totalTaxAmount;
+  // Final total includes discounted base price + packaging + delivery + tax
+  const grandTotal =
+    baseSubtotalAfterDiscount +
+    totalPackagingFee +
+    deliveryFee +
+    totalTaxAmount;
 
   // Discount %
   const discountPercent =
-    subtotal > 0 ? Math.round((safeDiscount / subtotal) * 100) : 0;
+    baseSubtotal > 0 ? Math.round((safeDiscount / baseSubtotal) * 100) : 0;
 
   // ── Data fetching ─────────────────────────────────────────────────────────
   const getTaxes = async () => {
@@ -348,7 +364,7 @@ function OrderTypeForm() {
       return;
     }
     if (orderType === "delivery" && !selectedLocation) {
-      showToast("Please select a delivery location", "error");
+      showToast("Please select a delivery zone", "error");
       return;
     }
 
@@ -373,9 +389,6 @@ function OrderTypeForm() {
         payload.delivery_address = formData.deliveryAddress;
         payload.delivery_zone_id = selectedLocation.id;
       }
-
-      // delete payload.callback_url;
-      // console.log("over here: ", payload);
 
       const response = await api.post("/checkout", payload);
 
@@ -655,7 +668,7 @@ function OrderTypeForm() {
                         setUseManualSelection(true);
                       }
                     }}
-                    readOnly={!!selectedSavedAddress}
+                    readOnly={!selectedLocation || !!selectedSavedAddress}
                     placeholder={
                       selectedSavedAddress
                         ? selectedSavedAddress.street_address
@@ -778,7 +791,8 @@ function OrderTypeForm() {
                 </p>
               ) : (
                 taxList?.map((tax) => {
-                  const taxAmount = (tax.rate / 100) * subtotalAfterDiscount;
+                  const taxAmount =
+                    (tax.rate / 100) * baseSubtotalAfterDiscount;
                   return (
                     <div key={tax.id} className="flex justify-between">
                       <span className="text-gray-600">{`${tax.name} (${tax.rate}%)`}</span>

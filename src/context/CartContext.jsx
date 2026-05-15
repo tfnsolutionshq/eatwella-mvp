@@ -18,7 +18,7 @@ const getCartId = () => {
 };
 
 const cartApi = axios.create({
-  baseURL: "https://eatwella.tfnsolutions.us/api",
+  baseURL: import.meta.env.VITE_API_URL,
   // baseURL: "https://api.eatwella.ng/api",
   headers: { Accept: "application/json", "Content-Type": "application/json" },
   withCredentials: true,

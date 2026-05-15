@@ -78,6 +78,7 @@ const TABS_BY_ROLE = {
     "pending",
     "confirmed",
     "processing",
+    "in_kitchen",
     "ready",
     "dispatched",
     "completed",
@@ -88,6 +89,7 @@ const TABS_BY_ROLE = {
     "pending",
     "confirmed",
     "processing",
+    "in_kitchen",
     "ready",
     "dispatched",
     "completed",
@@ -713,7 +715,7 @@ const OrderManagement = () => {
     try {
       const endpoint =
         user.role === "supervisor" || user.role === "admin"
-          ? `/supervisor/orders/${orderId}/complete`      
+          ? `/supervisor/orders/${orderId}/complete`
           : `/delivery-agent/orders/${orderId}/complete`;
       await api.post(endpoint, { delivery_pin: pin });
       showToast("Delivery completed successfully", "success");
@@ -1040,15 +1042,6 @@ const OrderManagement = () => {
         buttons.push(<SendToKitchenBtn key="send-kitchen" />);
         buttons.push(
           <OrangeBtn
-            key="process"
-            label="Start Processing"
-            onClick={() => handleStatusUpdate(order)}
-            actionType="processing"
-            icon={ChefHat}
-          />,
-        );
-        buttons.push(
-          <OrangeBtn
             key="ready"
             label="Mark as Ready"
             onClick={() => handleStatusUpdate(order, "ready")}
@@ -1067,7 +1060,18 @@ const OrderManagement = () => {
           />,
         );
       }
-      if (status === "processing")
+      if (status === "in_kitchen") {
+        buttons.push(
+          <OrangeBtn
+            key="process"
+            label="Start Processing"
+            onClick={() => handleStatusUpdate(order)}
+            actionType="processing"
+            icon={ChefHat}
+          />,
+        );
+      }
+      if (status === "processing") {
         buttons.push(
           <OrangeBtn
             key="ready"
@@ -1077,13 +1081,15 @@ const OrderManagement = () => {
             icon={PackageCheck}
           />,
         );
+      }
       if (
         (status === "confirmed" || status === "ready") &&
         order_type === "delivery"
-      )
+      ) {
         buttons.push(
           <AssignBtn key="assign" onClickFn={() => openAssignModal(order)} />,
         );
+      }
       if (status === "ready" && order_type !== "delivery")
         buttons.push(
           <OrangeBtn
@@ -1195,7 +1201,7 @@ const OrderManagement = () => {
         );
       if (status === "confirmed") {
         // Attendant can send to kitchen for items that need preparation,
-        // OR complete immediately for items available at the counter.
+        // OR mark as ready for items available at the counter.
         buttons.push(<SendToKitchenBtn key="send-kitchen" />);
         buttons.push(
           <OrangeBtn
@@ -1206,6 +1212,7 @@ const OrderManagement = () => {
             icon={PackageCheck}
           />,
         );
+        // Attendant can complete confirmed orders directly for counter items
         buttons.push(
           <OrangeBtn
             key="complete-confirmed"

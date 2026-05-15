@@ -66,6 +66,13 @@ function ReceiptDetails() {
   const { orderId } = useParams();
   const [order, setOrder] = useState(location.state?.order || null);
   const [isLoading, setIsLoading] = useState(!location.state?.order);
+
+  // Log order details if passed via location state
+  useEffect(() => {
+    if (location.state?.order) {
+      console.log("📋 Receipt Order Details (from state):", location.state.order);
+    }
+  }, [location.state?.order]);
   const [fetchError, setFetchError] = useState(null);
   const [zones, setZones] = useState([]);
   const [copied, setCopied] = useState(false);
@@ -107,6 +114,7 @@ function ReceiptDetails() {
           setFetchError(null);
           const res = await api.get(`/orders/track/${orderId}`);
           setOrder(res.data);
+          console.log("📋 Receipt Order Details:", res.data);
         } catch (e) {
           if (e.response?.status === 404) {
             setFetchError("not_found");
@@ -277,6 +285,11 @@ function ReceiptDetails() {
       return sum + (item.subtotal ?? 0) + packagingPrice * (item.quantity ?? 1);
     }, 0) ?? 0;
 
+  const discountAmount = Number(order.discount_amount ?? 0);
+  const deliveryFee = order.order_type === "delivery" ? Number(order.delivery_fee ?? 0) : 0;
+  const taxAmount = Number(order.tax_details?.VAT?.amount ?? 0);
+  const totalPayment = subtotal + deliveryFee + taxAmount - discountAmount;
+
   return (
     <div className="max-w-2xl mx-auto px-6 py-12">
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8">
@@ -429,6 +442,18 @@ function ReceiptDetails() {
               </span>
             </div>
           )}
+          {discountAmount > 0 && (
+            <div className="flex justify-between font-semibold mt-4">
+              <span className="text-green-600">Discount:</span>
+              <span className="text-green-600">
+                -{new Intl.NumberFormat("en-NG", {
+                  style: "currency",
+                  currency: "NGN",
+                  minimumFractionDigits: 0,
+                }).format(discountAmount)}
+              </span>
+            </div>
+          )}
         </div>
 
         <div className="border-t pt-4 mb-4">
@@ -439,7 +464,7 @@ function ReceiptDetails() {
                 style: "currency",
                 currency: "NGN",
                 minimumFractionDigits: 0,
-              }).format(subtotal + (order.order_type === "delivery" ? Number(order.delivery_fee ?? 0) : 0) + Number(order.tax_details?.VAT?.amount ?? 0))}
+              }).format(totalPayment)}
             </span>
           </div>
           <div className="flex justify-between font-semibold">

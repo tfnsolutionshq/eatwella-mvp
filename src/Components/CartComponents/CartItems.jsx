@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { FaArrowLeft, FaTimes, FaChevronDown } from "react-icons/fa";
 import { MdHome, MdRestaurant, MdDeliveryDining } from "react-icons/md";
-import { DollarSign, CreditCard } from "lucide-react";
+import { DollarSign, CreditCard, ArrowRightCircle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useCart } from "../../context/CartContext";
 import { useAuth } from "../../context/AuthContext";
@@ -39,6 +39,7 @@ function CartItems() {
   const [addingToCart, setAddingToCart] = useState({});
   const [packagingOptions, setPackagingOptions] = useState([]);
   const [packagingLoading, setPackagingLoading] = useState(true);
+  const [packagingError, setPackagingError] = useState(false);
   const [availabilitySettings, setAvailabilitySettings] = useState(null);
   const [availabilityLoading, setAvailabilityLoading] = useState(true);
 
@@ -63,7 +64,10 @@ function CartItems() {
   useEffect(() => {
     if (!availabilityLoading && availabilitySettings) {
       const availableTypes = getAvailableOrderTypes();
-      if (availableTypes.length > 0 && !availableTypes.find(type => type.key === selectedOrderType)) {
+      if (
+        availableTypes.length > 0 &&
+        !availableTypes.find((type) => type.key === selectedOrderType)
+      ) {
         setSelectedOrderType(availableTypes[0].key);
       }
     }
@@ -104,9 +108,11 @@ function CartItems() {
       ];
     }
 
-    const today = new Date().toLocaleDateString('en-US', { weekday: 'long' });
-    const todaySettings = availabilitySettings.find(setting => setting.day === today);
-    
+    const today = new Date().toLocaleDateString("en-US", { weekday: "long" });
+    const todaySettings = availabilitySettings.find(
+      (setting) => setting.day === today,
+    );
+
     if (!todaySettings || !todaySettings.enabled) {
       return [];
     }
@@ -151,7 +157,11 @@ function CartItems() {
         if (item.menu.requires_takeaway && !item.packaging) {
           const defaultPackaging = packagingOptions[0];
           if (defaultPackaging) {
-            const result = await updateCartItem(item.id, item.quantity, defaultPackaging.id);
+            const result = await updateCartItem(
+              item.id,
+              item.quantity,
+              defaultPackaging.id,
+            );
             if (!result.success) {
               console.error("Failed to set default packaging:", result.message);
             }
@@ -186,11 +196,13 @@ function CartItems() {
 
   const fetchPackagingOptions = async () => {
     setPackagingLoading(true);
+    setPackagingError(false);
     try {
       const { data } = await api.get("/packagings");
       setPackagingOptions(Array.isArray(data) ? data : (data.data ?? []));
     } catch (err) {
       console.error("Failed to fetch packaging options:", err);
+      setPackagingError(true);
     } finally {
       setPackagingLoading(false);
     }
@@ -252,23 +264,30 @@ function CartItems() {
     setAddingToCart((prev) => ({ ...prev, [id]: true }));
     try {
       await addToCart(id, 1);
-      
+
       // After adding to cart, check if the item requires packaging and auto-assign default packaging
       if (selectedOrderType !== "dine-in" && packagingOptions.length > 0) {
         // Wait a moment for the cart to be updated, then fetch the updated cart
-        await new Promise(resolve => setTimeout(resolve, 100));
+        await new Promise((resolve) => setTimeout(resolve, 100));
         await fetchCart();
-        
+
         // Find the newly added item (it will be the last item if it matches our menu ID)
         const updatedCart = cart?.items || [];
-        const newItem = updatedCart.find(item => item.menu.id === id);
-        
+        const newItem = updatedCart.find((item) => item.menu.id === id);
+
         if (newItem && newItem.menu.requires_takeaway && !newItem.packaging) {
           const defaultPackaging = packagingOptions[0];
           if (defaultPackaging) {
-            const result = await updateCartItem(newItem.id, newItem.quantity, defaultPackaging.id);
+            const result = await updateCartItem(
+              newItem.id,
+              newItem.quantity,
+              defaultPackaging.id,
+            );
             if (!result.success) {
-              console.error("Failed to set default packaging for new item:", result.message);
+              console.error(
+                "Failed to set default packaging for new item:",
+                result.message,
+              );
             } else {
               // Refresh the cart again to ensure the price is updated with packaging
               await fetchCart();
@@ -412,10 +431,18 @@ function CartItems() {
   const serverDiscountAmount = Number(cart?.discount_amount || 0);
   const discountRate =
     baseSubtotal > 0 ? serverDiscountAmount / baseSubtotal : 0;
-  const discountAmount = subtotal * discountRate;
+  const discountAmount = baseSubtotal * discountRate;
   const discountPercent = Math.round(discountRate * 100);
 
   const finalTotal = subtotal - discountAmount;
+
+  // Check if all items requiring packaging have packaging selected
+  const hasMissingPackaging = () => {
+    if (selectedOrderType === "dine-in") return false;
+    return cartItems.some(
+      (item) => item.menu.requires_takeaway && !item.packaging,
+    );
+  };
   // ─────────────────────────────────────────────────────────────────────────────
 
   if (cartItems.length === 0) {
@@ -551,6 +578,14 @@ function CartItems() {
                           <span className="w-3 h-3 border-2 border-gray-200 border-t-orange-400 rounded-full animate-spin" />
                           Loading takeaway options…
                         </div>
+                      ) : packagingError ? (
+                        <button
+                          onClick={fetchPackagingOptions}
+                          className="text-xs bg-red-200 text-red-600 hover:text-orange-600 font-medium flex items-center gap-1"
+                        >
+                          <ArrowRightCircle className="w-3 h-3 mr-1"/>
+                          Retry loading packaging options
+                        </button>
                       ) : packagingOptions.length > 0 ? (
                         <div className="flex items-center gap-2">
                           <div className="relative flex-1">
@@ -678,7 +713,10 @@ function CartItems() {
             {availabilityLoading ? (
               <div className="space-y-4">
                 {[...Array(3)].map((_, i) => (
-                  <div key={i} className="p-4 rounded-2xl border-2 border-gray-200">
+                  <div
+                    key={i}
+                    className="p-4 rounded-2xl border-2 border-gray-200"
+                  >
                     <div className="flex items-center gap-3">
                       <div className="w-8 h-8 bg-gray-200 rounded-lg animate-pulse" />
                       <div className="flex-1">
@@ -691,14 +729,20 @@ function CartItems() {
               </div>
             ) : getAvailableOrderTypes().length === 0 ? (
               <div className="text-center py-8">
-                <p className="text-gray-500 text-sm mb-2">No order types available today</p>
-                <p className="text-gray-400 text-xs">Please check back during operating hours</p>
+                <p className="text-gray-500 text-sm mb-2">
+                  No order types available today
+                </p>
+                <p className="text-gray-400 text-xs">
+                  Please check back during operating hours
+                </p>
               </div>
             ) : (
               getAvailableOrderTypes().map(({ key, label, desc, Icon }) => (
                 <div
                   key={key}
-                  onClick={() => setSelectedOrderType(key)}
+                  onClick={() => {
+                    setSelectedOrderType(key);
+                  }}
                   className={`p-4 rounded-2xl mb-4 cursor-pointer border-2 transition-colors ${
                     selectedOrderType === key
                       ? "border-orange-500 bg-orange-50"
@@ -828,9 +872,14 @@ function CartItems() {
 
               <button
                 onClick={handleProceedToCheckout}
-                className="w-full bg-orange-500 hover:bg-orange-600 text-white py-4 rounded-full font-bold transition-colors"
+                disabled={hasMissingPackaging() || packagingLoading}
+                className="w-full bg-orange-500 hover:bg-orange-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white py-4 rounded-full font-bold transition-colors"
               >
-                Proceed to Checkout
+                {packagingLoading
+                  ? "Loading packaging options..."
+                  : hasMissingPackaging()
+                    ? "Please select packaging for all items"
+                    : "Proceed to Checkout"}
               </button>
             </div>
           </div>

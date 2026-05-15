@@ -72,7 +72,7 @@ const CreateDiscountModal = ({ isOpen, onClose, discount = null, onSuccess }) =>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Type *</label>
                 <select value={formData.type} onChange={(e) => setFormData({...formData, type: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-gray-200 text-gray-900 focus:outline-none focus:ring-2 focus:ring-orange-100 focus:border-orange-500 transition-all bg-white">
                   <option value="percentage">Percentage (%)</option>
-                  <option value="fixed">Fixed Amount ($)</option>
+                  <option value="fixed">Fixed Amount (₦)</option>
                 </select>
               </div>
               <div>

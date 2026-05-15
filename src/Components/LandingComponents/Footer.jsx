@@ -58,7 +58,7 @@ function Footer() {
               to="/careers"
               className="text-white hover:text-orange-500 transition-colors"
             >
-              Vacancy
+              Careers
             </Link>
             <Link
               to="/track-order"
