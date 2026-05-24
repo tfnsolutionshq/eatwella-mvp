@@ -20,9 +20,11 @@ const WorkingHoursClosedModal = ({
               <FiClock className="w-5 h-5 text-orange-500" />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-gray-900">We're Closed</h2>
+              <h2 className="text-lg font-bold text-gray-900">
+                Ordering Unavailable!
+              </h2>
               <p className="text-sm text-gray-500 mt-0.5">
-                Orders unavailable right now
+                Online orders unavailable right now
               </p>
             </div>
           </div>

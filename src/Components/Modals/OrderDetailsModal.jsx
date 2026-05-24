@@ -7,7 +7,7 @@ import { useCallback, useEffect, useState } from "react";
 function useDeviceType() {
   const [deviceType, setDeviceType] = useState("desktop");
 
-  useEffect(() => {    
+  useEffect(() => {
     const detectDevice = () => {
       const width = window.screen.width;
       const ua = navigator.userAgent.toLowerCase();
@@ -44,7 +44,7 @@ const PAPER_SIZE_MAP = {
   desktop: "A5",
 };
 
-const OrderDetailsModal = ({ isOpen, onClose, order }) => {  
+const OrderDetailsModal = ({ isOpen, onClose, order }) => {
   // ✅ ALL hooks must be called unconditionally, before any early returns
   const deviceType = useDeviceType();
   const paperSize = PAPER_SIZE_MAP[deviceType];
@@ -74,7 +74,7 @@ const OrderDetailsModal = ({ isOpen, onClose, order }) => {
   // Format phone number: replace +234 with 0 for display
   const formatPhoneNumber = (phone) => {
     if (!phone) return "N/A";
-    return phone.replace(/^\+234/, '0');
+    return phone.replace(/^\+234/, "0");
   };
 
   // ✅ Early return comes AFTER all hook calls
@@ -83,9 +83,14 @@ const OrderDetailsModal = ({ isOpen, onClose, order }) => {
   const getStatusColor = (status) => {
     if (!status) return "bg-gray-100 text-gray-600";
     const colors = {
-      pending: "bg-orange-100 text-orange-600",
+      pending: "bg-gray-100 text-gray-600",
+      confirmed: "bg-blue-100 text-blue-600",
       processing: "bg-purple-100 text-purple-600",
+      in_kitchen: "bg-orange-100 text-orange-600",
+      ready: "bg-yellow-100 text-yellow-600",
+      dispatched: "bg-indigo-100 text-indigo-600",
       completed: "bg-green-100 text-green-600",
+      cancelled: "bg-red-100 text-red-600",
     };
     return colors[status] || "bg-gray-100 text-gray-600";
   };
@@ -98,7 +103,10 @@ const OrderDetailsModal = ({ isOpen, onClose, order }) => {
     }, 0) ?? 0;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+      onClick={onClose}
+    >
       <div className="bg-white rounded-2xl w-full max-w-[800px] shadow-xl overflow-hidden max-h-[90vh] flex flex-col">
         {/* Header */}
         <div className="p-6 border-b border-gray-100 flex items-start justify-between">
@@ -179,7 +187,9 @@ const OrderDetailsModal = ({ isOpen, onClose, order }) => {
                 className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(order?.status)}`}
               >
                 {order?.status
-                  ? order.status.charAt(0).toUpperCase() + order.status.slice(1)
+                  ? order.status
+                      .replace(/_/g, " ")
+                      .replace(/\b\w/g, (l) => l.toUpperCase())
                   : "N/A"}
               </span>
             </div>
@@ -351,7 +361,8 @@ const OrderDetailsModal = ({ isOpen, onClose, order }) => {
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-gray-500">Discount</span>
                   <span className="text-sm font-medium text-green-600">
-                    -{new Intl.NumberFormat("en-NG", {
+                    -
+                    {new Intl.NumberFormat("en-NG", {
                       style: "currency",
                       currency: "NGN",
                       minimumFractionDigits: 0,
@@ -398,16 +409,15 @@ const OrderDetailsModal = ({ isOpen, onClose, order }) => {
               </div>
             </div>
 
-
-              <div className="pt-4 border-t border-gray-100">
-                <button
-                  onClick={handlePrint}
-                  className="w-full bg-orange-500 text-white py-3 rounded-lg flex items-center justify-center gap-2 hover:bg-orange-600 transition-colors"
-                >
-                  <Download className="w-4 h-4" />
-                  <span>Print Receipt</span>
-                </button>
-              </div>
+            <div className="pt-4 border-t border-gray-100">
+              <button
+                onClick={handlePrint}
+                className="w-full bg-orange-500 text-white py-3 rounded-lg flex items-center justify-center gap-2 hover:bg-orange-600 transition-colors"
+              >
+                <Download className="w-4 h-4" />
+                <span>Print Receipt</span>
+              </button>
+            </div>
           </div>
         </div>
       </div>

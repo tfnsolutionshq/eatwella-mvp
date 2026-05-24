@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { FiMapPin, FiCheckCircle } from "react-icons/fi";
 import axios from "axios";
@@ -9,7 +9,8 @@ function CreateAccountContent() {
   const navigate = useNavigate();
   const initialEmail = location.state?.email || "";
 
-  const [name, setName] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState(initialEmail);
   const [password, setPassword] = useState("");
   const [phone, setPhone] = useState("");
@@ -20,8 +21,6 @@ function CreateAccountContent() {
   const [error, setError] = useState("");
 
   // ── Address selection state ────────────────────────────────────────────────
-  const [useManualAddressSelection, setUseManualAddressSelection] =
-    useState(false);
   const [selectedLocation, setSelectedLocation] = useState(null);
 
   // ── State → City → Zone hierarchy for manual selection ───────────────────────
@@ -134,36 +133,8 @@ function CreateAccountContent() {
     }
   };
 
-  const handleUseManualAddressSelection = () => {
-    setUseManualAddressSelection(true);
-    setSelectedLocation(null);
-    setManualAddressForm({
-      state_id: null,
-      city_id: null,
-      zone_id: null,
-      street_address: "",
-    });
-    setCities([]);
-    setZones([]);
-    setDeliveryAddress("");
-    setClosestLandmark("");
-  };
-
-  // Check if any address fields are populated
-  const hasAnyAddressFields = () => {
-    return (
-      manualAddressForm.state_id ||
-      manualAddressForm.city_id ||
-      manualAddressForm.zone_id ||
-      manualAddressForm.street_address ||
-      deliveryAddress ||
-      closestLandmark
-    );
-  };
-
-  // Check if all required address fields are populated when address is started
+  // Check if all required address fields are populated
   const hasCompleteAddressFields = () => {
-    if (!hasAnyAddressFields()) return true; // No address fields filled is OK
     return (
       manualAddressForm.state_id &&
       manualAddressForm.city_id &&
@@ -175,15 +146,18 @@ function CreateAccountContent() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    // Check if basic required fields are filled
-    if (!name || !email || !password || !phone) {
-      setError("Please fill in all required fields");
-      return;
-    }
-
-    // Check address validation
-    if (hasAnyAddressFields() && !hasCompleteAddressFields()) {
-      setError("Please complete all address fields or clear them to continue");
+    // Check if all required fields are filled
+    if (
+      !firstName ||
+      !lastName ||
+      !email ||
+      !password ||
+      !phone ||
+      !hasCompleteAddressFields()
+    ) {
+      setError(
+        "Please fill in all required fields, including delivery address",
+      );
       return;
     }
 
@@ -195,18 +169,15 @@ function CreateAccountContent() {
     try {
       setLoading(true);
       const payload = {
-        name,
+        first_name: firstName,
+        last_name: lastName,
         email,
         password,
         phone,
+        zone_id: Number(manualAddressForm.zone_id),
+        street_address: deliveryAddress,
+        closest_landmark: closestLandmark,
       };
-
-      // Only include address fields if they are populated
-      if (hasAnyAddressFields()) {
-        payload.zone_id = Number(manualAddressForm.zone_id);
-        payload.street_address = deliveryAddress;
-        payload.closest_landmark = closestLandmark;
-      }
 
       const response = await api.post("/customer/register", payload);
       const data = response.data;
@@ -237,23 +208,32 @@ function CreateAccountContent() {
     <div className="bg-gray-50 py-12 px-4 md:px-6 min-h-[60vh]">
       <div className="max-w-md mx-auto">
         <div className="bg-white rounded-3xl shadow-sm border border-gray-100 px-8 py-10 flex flex-col items-stretch text-center">
-          <h2 className="text-2xl font-bold mb-1">Create Your Account</h2>
-          <p className="text-sm text-gray-500 mb-8">
-            One last step to track your orders and earn rewards.
-          </p>
-
           <form onSubmit={handleSubmit} className="space-y-6 text-left">
-            <div>
-              <label className="block text-xs font-semibold text-gray-600 mb-1 uppercase tracking-wide">
-                Full Name
-              </label>
-              <input
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="John Doe"
-                className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-              />
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1 uppercase tracking-wide">
+                  First Name
+                </label>
+                <input
+                  type="text"
+                  value={firstName}
+                  onChange={(e) => setFirstName(e.target.value)}
+                  placeholder="John"
+                  className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1 uppercase tracking-wide">
+                  Last Name
+                </label>
+                <input
+                  type="text"
+                  value={lastName}
+                  onChange={(e) => setLastName(e.target.value)}
+                  placeholder="Doe"
+                  className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                />
+              </div>
             </div>
 
             <div>
@@ -267,9 +247,6 @@ function CreateAccountContent() {
                 placeholder="you@example.com"
                 className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
               />
-              <p className="text-xs text-gray-400 mt-1">
-                Click to change email if needed.
-              </p>
             </div>
 
             <div>
@@ -287,147 +264,109 @@ function CreateAccountContent() {
 
             {/* ── Address Selection Section ── */}
             <div>
-              <label className="block text-xs font-semibold text-gray-600 mb-1 uppercase tracking-wide">
-                Delivery Address (Optional)
-              </label>
-
-              {!useManualAddressSelection && !hasAnyAddressFields() ? (
-                <div className="space-y-2">
-                  <p className="text-xs text-gray-400">
-                    Add your delivery address for faster checkout
-                  </p>
-
-                  <button
-                    type="button"
-                    onClick={handleUseManualAddressSelection}
-                    className="w-full px-4 py-2.5 text-sm font-medium text-gray-600 bg-gray-50 hover:bg-gray-100 rounded-2xl border border-gray-200 transition-colors"
+              <div className="space-y-4">
+                {/* State Selection */}
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600 mb-2 uppercase tracking-wide">
+                    State
+                  </label>
+                  <select
+                    value={manualAddressForm.state_id || ""}
+                    onChange={(e) => handleLocationChange(e, "state")}
+                    className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                   >
-                    Add delivery address
-                  </button>
+                    <option value="">Select a state</option>
+                    {states.map((state) => (
+                      <option key={state.id} value={state.id}>
+                        {state.name}
+                      </option>
+                    ))}
+                  </select>
                 </div>
-              ) : (
-                <div className="space-y-4">
-                  {/* State Selection */}
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-600 mb-2 uppercase tracking-wide">
-                      State *
-                    </label>
-                    <select
-                      value={manualAddressForm.state_id || ""}
-                      onChange={(e) => handleLocationChange(e, "state")}
-                      className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-                    >
-                      <option value="">Select a state</option>
-                      {states.map((state) => (
-                        <option key={state.id} value={state.id}>
-                          {state.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
 
-                  {/* City Selection */}
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-600 mb-2 uppercase tracking-wide">
-                      City *
-                    </label>
-                    <select
-                      value={manualAddressForm.city_id || ""}
-                      onChange={(e) => handleLocationChange(e, "city")}
-                      disabled={!manualAddressForm.state_id || isCitiesLoading}
-                      className="w-full px-4 py-3 rounded-2xl border bg-gray-50 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent disabled:bg-gray-50 disabled:text-gray-400 disabled:cursor-not-allowed"
-                    >
-                      <option value="">
-                        {isCitiesLoading
-                          ? "Loading cities..."
-                          : !manualAddressForm.state_id
-                            ? "Select a state first"
-                            : "Select a city"}
-                      </option>
-                      {cities.map((city) => (
-                        <option key={city.id} value={city.id}>
-                          {city.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  {/* Zone Selection */}
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-600 mb-2 uppercase tracking-wide">
-                      Zone *
-                    </label>
-                    <select
-                      value={manualAddressForm.zone_id || ""}
-                      onChange={(e) => handleLocationChange(e, "zone")}
-                      disabled={!manualAddressForm.city_id || isZonesLoading}
-                      className="w-full px-4 py-3 rounded-2xl border bg-gray-50 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent disabled:bg-gray-50 disabled:text-gray-400 disabled:cursor-not-allowed"
-                    >
-                      <option value="">
-                        {isZonesLoading
-                          ? "Loading zones..."
-                          : !manualAddressForm.city_id
-                            ? "Select a city first"
-                            : "Select a zone"}
-                      </option>
-                      {zones.map((zone) => (
-                        <option key={zone.id} value={zone.id}>
-                          {zone.name || zone.zone_name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  {selectedLocation && (
-                    <div className="mt-2 flex items-center gap-2 px-3 py-2 bg-orange-50 border border-orange-100 rounded-xl text-xs text-orange-700">
-                      <FiMapPin className="w-3.5 h-3.5 flex-shrink-0" />
-                      <span>
-                        Delivery zone: <strong>{selectedLocation.name}</strong>
-                      </span>
-                    </div>
-                  )}
-
-                  {/* Street Address */}
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-600 mb-2 uppercase tracking-wide">
-                      Street Address *
-                    </label>
-                    <input
-                      type="text"
-                      value={deliveryAddress}
-                      onChange={(e) => {
-                        setDeliveryAddress(e.target.value);
-                        handleLocationChange(e, "street_address");
-                      }}
-                      placeholder="Block 4, Science Village"
-                      className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-                    />
-                  </div>
-
-                  {/* Closest Landmark */}
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-600 mb-2 uppercase tracking-wide">
-                      Closest Landmark *
-                    </label>
-                    <input
-                      type="text"
-                      value={closestLandmark}
-                      onChange={(e) => setClosestLandmark(e.target.value)}
-                      placeholder="Behind the faculty building"
-                      className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-                    />
-                  </div>
-
-                  {/* Clear Selection Button */}
-                  <button
-                    type="button"
-                    onClick={handleUseManualAddressSelection}
-                    className="w-full px-4 py-2.5 text-sm font-medium text-gray-600 bg-gray-50 hover:bg-gray-100 rounded-2xl border border-gray-200 transition-colors"
+                {/* City Selection */}
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600 mb-2 uppercase tracking-wide">
+                    City
+                  </label>
+                  <select
+                    value={manualAddressForm.city_id || ""}
+                    onChange={(e) => handleLocationChange(e, "city")}
+                    disabled={!manualAddressForm.state_id || isCitiesLoading}
+                    className="w-full px-4 py-3 rounded-2xl border bg-gray-50 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent disabled:bg-gray-50 disabled:text-gray-400 disabled:cursor-not-allowed"
                   >
-                    Clear selection
-                  </button>
+                    <option value="">
+                      {isCitiesLoading
+                        ? "Loading cities..."
+                        : !manualAddressForm.state_id
+                          ? "Select a state first"
+                          : "Select a city"}
+                    </option>
+                    {cities.map((city) => (
+                      <option key={city.id} value={city.id}>
+                        {city.name}
+                      </option>
+                    ))}
+                  </select>
                 </div>
-              )}
+
+                {/* Zone Selection */}
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600 mb-2 uppercase tracking-wide">
+                    Zone
+                  </label>
+                  <select
+                    value={manualAddressForm.zone_id || ""}
+                    onChange={(e) => handleLocationChange(e, "zone")}
+                    disabled={!manualAddressForm.city_id || isZonesLoading}
+                    className="w-full px-4 py-3 rounded-2xl border bg-gray-50 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent disabled:bg-gray-50 disabled:text-gray-400 disabled:cursor-not-allowed"
+                  >
+                    <option value="">
+                      {isZonesLoading
+                        ? "Loading zones..."
+                        : !manualAddressForm.city_id
+                          ? "Select a city first"
+                          : "Select a zone"}
+                    </option>
+                    {zones.map((zone) => (
+                      <option key={zone.id} value={zone.id}>
+                        {zone.name || zone.zone_name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Street Address */}
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600 mb-2 uppercase tracking-wide">
+                    Street Address
+                  </label>
+                  <input
+                    type="text"
+                    value={deliveryAddress}
+                    onChange={(e) => {
+                      setDeliveryAddress(e.target.value);
+                      handleLocationChange(e, "street_address");
+                    }}
+                    placeholder="Block 4, Science Village"
+                    className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                  />
+                </div>
+
+                {/* Closest Landmark */}
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600 mb-2 uppercase tracking-wide">
+                    Closest Landmark
+                  </label>
+                  <input
+                    type="text"
+                    value={closestLandmark}
+                    onChange={(e) => setClosestLandmark(e.target.value)}
+                    placeholder="Behind the faculty building"
+                    className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                  />
+                </div>
+              </div>
             </div>
 
             <div>
@@ -468,12 +407,6 @@ function CreateAccountContent() {
             >
               {loading ? "Creating Account..." : "Create Account"}
             </button>
-
-            {hasAnyAddressFields() && !hasCompleteAddressFields() && (
-              <p className="text-center text-xs text-gray-400 mt-3">
-                Complete all address fields or clear them to continue
-              </p>
-            )}
           </form>
 
           <button

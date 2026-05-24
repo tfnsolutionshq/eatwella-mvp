@@ -13,7 +13,6 @@ api.interceptors.request.use((config) => {
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
-
   const cartId = localStorage.getItem("eatwella_cart_id");
   if (cartId) {
     config.headers["X-Cart-ID"] = cartId;

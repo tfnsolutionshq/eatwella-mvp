@@ -70,7 +70,10 @@ function ReceiptDetails() {
   // Log order details if passed via location state
   useEffect(() => {
     if (location.state?.order) {
-      console.log("📋 Receipt Order Details (from state):", location.state.order);
+      console.log(
+        "📋 Receipt Order Details (from state):",
+        location.state.order,
+      );
     }
   }, [location.state?.order]);
   const [fetchError, setFetchError] = useState(null);
@@ -106,27 +109,29 @@ function ReceiptDetails() {
     loadZones();
   }, []);
 
+  const fetchOrderDetails = useCallback(async () => {
+    if (!orderId) return;
+    try {
+      setIsLoading(true);
+      setFetchError(null);
+      const res = await api.get(`/orders/track/${orderId}`);
+      setOrder(res.data);
+    } catch (e) {
+      if (e.response?.status === 404) {
+        setFetchError("not_found");
+      } else {
+        setFetchError("network_error");
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  }, [orderId]);
+
   useEffect(() => {
     if (!order && orderId) {
-      (async () => {
-        try {
-          setIsLoading(true);
-          setFetchError(null);
-          const res = await api.get(`/orders/track/${orderId}`);
-          setOrder(res.data);
-          console.log("📋 Receipt Order Details:", res.data);
-        } catch (e) {
-          if (e.response?.status === 404) {
-            setFetchError("not_found");
-          } else {
-            setFetchError("network_error");
-          }
-        } finally {
-          setIsLoading(false);
-        }
-      })();
+      fetchOrderDetails();
     }
-  }, [order, orderId]);
+  }, [order, orderId, fetchOrderDetails]);
 
   // Generates a PDF blob and opens the browser/OS print dialog
   const handlePrint = useCallback(async () => {
@@ -169,7 +174,7 @@ function ReceiptDetails() {
   // Format phone number: replace +234 with 0 for display
   const formatPhoneNumber = (phone) => {
     if (!phone) return "N/A";
-    return phone.replace(/^\+234/, '0');
+    return phone.replace(/^\+234/, "0");
   };
 
   // ── Loading state ──
@@ -224,10 +229,7 @@ function ReceiptDetails() {
             <div className="flex flex-col sm:flex-row gap-3 w-full">
               {!isNotFound && (
                 <button
-                  onClick={() => {
-                    setFetchError(null);
-                    setOrder(null);
-                  }}
+                  onClick={fetchOrderDetails}
                   className="flex-1 bg-orange-500 text-white px-6 py-3 rounded-full font-bold hover:bg-orange-600 transition-colors"
                 >
                   Try Again
@@ -286,7 +288,8 @@ function ReceiptDetails() {
     }, 0) ?? 0;
 
   const discountAmount = Number(order.discount_amount ?? 0);
-  const deliveryFee = order.order_type === "delivery" ? Number(order.delivery_fee ?? 0) : 0;
+  const deliveryFee =
+    order.order_type === "delivery" ? Number(order.delivery_fee ?? 0) : 0;
   const taxAmount = Number(order.tax_details?.VAT?.amount ?? 0);
   const totalPayment = subtotal + deliveryFee + taxAmount - discountAmount;
 
@@ -352,18 +355,20 @@ function ReceiptDetails() {
         <div className="mb-6">
           <h3 className="font-semibold mb-4">Order Details</h3>
           <div className="space-y-3 text-sm">
+            {order.order_type === "delivery" && (
+              <div className="flex justify-between">
+                <span className="text-gray-500">Address:</span>
+                <span className="text-gray-900">{receiptAddress}</span>
+              </div>
+            )}
             <div className="flex justify-between">
-              <span className="text-gray-500">Address</span>
-              <span className="text-gray-900">{receiptAddress}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-500">Order Type</span>
+              <span className="text-gray-500">Order Type:</span>
               <span className="text-gray-900 capitalize">
                 {(order.order_type === "dine" && "dine-in") || order.order_type}
               </span>
             </div>
             <div className="flex justify-between">
-              <span className="text-gray-500">Customer</span>
+              <span className="text-gray-500">Customer:</span>
               <span className="text-gray-900">
                 {order.customer_name || "Guest"}
               </span>
@@ -446,7 +451,8 @@ function ReceiptDetails() {
             <div className="flex justify-between font-semibold mt-4">
               <span className="text-green-600">Discount:</span>
               <span className="text-green-600">
-                -{new Intl.NumberFormat("en-NG", {
+                -
+                {new Intl.NumberFormat("en-NG", {
                   style: "currency",
                   currency: "NGN",
                   minimumFractionDigits: 0,

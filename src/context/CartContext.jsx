@@ -19,15 +19,20 @@ const getCartId = () => {
 
 const cartApi = axios.create({
   baseURL: import.meta.env.VITE_API_URL,
-  // baseURL: "https://api.eatwella.ng/api",
   headers: { Accept: "application/json", "Content-Type": "application/json" },
   withCredentials: true,
 });
 
 cartApi.interceptors.request.use(
   (config) => {
+    const token = localStorage.getItem("token");
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+
     const cartId = getCartId();
     if (cartId) config.headers["X-Cart-ID"] = cartId;
+
     return config;
   },
   (error) => Promise.reject(error),
@@ -103,7 +108,7 @@ export const CartProvider = ({ children }) => {
   const addToCart = async (menuId, quantity = 1) => {
     setLoadingItems((prev) => ({ ...prev, [menuId]: true }));
     try {
-      const { data } = await cartApi.post("/cart", {
+      const { data, headers } = await cartApi.post("/cart", {
         menu_id: menuId,
         quantity,
       });

@@ -1,6 +1,13 @@
 import { useState } from "react";
 import { BiBasket } from "react-icons/bi";
-import { FiMenu, FiX, FiUser, FiLogOut, FiChevronDown } from "react-icons/fi";
+import {
+  FiMenu,
+  FiX,
+  FiUser,
+  FiLogOut,
+  FiChevronDown,
+  FiLoader,
+} from "react-icons/fi";
 import { Link, NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { useCart } from "../../context/CartContext";
@@ -10,6 +17,7 @@ import logo from "../../assets/eatwellalogo.png";
 function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
   const { user, logout } = useAuth();
   const { cartItemCount } = useCart();
   const navigate = useNavigate();
@@ -23,12 +31,14 @@ function Navbar() {
   const toggleMenu = () => setIsMenuOpen(!isMenuOpen);
 
   const handleLogout = async () => {
+    setIsLoggingOut(true);
     try {
       await api.post("/customer/logout");
     } catch (err) {
       console.error("Logout error:", err);
     } finally {
       logout();
+      setIsLoggingOut(false);
       navigate("/");
     }
   };
@@ -131,13 +141,19 @@ function Navbar() {
                 </Link>
                 <button
                   onClick={() => {
-                    setIsDropdownOpen(false);
-                    handleLogout();
+                    if (!isLoggingOut) {
+                      handleLogout();
+                    }
                   }}
-                  className="w-full flex items-center gap-2 px-4 py-2 text-red-600 hover:bg-red-50 transition-colors"
+                  disabled={isLoggingOut}
+                  className={`w-full flex items-center gap-2 px-4 py-2 text-red-600 hover:bg-red-50 transition-colors ${isLoggingOut ? "opacity-50 cursor-not-allowed" : ""}`}
                 >
-                  <FiLogOut className="w-4 h-4" />
-                  <span>Logout</span>
+                  {isLoggingOut ? (
+                    <FiLoader className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <FiLogOut className="w-4 h-4" />
+                  )}
+                  <span>{isLoggingOut ? "Logging out..." : "Logout"}</span>
                 </button>
               </div>
             )}
@@ -175,13 +191,19 @@ function Navbar() {
                 </Link>
                 <button
                   onClick={() => {
-                    setIsDropdownOpen(false);
-                    handleLogout();
+                    if (!isLoggingOut) {
+                      handleLogout();
+                    }
                   }}
-                  className="w-full flex items-center gap-2 px-4 py-2 text-red-600 hover:bg-red-50 transition-colors"
+                  disabled={isLoggingOut}
+                  className={`w-full flex items-center gap-2 px-4 py-2 text-red-600 hover:bg-red-50 transition-colors ${isLoggingOut ? "opacity-50 cursor-not-allowed" : ""}`}
                 >
-                  <FiLogOut className="w-4 h-4" />
-                  <span>Logout</span>
+                  {isLoggingOut ? (
+                    <FiLoader className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <FiLogOut className="w-4 h-4" />
+                  )}
+                  <span>{isLoggingOut ? "Logging out..." : "Logout"}</span>
                 </button>
               </div>
             )}

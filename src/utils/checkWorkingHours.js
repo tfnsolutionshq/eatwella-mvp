@@ -58,7 +58,7 @@ export const checkWorkingHourAvailability = async () => {
     if (!todaySchedule || !todaySchedule.enabled) {
       return {
         available: false,
-        message: `Sorry, we are closed today (${todayName}). Please check back on an operating day.`,
+        message: `Sorry, but online ordering is unavailable at the moment. Please call <b>09017777701</b> to make your order or visit our outlet to dine in.`,
         schedule,
       };
     }

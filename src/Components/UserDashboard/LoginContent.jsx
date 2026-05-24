@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
+import { useCart } from "../../context/CartContext";
 import axios from "axios";
 import api from "../../utils/api";
 
@@ -8,6 +9,7 @@ function LoginContent() {
   const location = useLocation();
   const navigate = useNavigate();
   const { login } = useAuth();
+  const { clearCart } = useCart();
   const initialEmail = location.state?.email || "";
 
   const [email, setEmail] = useState(initialEmail);
@@ -30,6 +32,7 @@ function LoginContent() {
       const data = response.data;
       if (data?.token && data?.user) {
         login(data.token, data.user);
+        clearCart();
       }
       navigate("/account/dashboard", { replace: true });
     } catch (err) {
@@ -47,11 +50,6 @@ function LoginContent() {
     <div className="bg-gray-50 py-12 px-4 md:px-6 min-h-[60vh]">
       <div className="max-w-md mx-auto">
         <div className="bg-white rounded-3xl shadow-sm border border-gray-100 px-8 py-10 flex flex-col items-stretch text-center">
-          <h2 className="text-2xl font-bold mb-1">Login to Your Account</h2>
-          <p className="text-sm text-gray-500 mb-8">
-            Access your orders, rewards, and saved details.
-          </p>
-
           <form onSubmit={handleSubmit} className="space-y-6 text-left">
             <div>
               <label className="block text-xs font-semibold text-gray-600 mb-1 uppercase tracking-wide">

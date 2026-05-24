@@ -43,10 +43,22 @@ const CreateOrder = () => {
     deliveryZip: "",
   });
   const [paymentMode, setPaymentMode] = useState("cash");
+  const [paymentStatus, setPaymentStatus] = useState("pending");
+  const [orderAction, setOrderAction] = useState("send_to_kitchen");
   const [posService, setPosService] = useState("opay");
   const [bankAccount, setBankAccount] = useState("");
   const [loading, setLoading] = useState(false);
   const [menuLoading, setMenuLoading] = useState(false);
+
+  // Delivery location state
+  const [states, setStates] = useState([]);
+  const [cities, setCities] = useState([]);
+  const [zones, setZones] = useState([]);
+  const [isCitiesLoading, setIsCitiesLoading] = useState(false);
+  const [isZonesLoading, setIsZonesLoading] = useState(false);
+  const [selectedState, setSelectedState] = useState("");
+  const [selectedCity, setSelectedCity] = useState("");
+  const [selectedZone, setSelectedZone] = useState(null);
 
   // Pagination state
   const [pagination, setPagination] = useState({
@@ -73,7 +85,61 @@ const CreateOrder = () => {
     fetchCategories();
     fetchPackagingOptions();
     fetchMenus("all", 1);
+    fetchStates();
   }, []);
+
+  const fetchStates = async () => {
+    try {
+      const statesRes = await api.get("/states");
+      setStates(statesRes.data);
+    } catch (err) {
+      console.error("Failed to fetch states:", err);
+    }
+  };
+
+  const handleStateChange = async (stateId) => {
+    setSelectedState(stateId);
+    setSelectedCity("");
+    setSelectedZone(null);
+    setCities([]);
+    setZones([]);
+
+    if (stateId) {
+      setIsCitiesLoading(true);
+      try {
+        const cityRes = await api.get(`/cities?state_id=${stateId}`);
+        setCities(cityRes.data);
+      } catch (err) {
+        console.error("Failed to fetch cities:", err);
+      } finally {
+        setIsCitiesLoading(false);
+      }
+    }
+  };
+
+  const handleCityChange = async (cityId) => {
+    setSelectedCity(cityId);
+    setSelectedZone(null);
+    setZones([]);
+
+    if (cityId) {
+      setIsZonesLoading(true);
+      try {
+        const zoneRes = await api.get(`/zones?city_id=${cityId}`);
+        const activeZones = zoneRes.data.filter((zone) => zone.is_active);
+        setZones(activeZones);
+      } catch (err) {
+        console.error("Failed to fetch zones:", err);
+      } finally {
+        setIsZonesLoading(false);
+      }
+    }
+  };
+
+  const handleZoneChange = (zoneId) => {
+    const zone = zones.find((z) => z.id.toString() === zoneId);
+    setSelectedZone(zone || null);
+  };
 
   useEffect(() => {
     const handleClickOutside = (e) => {
@@ -280,7 +346,10 @@ const CreateOrder = () => {
             : item,
         ),
       );
-      showToast(`${menu.name} quantity updated to ${existing.quantity + 1}`, "success");
+      showToast(
+        `${menu.name} quantity updated to ${existing.quantity + 1}`,
+        "success",
+      );
     } else {
       setCart([
         ...cart,
@@ -334,7 +403,7 @@ const CreateOrder = () => {
     item.quantity;
 
   const calculateTotal = () =>
-    cart.reduce((sum, item) => sum + getItemTotal(item), 0).toFixed(2);
+    cart.reduce((sum, item) => sum + getItemTotal(item), 0);
 
   // ── Checkout ────────────────────────────────────────────────────────────────
 
@@ -347,9 +416,9 @@ const CreateOrder = () => {
 
     if (
       orderType === "delivery" &&
-      (!formData.customerPhone || !formData.deliveryAddress)
+      (!formData.customerPhone || !formData.deliveryAddress || !selectedZone)
     ) {
-      showToast("Please fill in delivery details", "error");
+      showToast("Please fill in all delivery details including zone", "error");
       return;
     }
 
@@ -358,15 +427,15 @@ const CreateOrder = () => {
       return;
     }
 
+    if (orderType !== "dine" && cart.some((item) => !item.packaging_id)) {
+      showToast("Please select packaging for all items", "error");
+      return;
+    }
+
     setLoading(true);
     try {
       const orderData = {
         order_type: orderType,
-        payment_type: paymentMode,
-        customer_name: selectedUser ? selectedUser.name : formData.customerName,
-        customer_email: selectedUser
-          ? selectedUser.email
-          : formData.customerEmail,
         items: cart.map((item) => ({
           menu_id: item.menu.id,
           quantity: item.quantity,
@@ -376,35 +445,39 @@ const CreateOrder = () => {
 
       // Add user ID if registered user is selected
       if (userType === "registered" && selectedUser) {
-        orderData.user_id = selectedUser.id;
+        orderData.customer_user_id = selectedUser.id;
       }
 
-      // Add POS service and bank account details
-      if (paymentMode === "pos") {
-        orderData.pos_service = posService;
-      } else if (paymentMode === "transfer") {
-        orderData.bank_account = bankAccount;
+      if (paymentStatus === "ready") {
+        orderData.payment_type = paymentMode;
+        orderData.action = orderAction;
+
+        // Add POS service and bank account details
+        if (paymentMode === "pos") {
+          orderData.pos_service = posService;
+        } else if (paymentMode === "transfer") {
+          orderData.bank_account = bankAccount;
+        }
       }
 
       if (orderType === "delivery") {
+        const city = cities.find((c) => c.id.toString() === selectedCity);
         orderData.customer_phone = formData.customerPhone;
         orderData.delivery_address = formData.deliveryAddress;
-        orderData.delivery_city = formData.deliveryCity;
-        orderData.delivery_zip = formData.deliveryZip;
-        orderData.delivery_zone_id = 1;
+        orderData.delivery_city = city?.name || "";
+        orderData.delivery_zone_id = selectedZone.id;
       }
 
       await api.post("/checkout", orderData);
-      showToast("Order created successfully!");
-      if (user.role === "attendant") {
-        navigate("/attendant/orders");
-      }
-      if (user.role === "admin") {
-        navigate("/admin/orders");
-      }
-      if (user.role === "supervisor") {
-        navigate("/supervisor/orders");
-      }
+      showToast("Order created successfully!", "success");
+
+      const p =
+        user.role === "admin"
+          ? "/admin"
+          : user.role === "supervisor"
+            ? "/supervisor"
+            : "/attendant";
+      navigate(`${p}/orders`);
     } catch (err) {
       showToast(
         err.response?.data?.message || "Failed to create order",
@@ -446,22 +519,28 @@ const CreateOrder = () => {
         </div>
 
         {/* Mobile Cart Icon - Only visible on mobile screens for staff users */}
-        {(user.role === "attendant" || user.role === "admin" || user.role === "supervisor") && cart.length > 0 && (
-          <button
-            onClick={() => {
-              const cartSection = document.getElementById("cart-section");
-              if (cartSection) {
-                cartSection.scrollIntoView({ behavior: "smooth", block: "start" });
-              }
-            }}
-            className="lg:hidden fixed bottom-6 right-6 bg-orange-500 text-white p-4 rounded-full shadow-lg hover:bg-orange-600 transition-all duration-200 z-40 flex items-center gap-2"
-          >
-            <FiShoppingCart className="w-5 h-5" />
-            <span className="bg-white text-orange-500 text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
-              {cart.reduce((sum, item) => sum + item.quantity, 0)}
-            </span>
-          </button>
-        )}
+        {(user.role === "attendant" ||
+          user.role === "admin" ||
+          user.role === "supervisor") &&
+          cart.length > 0 && (
+            <button
+              onClick={() => {
+                const cartSection = document.getElementById("cart-section");
+                if (cartSection) {
+                  cartSection.scrollIntoView({
+                    behavior: "smooth",
+                    block: "start",
+                  });
+                }
+              }}
+              className="lg:hidden fixed bottom-6 right-6 bg-orange-500 text-white p-4 rounded-full shadow-lg hover:bg-orange-600 transition-all duration-200 z-40 flex items-center gap-2"
+            >
+              <FiShoppingCart className="w-5 h-5" />
+              <span className="bg-white text-orange-500 text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
+                {cart.reduce((sum, item) => sum + item.quantity, 0)}
+              </span>
+            </button>
+          )}
 
         <div className="grid lg:grid-cols-3 gap-4 lg:gap-6 max-w-full">
           {/* ── Menu panel ── */}
@@ -558,7 +637,11 @@ const CreateOrder = () => {
                                 {menu.name}
                               </h3>
                               <span className="text-xs lg:text-sm font-bold text-orange-500 whitespace-nowrap flex-shrink-0">
-                                ₦{Number(menu.price).toLocaleString()}
+                                ₦
+                                {Number(menu.price).toLocaleString(undefined, {
+                                  minimumFractionDigits: 2,
+                                  maximumFractionDigits: 2,
+                                })}
                               </span>
                             </div>
                             <p className="text-xs text-gray-500 line-clamp-2 mb-2">
@@ -673,7 +756,10 @@ const CreateOrder = () => {
           {/* ── Sidebar ── */}
           <div className="space-y-4 min-w-0">
             {/* Cart */}
-            <div id="cart-section" className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 lg:p-6 min-w-0">
+            <div
+              id="cart-section"
+              className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 lg:p-6 min-w-0"
+            >
               <h2 className="text-lg font-bold text-gray-900 mb-3 lg:mb-4 flex items-center gap-2">
                 <FiShoppingCart />
                 Cart ({cart.length})
@@ -697,7 +783,11 @@ const CreateOrder = () => {
                             {item.menu.name}
                           </p>
                           <p className="text-xs text-gray-500">
-                            ₦{Number(item.menu.price).toLocaleString()}
+                            ₦
+                            {Number(item.menu.price).toLocaleString(undefined, {
+                              minimumFractionDigits: 2,
+                              maximumFractionDigits: 2,
+                            })}
                           </p>
                         </div>
                         <div className="flex items-center gap-1 shrink-0">
@@ -752,7 +842,12 @@ const CreateOrder = () => {
                               {loadingPackaging
                                 ? "Loading packaging…"
                                 : item.packaging
-                                  ? `${item.packaging.size_name} — ₦${Number(item.packaging.price).toLocaleString()}`
+                                  ? `${item.packaging.size_name} — ₦${Number(
+                                      item.packaging.price,
+                                    ).toLocaleString(undefined, {
+                                      minimumFractionDigits: 2,
+                                      maximumFractionDigits: 2,
+                                    })}`
                                   : "Select packaging"}
                             </span>
                             <FiChevronDown
@@ -788,7 +883,14 @@ const CreateOrder = () => {
                                       {pkg.size_name}
                                     </span>
                                     <span className="text-xs font-bold text-orange-500 ml-3 shrink-0">
-                                      +₦{Number(pkg.price).toLocaleString()}
+                                      +₦
+                                      {Number(pkg.price).toLocaleString(
+                                        undefined,
+                                        {
+                                          minimumFractionDigits: 2,
+                                          maximumFractionDigits: 2,
+                                        },
+                                      )}
                                     </span>
                                   </button>
                                 ))
@@ -804,7 +906,11 @@ const CreateOrder = () => {
                           Item total
                         </span>
                         <span className="text-xs font-bold text-gray-700">
-                          ₦{getItemTotal(item).toLocaleString()}
+                          ₦
+                          {getItemTotal(item).toLocaleString(undefined, {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2,
+                          })}
                         </span>
                       </div>
                     </div>
@@ -814,7 +920,11 @@ const CreateOrder = () => {
                     <div className="flex justify-between items-center">
                       <span className="font-bold text-gray-900">Total</span>
                       <span className="text-xl font-bold text-orange-500">
-                        ₦{calculateTotal().toLocaleString()}
+                        ₦
+                        {calculateTotal().toLocaleString(undefined, {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2,
+                        })}
                       </span>
                     </div>
                   </div>
@@ -983,71 +1093,184 @@ const CreateOrder = () => {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Payment Mode
+                    Payment Status
                   </label>
                   <select
-                    value={paymentMode}
-                    onChange={(e) => setPaymentMode(e.target.value)}
+                    value={paymentStatus}
+                    onChange={(e) => setPaymentStatus(e.target.value)}
                     className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2.5 px-4 text-sm text-gray-900 focus:ring-2 focus:ring-orange-100 focus:border-orange-500 outline-none"
                   >
-                    <option value="cash">Cash</option>
-                    <option value="pos">POS</option>
-                    <option value="transfer">Transfer</option>
+                    <option value="pending">Pending</option>
+                    <option value="ready">Ready to Pay</option>
                   </select>
                 </div>
 
-                {paymentMode === "pos" && (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      POS Service
-                    </label>
-                    <select
-                      value={posService}
-                      onChange={(e) => setPosService(e.target.value)}
-                      className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2.5 px-4 text-sm text-gray-900 focus:ring-2 focus:ring-orange-100 focus:border-orange-500 outline-none"
-                    >
-                      <option value="OPay">OPay</option>
-                    </select>
-                  </div>
-                )}
-
-                {paymentMode === "transfer" && (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Bank Account
-                    </label>
-                    <select
-                      value={bankAccount}
-                      onChange={(e) => setBankAccount(e.target.value)}
-                      className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2.5 px-4 text-sm text-gray-900 focus:ring-2 focus:ring-orange-100 focus:border-orange-500 outline-none"
-                    >
-                      <option value="OPayFirst">OPay - 6550510874</option>
-                      <option value="OPaySecond">OPay - 6425460090</option>
-                    </select>
-                  </div>
-                )}
-
-                {orderType === "delivery" && (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Phone
-                    </label>
-                    <input
-                      type="tel"
-                      value={formData.customerPhone}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          customerPhone: e.target.value,
-                        })
-                      }
-                      className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2.5 px-4 text-sm text-gray-900 focus:ring-2 focus:ring-orange-100 focus:border-orange-500 outline-none"
-                    />
-                  </div>
-                )}
-
-                {orderType === "delivery" && (
+                {paymentStatus === "ready" && (
                   <>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Payment Mode
+                      </label>
+                      <select
+                        value={paymentMode}
+                        onChange={(e) => setPaymentMode(e.target.value)}
+                        className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2.5 px-4 text-sm text-gray-900 focus:ring-2 focus:ring-orange-100 focus:border-orange-500 outline-none"
+                      >
+                        <option value="cash">Cash</option>
+                        <option value="pos">POS</option>
+                        <option value="transfer">Transfer</option>
+                      </select>
+                    </div>
+
+                    {paymentMode === "pos" && (
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          POS Service
+                        </label>
+                        <select
+                          value={posService}
+                          onChange={(e) => setPosService(e.target.value)}
+                          className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2.5 px-4 text-sm text-gray-900 focus:ring-2 focus:ring-orange-100 focus:border-orange-500 outline-none"
+                        >
+                          <option value="OPay">OPay</option>
+                        </select>
+                      </div>
+                    )}
+
+                    {paymentMode === "transfer" && (
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Bank Account
+                        </label>
+                        <select
+                          value={bankAccount}
+                          onChange={(e) => setBankAccount(e.target.value)}
+                          className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2.5 px-4 text-sm text-gray-900 focus:ring-2 focus:ring-orange-100 focus:border-orange-500 outline-none"
+                        >
+                          <option value="OPayFirst">OPay - 6550510874</option>
+                          <option value="OPaySecond">OPay - 6425460090</option>
+                        </select>
+                      </div>
+                    )}
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Order Action
+                      </label>
+                      <div className="flex flex-col gap-2">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="orderAction"
+                            value="complete"
+                            checked={orderAction === "complete"}
+                            onChange={(e) => setOrderAction(e.target.value)}
+                            className="w-4 h-4 text-orange-500 focus:ring-orange-300 border-gray-300"
+                          />
+                          <span className="text-sm text-gray-700">
+                            Complete Order
+                          </span>
+                        </label>
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="orderAction"
+                            value="send_to_kitchen"
+                            checked={orderAction === "send_to_kitchen"}
+                            onChange={(e) => setOrderAction(e.target.value)}
+                            className="w-4 h-4 text-orange-500 focus:ring-orange-300 border-gray-300"
+                          />
+                          <span className="text-sm text-gray-700">
+                            Send to Kitchen
+                          </span>
+                        </label>
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                {orderType === "delivery" && (
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Phone
+                      </label>
+                      <input
+                        type="tel"
+                        value={formData.customerPhone}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            customerPhone: e.target.value,
+                          })
+                        }
+                        placeholder="+234 800 000 0000"
+                        className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2.5 px-4 text-sm text-gray-900 focus:ring-2 focus:ring-orange-100 focus:border-orange-500 outline-none"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        State
+                      </label>
+                      <select
+                        value={selectedState}
+                        onChange={(e) => handleStateChange(e.target.value)}
+                        className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2.5 px-4 text-sm text-gray-900 focus:ring-2 focus:ring-orange-100 focus:border-orange-500 outline-none"
+                      >
+                        <option value="">Select State</option>
+                        {states.map((state) => (
+                          <option key={state.id} value={state.id}>
+                            {state.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        City
+                      </label>
+                      <select
+                        value={selectedCity}
+                        onChange={(e) => handleCityChange(e.target.value)}
+                        disabled={!selectedState || isCitiesLoading}
+                        className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2.5 px-4 text-sm text-gray-900 focus:ring-2 focus:ring-orange-100 focus:border-orange-500 outline-none disabled:opacity-50"
+                      >
+                        <option value="">
+                          {isCitiesLoading
+                            ? "Loading cities..."
+                            : "Select City"}
+                        </option>
+                        {cities.map((city) => (
+                          <option key={city.id} value={city.id}>
+                            {city.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Zone
+                      </label>
+                      <select
+                        value={selectedZone?.id || ""}
+                        onChange={(e) => handleZoneChange(e.target.value)}
+                        disabled={!selectedCity || isZonesLoading}
+                        className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2.5 px-4 text-sm text-gray-900 focus:ring-2 focus:ring-orange-100 focus:border-orange-500 outline-none disabled:opacity-50"
+                      >
+                        <option value="">
+                          {isZonesLoading ? "Loading zones..." : "Select Zone"}
+                        </option>
+                        {zones.map((zone) => (
+                          <option key={zone.id} value={zone.id}>
+                            {zone.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
                         Delivery Address
@@ -1061,15 +1284,21 @@ const CreateOrder = () => {
                             deliveryAddress: e.target.value,
                           })
                         }
+                        placeholder="Street address, building, etc."
                         className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2.5 px-4 text-sm text-gray-900 focus:ring-2 focus:ring-orange-100 focus:border-orange-500 outline-none"
                       />
                     </div>
-                  </>
+                  </div>
                 )}
 
                 <button
                   onClick={handleCheckout}
-                  disabled={loading || cart.length === 0}
+                  disabled={
+                    loading ||
+                    cart.length === 0 ||
+                    (orderType !== "dine" &&
+                      cart.some((item) => !item.packaging_id))
+                  }
                   className="w-full px-4 py-3 lg:py-3 bg-orange-500 text-white rounded-xl text-sm font-medium hover:bg-orange-600 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed touch-manipulation"
                 >
                   {loading ? "Creating Order..." : "Create Order"}

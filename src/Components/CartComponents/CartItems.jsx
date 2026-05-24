@@ -153,21 +153,27 @@ function CartItems() {
       if (!packagingOptions.length) return;
       if (selectedOrderType === "dine-in") return;
 
-      cartItems.forEach(async (item) => {
-        if (item.menu.requires_takeaway && !item.packaging) {
-          const defaultPackaging = packagingOptions[0];
-          if (defaultPackaging) {
-            const result = await updateCartItem(
-              item.id,
-              item.quantity,
-              defaultPackaging.id,
-            );
-            if (!result.success) {
-              console.error("Failed to set default packaging:", result.message);
-            }
-          }
-        }
-      });
+      // Use the ref to get the most up-to-date cart items without triggering an infinite loop
+      const current = cartItemsRef.current;
+      const itemsToUpdate = current.filter(
+        (item) => item.menu.requires_takeaway && !item.packaging,
+      );
+
+      if (itemsToUpdate.length === 0) return;
+
+      const defaultPackaging = packagingOptions[0];
+      if (!defaultPackaging) return;
+
+      try {
+        // Fire all updates in parallel
+        await Promise.all(
+          itemsToUpdate.map((item) =>
+            updateCartItem(item.id, item.quantity, defaultPackaging.id),
+          ),
+        );
+      } catch (err) {
+        console.error("Failed to set default packaging:", err.message || err);
+      }
     };
 
     assignDefaultPackaging();
@@ -581,9 +587,9 @@ function CartItems() {
                       ) : packagingError ? (
                         <button
                           onClick={fetchPackagingOptions}
-                          className="text-xs bg-red-200 text-red-600 hover:text-orange-600 font-medium flex items-center gap-1"
+                          className="text-xs bg-red-200 text-red-600 hover:text-orange-600 font-medium flex items-center gap-1 px-2 py-1 rounded-full"
                         >
-                          <ArrowRightCircle className="w-3 h-3 mr-1"/>
+                          <ArrowRightCircle className="w-3 h-3 mr-1" />
                           Retry loading packaging options
                         </button>
                       ) : packagingOptions.length > 0 ? (

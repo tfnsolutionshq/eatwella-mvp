@@ -28,6 +28,8 @@ import {
   Ban,
   XSquare,
   Search,
+  DollarSign,
+  Flame,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import api from "../../utils/api";
@@ -64,8 +66,11 @@ const getStatusColor = (status) =>
 const getStatusLabel = (status) => STATUS_CONFIG[status]?.label ?? status;
 
 const getStatusIcon = (status) => {
+  if (status === "pending") return <Clock className="w-3 h-3" />;
   if (status === "completed") return <Check className="w-3 h-3" />;
-  if (status === "confirmed") return <Clock className="w-3 h-3" />;
+  if (status === "confirmed") return <DollarSign className="w-3 h-3" />;
+  if (status === "processing") return <Flame className="w-3 h-3" />;
+  if (status === "in_kitchen") return <ChefHat className="w-3 h-3" />;
   if (status === "ready") return <Package className="w-3 h-3" />;
   if (status === "dispatched") return <Truck className="w-3 h-3" />;
   if (status === "cancelled") return <X className="w-3 h-3" />;
@@ -96,9 +101,17 @@ const TABS_BY_ROLE = {
     "cancelled",
   ],
   // Kitchen only sees orders explicitly sent to them via "Send to Kitchen"
-  kitchen: ["all", "confirmed", "in_kitchen", "processing"],
+  kitchen: ["all", "in_kitchen", "processing"],
   delivery_agent: ["all", "dispatched", "completed"],
-  attendant: ["all", "pending", "confirmed", "ready", "completed"],
+  attendant: [
+    "all",
+    "pending",
+    "confirmed",
+    "in_kitchen",
+    "processing",
+    "ready",
+    "completed",
+  ],
 };
 
 // ---------------------------------------------------------------------------
@@ -218,6 +231,173 @@ const AssignAgentModal = ({
 };
 
 // ---------------------------------------------------------------------------
+// SettleOrderModal
+// ---------------------------------------------------------------------------
+const SettleOrderModal = ({
+  isOpen,
+  onClose,
+  onConfirm,
+  order,
+  isSettling,
+}) => {
+  const [paymentType, setPaymentType] = useState("cash");
+  const [posService, setPosService] = useState("OPay");
+  const [bankAccount, setBankAccount] = useState("OPayFirst");
+  const [action, setAction] = useState("confirmed");
+
+  useEffect(() => {
+    if (isOpen) {
+      setPaymentType("cash");
+      setPosService("OPay");
+      setBankAccount("OPayFirst");
+      setAction("confirmed");
+    }
+  }, [isOpen, order?.id]);
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div
+        className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+        onClick={onClose}
+      />
+      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+          <div>
+            <h2 className="text-lg font-bold text-gray-900">Confirm Payment</h2>
+            {order && (
+              <p className="text-xs text-gray-400 mt-0.5">
+                Order #{order.order_number}
+              </p>
+            )}
+          </div>
+          <button
+            onClick={onClose}
+            className="p-2 rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        <div className="px-6 py-6 space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Payment Method
+            </label>
+            <select
+              value={paymentType}
+              onChange={(e) => setPaymentType(e.target.value)}
+              className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2.5 px-4 text-sm text-gray-900 focus:ring-2 focus:ring-orange-100 focus:border-orange-500 outline-none"
+            >
+              <option value="cash">Cash</option>
+              <option value="pos">POS</option>
+              <option value="transfer">Transfer</option>
+            </select>
+          </div>
+
+          {paymentType === "pos" && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                POS Service
+              </label>
+              <select
+                value={posService}
+                onChange={(e) => setPosService(e.target.value)}
+                className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2.5 px-4 text-sm text-gray-900 focus:ring-2 focus:ring-orange-100 focus:border-orange-500 outline-none"
+              >
+                <option value="OPay">OPay</option>
+              </select>
+            </div>
+          )}
+
+          {paymentType === "transfer" && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Bank Account
+              </label>
+              <select
+                value={bankAccount}
+                onChange={(e) => setBankAccount(e.target.value)}
+                className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2.5 px-4 text-sm text-gray-900 focus:ring-2 focus:ring-orange-100 focus:border-orange-500 outline-none"
+              >
+                <option value="OPayFirst">OPay - 6550510874</option>
+                <option value="OPaySecond">OPay - 6425460090</option>
+              </select>
+            </div>
+          )}
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Next Action
+            </label>
+            <div className="flex flex-col gap-2">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="radio"
+                  name="action"
+                  value="confirmed"
+                  checked={action === "confirmed"}
+                  onChange={(e) => setAction(e.target.value)}
+                  className="w-4 h-4 text-orange-500 focus:ring-orange-300 border-gray-300"
+                />
+                <span className="text-sm text-gray-700">Confirm Order</span>
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="radio"
+                  name="action"
+                  value="send_to_kitchen"
+                  checked={action === "send_to_kitchen"}
+                  onChange={(e) => setAction(e.target.value)}
+                  className="w-4 h-4 text-orange-500 focus:ring-orange-300 border-gray-300"
+                />
+                <span className="text-sm text-gray-700">Send to Kitchen</span>
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="radio"
+                  name="action"
+                  value="complete"
+                  checked={action === "complete"}
+                  onChange={(e) => setAction(e.target.value)}
+                  className="w-4 h-4 text-orange-500 focus:ring-orange-300 border-gray-300"
+                />
+                <span className="text-sm text-gray-700">Complete Order</span>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <div className="px-6 py-4 border-t border-gray-100 flex gap-3">
+          <button
+            onClick={onClose}
+            className="flex-1 px-4 py-2.5 rounded-xl border border-gray-200 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={() =>
+              onConfirm({
+                payment_type: paymentType,
+                pos_service: paymentType === "pos" ? posService : undefined,
+                bank_account:
+                  paymentType === "transfer" ? bankAccount : undefined,
+                action: action === "confirmed" ? undefined : action,
+              })
+            }
+            disabled={isSettling}
+            className="flex-1 px-4 py-2.5 rounded-xl bg-orange-500 text-white text-sm font-medium hover:bg-orange-600 transition-colors shadow-sm shadow-orange-200 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isSettling ? "Updating…" : "Update Order"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ---------------------------------------------------------------------------
 // OrderManagement
 // ---------------------------------------------------------------------------
 const OrderManagement = () => {
@@ -282,6 +462,11 @@ const OrderManagement = () => {
   const [deliveryAgents, setDeliveryAgents] = useState([]);
   const [loadingAgents, setLoadingAgents] = useState(false);
   const [isAssigning, setIsAssigning] = useState(false);
+
+  const [isSettleModalOpen, setIsSettleModalOpen] = useState(false);
+  const [settleTargetOrder, setSettleTargetOrder] = useState(null);
+  const [isSettling, setIsSettling] = useState(false);
+
   const [cancelModal, setCancelModal] = useState({ open: false, order: null });
 
   // ── Loading-state helpers ──────────────────────────────────────────────────
@@ -711,6 +896,7 @@ const OrderManagement = () => {
   const handlePinConfirm = async (pin) => {
     const { orderId } = pendingPinOrder;
     setIsVerifyingPin(true);
+    setCompleting(orderId);
     setPinError(null);
     try {
       const endpoint =
@@ -732,6 +918,7 @@ const OrderManagement = () => {
       );
     } finally {
       setIsVerifyingPin(false);
+      clearCompleting(orderId);
     }
   };
 
@@ -747,34 +934,14 @@ const OrderManagement = () => {
 
   const confirmCancelOrder = async () => {
     if (!cancelModal.order) return;
-
-    setCancelling(cancelModal.order.id);
-    closeCancelModal();
-
-    try {
-      await api.put(`/admin/orders/${cancelModal.order.id}`, {
-        status: "cancelled",
-      });
-      showToast("Order cancelled successfully", "success");
-      fetchOrders(true);
-      if (selectedOrder?.id === cancelModal.order.id) {
-        const { data } = await api.get(`/admin/orders/${cancelModal.order.id}`);
-        setSelectedOrder(data);
-      }
-    } catch (err) {
-      showToast(
-        err.response?.data?.message || "Failed to cancel order",
-        "error",
-      );
-    } finally {
-      clearCancelling(cancelModal.order.id);
-    }
+    handleCancelOrder(cancelModal.order.id);
   };
 
   // ── Cancel Order ───────────────────────────────────────────────────────────
 
   const handleCancelOrder = async (orderId) => {
     setCancelling(orderId);
+    closeCancelModal();
     try {
       await api.put(`/admin/orders/${orderId}`, { status: "cancelled" });
       showToast("Order cancelled successfully", "success");
@@ -816,7 +983,11 @@ const OrderManagement = () => {
           await api.post(`/kitchen/orders/ready`, { order_ids: [orderId] });
           showToast("Order marked as ready", "success");
         }
-      } else if (user.role === "admin") {
+      } else if (
+        user.role === "admin" ||
+        user.role === "supervisor" ||
+        user.role === "attendant"
+      ) {
         let nextStatus;
         if (actionType === "processing") {
           nextStatus = "processing";
@@ -889,6 +1060,30 @@ const OrderManagement = () => {
     }
   };
 
+  const handleSettleOrder = async (settleData) => {
+    if (!settleTargetOrder) return;
+    setIsSettling(true);
+    setChanging(settleTargetOrder.id);
+    try {
+      await api.patch(
+        `/admin/orders/${settleTargetOrder.id}/settle`,
+        settleData,
+      );
+      showToast("Order payment confirmed and updated", "success");
+      setIsSettleModalOpen(false);
+      setSettleTargetOrder(null);
+      fetchOrders(true);
+    } catch (err) {
+      showToast(
+        err.response?.data?.message || "Failed to update order",
+        "error",
+      );
+    } finally {
+      setIsSettling(false);
+      clearChanging(settleTargetOrder.id);
+    }
+  };
+
   const handleConfirmPayment = async (orderId) => {
     setChanging(orderId);
     try {
@@ -938,6 +1133,9 @@ const OrderManagement = () => {
       } else if (actionType === "completing") {
         isDisabled = isCompleting;
         loadingText = "Completing...";
+      } else if (actionType === "confirming") {
+        isDisabled = changingIds.has(id);
+        loadingText = "Confirming...";
       }
 
       return (
@@ -959,20 +1157,14 @@ const OrderManagement = () => {
     };
 
     // Full-width red cancel button
-    const CancelBtn = ({ onClick }) => (
+    const CancelBtn = () => (
       <button
-        onClick={onClick}
-        disabled={cancellingIds.has(id)}
+        onClick={() => openCancelModal(order)}
+        disabled={isCancelling}
         className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-red-500 rounded-xl text-sm font-medium text-white hover:bg-red-600 transition-colors shadow-sm shadow-red-200 disabled:bg-red-500/50 disabled:cursor-not-allowed"
       >
-        {cancellingIds.has(id) ? (
-          "Cancelling..."
-        ) : (
-          <>
-            <XCircle className="w-4 h-4" />
-            Cancel Order
-          </>
-        )}
+        <XCircle className="w-4 h-4" />
+        {isCancelling ? "Cancelling..." : "Cancel Order"}
       </button>
     );
 
@@ -1009,7 +1201,7 @@ const OrderManagement = () => {
           <OrangeBtn
             key="start"
             label="Start Processing"
-            onClick={() => handleStatusUpdate(order)}
+            onClick={() => handleStatusUpdate(order, "processing")}
             actionType="processing"
             icon={ChefHat}
           />,
@@ -1028,15 +1220,29 @@ const OrderManagement = () => {
 
     // ── Admin ─────────────────────────────────────────────────────────────────
     if (user.role === "admin") {
-      if (status === "pending")
+      if (status === "pending") {
+        const isGateway =
+          order.payment_type === "gateway" ||
+          order.payment_type?.toLowerCase().includes("paystack");
+
         buttons.push(
           <OrangeBtn
             key="confirm-payment"
             label="Confirm Payment"
-            onClick={() => handleConfirmPayment(id)}
+            onClick={() => {
+              if (isGateway) {
+                handleConfirmPayment(id);
+              } else {
+                setSettleTargetOrder(order);
+                setIsSettleModalOpen(true);
+              }
+            }}
+            actionType="confirming"
             icon={CreditCard}
           />,
         );
+        buttons.push(<CancelBtn key="cancel" />);
+      }
       if (status === "confirmed") {
         // Admin can send to kitchen for items that need preparation
         buttons.push(<SendToKitchenBtn key="send-kitchen" />);
@@ -1049,23 +1255,13 @@ const OrderManagement = () => {
             icon={PackageCheck}
           />,
         );
-        // Admin can also complete confirmed orders directly for counter items
-        buttons.push(
-          <OrangeBtn
-            key="complete-confirmed"
-            label="Mark as Completed"
-            onClick={() => handleCompleteFromConfirmed(id)}
-            actionType="completing"
-            icon={CheckCircle}
-          />,
-        );
       }
       if (status === "in_kitchen") {
         buttons.push(
           <OrangeBtn
             key="process"
             label="Start Processing"
-            onClick={() => handleStatusUpdate(order)}
+            onClick={() => handleStatusUpdate(order, "processing")}
             actionType="processing"
             icon={ChefHat}
           />,
@@ -1082,10 +1278,7 @@ const OrderManagement = () => {
           />,
         );
       }
-      if (
-        (status === "confirmed" || status === "ready") &&
-        order_type === "delivery"
-      ) {
+      if (status === "ready" && order_type === "delivery") {
         buttons.push(
           <AssignBtn key="assign" onClickFn={() => openAssignModal(order)} />,
         );
@@ -1106,6 +1299,7 @@ const OrderManagement = () => {
             key="complete-dispatched"
             label="Complete Delivery"
             onClick={() => openPinModal(id)}
+            actionType="completing"
             icon={Truck}
           />,
         );
@@ -1131,6 +1325,7 @@ const OrderManagement = () => {
             key="complete"
             label="Complete Delivery"
             onClick={() => openPinModal(id)}
+            actionType="completing"
             icon={Truck}
           />,
         );
@@ -1138,23 +1333,65 @@ const OrderManagement = () => {
 
     // ── Supervisor ────────────────────────────────────────────────────────────
     if (user.role === "supervisor") {
+      if (status === "pending") {
+        const isGateway =
+          order.payment_type === "gateway" ||
+          order.payment_type?.toLowerCase().includes("paystack");
+
+        buttons.push(
+          <OrangeBtn
+            key="confirm-payment"
+            label="Confirm Payment"
+            onClick={() => {
+              if (isGateway) {
+                handleConfirmPayment(id);
+              } else {
+                setSettleTargetOrder(order);
+                setIsSettleModalOpen(true);
+              }
+            }}
+            actionType="confirming"
+            icon={CreditCard}
+          />,
+        );
+        buttons.push(<CancelBtn key="cancel" />);
+      }
       if (status === "confirmed") {
-        // Supervisor can route to kitchen OR complete immediately for counter items
+        // Supervisor can route to kitchen OR mark as ready for counter items
         buttons.push(<SendToKitchenBtn key="send-kitchen" />);
         buttons.push(
           <OrangeBtn
-            key="complete-confirmed"
-            label="Mark as Completed"
-            onClick={() => handleCompleteFromConfirmed(id)}
-            actionType="completing"
-            icon={CheckCircle}
+            key="ready"
+            label="Mark as Ready"
+            onClick={() => handleStatusUpdate(order, "ready")}
+            actionType="ready"
+            icon={PackageCheck}
           />,
         );
       }
-      if (
-        (status === "confirmed" || status === "ready") &&
-        order_type === "delivery"
-      )
+      if (status === "in_kitchen") {
+        buttons.push(
+          <OrangeBtn
+            key="process"
+            label="Start Processing"
+            onClick={() => handleStatusUpdate(order, "processing")}
+            actionType="processing"
+            icon={ChefHat}
+          />,
+        );
+      }
+      if (status === "processing") {
+        buttons.push(
+          <OrangeBtn
+            key="ready"
+            label="Mark as Ready"
+            onClick={() => handleStatusUpdate(order, "ready")}
+            actionType="ready"
+            icon={PackageCheck}
+          />,
+        );
+      }
+      if (status === "ready" && order_type === "delivery")
         buttons.push(
           <AssignBtn key="assign" onClickFn={() => openAssignModal(order)} />,
         );
@@ -1168,71 +1405,70 @@ const OrderManagement = () => {
             icon={CheckCircle}
           />,
         );
-      if (status === "ready" && order_type === "delivery")
-        buttons.push(
-          <OrangeBtn
-            key="complete-delivery"
-            label="Complete Delivery"
-            onClick={() => openPinModal(id)}
-            icon={Truck}
-          />,
-        );
       if (status === "dispatched")
         buttons.push(
           <OrangeBtn
             key="complete-dispatched"
             label="Complete Delivery"
             onClick={() => openPinModal(id)}
+            actionType="completing"
             icon={Truck}
           />,
         );
+
+      // Add cancel button for all non-cancelled orders (except those paid via Paystack/gateway)
+      if (
+        status !== "cancelled" &&
+        status !== "completed" &&
+        order.payment_type !== "gateway" &&
+        !order.payment_type?.toLowerCase().includes("paystack")
+      ) {
+        buttons.push(
+          <CancelBtn key="cancel" onClick={() => openCancelModal(order)} />,
+        );
+      }
     }
 
     // ── Attendant ─────────────────────────────────────────────────────────────
     if (user.role === "attendant") {
-      if (status === "pending")
+      if (status === "pending") {
+        const isGateway =
+          order.payment_type === "gateway" ||
+          order.payment_type?.toLowerCase().includes("paystack");
+
         buttons.push(
           <OrangeBtn
             key="confirm"
             label="Confirm Payment"
-            onClick={() => handleConfirmPayment(id)}
+            onClick={() => {
+              if (isGateway) {
+                handleConfirmPayment(id);
+              } else {
+                setSettleTargetOrder(order);
+                setIsSettleModalOpen(true);
+              }
+            }}
+            actionType="confirming"
             icon={CreditCard}
           />,
         );
+      }
       if (status === "confirmed") {
         // Attendant can send to kitchen for items that need preparation,
         // OR mark as ready for items available at the counter.
         buttons.push(<SendToKitchenBtn key="send-kitchen" />);
-        buttons.push(
-          <OrangeBtn
-            key="ready"
-            label="Mark as Ready"
-            onClick={() => handleStatusUpdate(order, "ready")}
-            actionType="ready"
-            icon={PackageCheck}
-          />,
-        );
-        // Attendant can complete confirmed orders directly for counter items
-        buttons.push(
-          <OrangeBtn
-            key="complete-confirmed"
-            label="Mark as Completed"
-            onClick={() => handleCompleteFromConfirmed(id)}
-            actionType="completing"
-            icon={CheckCircle}
-          />,
-        );
+        if (order_type !== "delivery") {
+          buttons.push(
+            <OrangeBtn
+              key="complete-confirmed"
+              label="Mark as Completed"
+              onClick={() => handleNonDeliveryComplete(id)}
+              actionType="completing"
+              icon={CheckCircle}
+            />,
+          );
+        }
       }
-      if (status === "processing")
-        buttons.push(
-          <OrangeBtn
-            key="ready"
-            label="Mark as Ready"
-            onClick={() => handleStatusUpdate(order, "ready")}
-            actionType="ready"
-            icon={PackageCheck}
-          />,
-        );
       if (status === "ready" && order_type !== "delivery")
         buttons.push(
           <OrangeBtn
@@ -1316,6 +1552,16 @@ const OrderManagement = () => {
           setSelectedOrder(null);
         }}
         order={selectedOrder}
+      />
+      <SettleOrderModal
+        isOpen={isSettleModalOpen}
+        onClose={() => {
+          setIsSettleModalOpen(false);
+          setSettleTargetOrder(null);
+        }}
+        onConfirm={handleSettleOrder}
+        order={settleTargetOrder}
+        isSettling={isSettling}
       />
 
       {/* Cancel Order Confirmation Modal */}

@@ -72,6 +72,7 @@ function OrderTypeForm() {
   const [manualAddressForm, setManualAddressForm] = useState({
     state_id: null,
     city_id: null,
+    city_name: "",
     zone_id: null,
     street_address: "",
   });
@@ -305,9 +306,13 @@ function OrderTypeForm() {
     }
 
     if (key === "city") {
+      const selectedCity = cities.find(
+        (city) => city.id.toString() === e.target.value,
+      );
       setManualAddressForm({
         ...manualAddressForm,
         [`${key}_id`]: e.target.value,
+        city_name: selectedCity ? selectedCity.name : "",
       });
       setIsZonesLoading(true);
       setZones([]);
@@ -372,10 +377,10 @@ function OrderTypeForm() {
     try {
       const payload = {
         order_type: orderType === "dine-in" ? "dine" : orderType,
+        payment_type: paymentMethod,
         customer_name: formData.fullName,
         customer_email: formData.email,
         customer_phone: formData.phone,
-        payment_type: paymentMethod,
         callback_url: `${window.location.origin}/receipt`,
         items: cartItems.map((item) => ({
           menu_id: item.menu.id,
@@ -385,9 +390,17 @@ function OrderTypeForm() {
       };
 
       if (orderType === "delivery") {
-        payload.delivery_city = selectedLocation.city.name;
+        if (selectedLocation) {
+          payload.delivery_zone_id = selectedLocation.id;
+          // Extract city name from saved address or manual selection
+          payload.delivery_city =
+            selectedSavedAddress?.city?.name ||
+            selectedSavedAddress?.zone?.city?.name ||
+            selectedLocation?.city?.name ||
+            manualAddressForm.city_name ||
+            "";
+        }
         payload.delivery_address = formData.deliveryAddress;
-        payload.delivery_zone_id = selectedLocation.id;
       }
 
       const response = await api.post("/checkout", payload);
