@@ -23,8 +23,7 @@ const TaxRuleModal = ({
     type: "VAT",
     description: "",
     rate: "",
-    priority: 1,           // Default priority as integer
-    is_inclusive: false,  // Default is_inclusive as boolean
+    priority: 1,
     is_active: true,
     category_ids: [],
     branches: [],
@@ -48,7 +47,6 @@ const TaxRuleModal = ({
           description: initialData.description || "",
           rate: initialData.rate || "",
           priority: initialData.priority || "",
-          is_inclusive: initialData.is_inclusive || false,
           is_active: initialData.is_active || false,
           category_ids: initialData.categories
             ? initialData.categories.map((c) => c.id)
@@ -61,8 +59,7 @@ const TaxRuleModal = ({
           type: "VAT",
           description: "",
           rate: "",
-          priority: 1,           // Default priority as integer
-          is_inclusive: false,  // Default is_inclusive as boolean
+          priority: 1,
           is_active: true,
           category_ids: [],
           branches: [],
@@ -84,10 +81,9 @@ const TaxRuleModal = ({
         description: formData.description,
         rate: parseFloat(formData.rate),
         priority: parseInt(formData.priority),
-        is_inclusive: formData.is_inclusive,
         is_active: formData.is_active,
         category_ids: formData.category_ids,
-        // branches: formData.branches // Excluded as per payload structure
+        // branches: formData.branches
       };
 
       if (initialData) {
@@ -291,6 +287,9 @@ function TaxAndVat() {
   const [deleteModal, setDeleteModal] = useState({ open: false, rule: null });
   const [toggleModal, setToggleModal] = useState({ open: false, rule: null });
   const [actionLoading, setActionLoading] = useState(false);
+  const [taxMode, setTaxMode] = useState(null); // "inclusive" | "exclusive"
+  const [taxModeLoading, setTaxModeLoading] = useState(true);
+  const [taxModeUpdating, setTaxModeUpdating] = useState(false);
   const { showToast } = useToast();
 
   const fetchData = async () => {
@@ -308,8 +307,38 @@ function TaxAndVat() {
     }
   };
 
+  const fetchTaxMode = async () => {
+    try {
+      const res = await api.get("/admin/tax-mode");
+      setTaxMode(res.data.data?.tax_mode || res.data.tax_mode || null);
+    } catch (error) {
+      console.error("Failed to fetch tax mode:", error);
+    } finally {
+      setTaxModeLoading(false);
+    }
+  };
+
+  const handleTaxModeToggle = async (newMode) => {
+    if (newMode === taxMode || taxModeUpdating) return;
+    setTaxModeUpdating(true);
+    try {
+      await api.put("/admin/tax-mode", { tax_mode: newMode });
+      setTaxMode(newMode);
+      showToast(
+        `Tax mode switched to ${newMode === "inclusive" ? "Inclusive" : "Exclusive"}`,
+        "success"
+      );
+    } catch (error) {
+      console.error("Failed to update tax mode:", error);
+      showToast("Failed to update tax mode", "error");
+    } finally {
+      setTaxModeUpdating(false);
+    }
+  };
+
   useEffect(() => {
     fetchData();
+    fetchTaxMode();
   }, []);
 
   const handleEdit = (rule) => {
@@ -408,6 +437,79 @@ function TaxAndVat() {
           </button>
         </div>
 
+        {/* Tax Mode Toggle */}
+        <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <h3 className="text-base font-bold text-gray-900">
+                Tax Calculation Mode
+              </h3>
+              <p className="text-sm text-gray-500 mt-0.5">
+                Choose how taxes are applied across all orders
+              </p>
+            </div>
+
+            {taxModeLoading ? (
+              <div className="flex items-center gap-2 text-sm text-gray-400">
+                <div className="w-4 h-4 border-2 border-gray-200 border-t-orange-500 rounded-full animate-spin" />
+                Loading...
+              </div>
+            ) : (
+              <div className="flex items-center gap-1 bg-gray-100 p-1 rounded-xl">
+                <button
+                  onClick={() => handleTaxModeToggle("exclusive")}
+                  disabled={taxModeUpdating}
+                  className={`relative px-5 py-2.5 rounded-lg text-sm font-bold transition-all disabled:cursor-not-allowed ${
+                    taxMode === "exclusive"
+                      ? "bg-white text-orange-600 shadow-sm border border-gray-200"
+                      : "text-gray-500 hover:text-gray-700"
+                  }`}
+                >
+                  {taxModeUpdating && taxMode !== "exclusive" && (
+                    <span className="absolute inset-0 flex items-center justify-center">
+                      <span className="w-3.5 h-3.5 border-2 border-gray-300 border-t-orange-500 rounded-full animate-spin" />
+                    </span>
+                  )}
+                  <span className={taxModeUpdating && taxMode !== "exclusive" ? "invisible" : ""}>
+                    Exclusive
+                  </span>
+                </button>
+                <button
+                  onClick={() => handleTaxModeToggle("inclusive")}
+                  disabled={taxModeUpdating}
+                  className={`relative px-5 py-2.5 rounded-lg text-sm font-bold transition-all disabled:cursor-not-allowed ${
+                    taxMode === "inclusive"
+                      ? "bg-white text-orange-600 shadow-sm border border-gray-200"
+                      : "text-gray-500 hover:text-gray-700"
+                  }`}
+                >
+                  {taxModeUpdating && taxMode !== "inclusive" && (
+                    <span className="absolute inset-0 flex items-center justify-center">
+                      <span className="w-3.5 h-3.5 border-2 border-gray-300 border-t-orange-500 rounded-full animate-spin" />
+                    </span>
+                  )}
+                  <span className={taxModeUpdating && taxMode !== "inclusive" ? "invisible" : ""}>
+                    Inclusive
+                  </span>
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Mode description */}
+          {!taxModeLoading && taxMode && (
+            <div className={`mt-4 text-xs rounded-lg px-4 py-3 border ${
+              taxMode === "exclusive"
+                ? "bg-blue-50 border-blue-200 text-blue-700"
+                : "bg-green-50 border-green-200 text-green-700"
+            }`}>
+              {taxMode === "exclusive"
+                ? "Exclusive mode: Tax is calculated on top of the item price. Customers see the base price and tax as separate line items."
+                : "Inclusive mode: Tax is already included within the item price. The displayed price is the final price customers pay."}
+            </div>
+          )}
+        </div>
+
         {/* Preview Card - Static Example for now */}
         <div className="bg-gray-50 rounded-2xl p-8 border border-gray-100">
           <div className="flex justify-between items-start mb-8">
@@ -496,11 +598,6 @@ function TaxAndVat() {
                           <span className="bg-gray-100 text-gray-600 text-xs font-bold px-2.5 py-1 rounded-full border border-gray-200">
                             {rule.type}
                           </span>
-                          {!rule.is_inclusive && (
-                            <span className="bg-blue-100 text-blue-700 text-xs font-bold px-2.5 py-1 rounded-full border border-blue-200">
-                              Exclusive
-                            </span>
-                          )}
                         </div>
                         <p className="text-gray-500">{rule.description}</p>
                       </div>

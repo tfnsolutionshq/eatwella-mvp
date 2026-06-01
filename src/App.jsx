@@ -10,6 +10,7 @@ import AdminGuard from "./Components/RoutingComponents/AdminGuard";
 import StaffGuard from "./Components/RoutingComponents/StaffGuard";
 import PublicRouteGuard from "./Components/RoutingComponents/PublicRouteGuard";
 import AdminOrSupervisorGuard from "./Components/RoutingComponents/AdminOrSupervisorGuard";
+import StoreKeeperGuard from "./Components/RoutingComponents/StoreKeeperGuard";
 import FloatingCartButton from "./Components/FloatingCartButton";
 import FloatingWhatsAppButton from "./Components/FloatingWhatsAppButton";
 
@@ -55,7 +56,6 @@ import FoodPackaging from "./Pages/Admin/FoodPackaging";
 import Settings from "./Pages/Admin/Settings";
 import Campaigns from "./Pages/Admin/Campaigns";
 
-// ── Inner component so useAuth() hook is available inside AuthProvider ──
 function AppRoutes() {
   const { routePrefix } = useAuth();
   const p = routePrefix; // e.g. "/admin", "/supervisor", "/kitchen", etc.
@@ -99,7 +99,6 @@ function AppRoutes() {
         {/* ── Admin-only Routes ── */}
         <Route element={<AdminGuard />}>
           <Route path={`${p}/dashboard`} element={<Dashboard />} />
-          <Route path={`${p}/menu`} element={<AdminMenu />} />
           <Route path={`${p}/users`} element={<AllUsers />} />
           <Route path={`${p}/users/:userId`} element={<SingleUser />} />
           <Route path={`${p}/payments`} element={<Payments />} />
@@ -127,9 +126,10 @@ function AppRoutes() {
         <Route element={<StaffGuard />}>
           <Route path={`${p}/create-order`} element={<CreateOrder />} />
           <Route path={`${p}/orders`} element={<OrderManagement />} />
+          <Route path={`${p}/menu`} element={<AdminMenu />} />
           <Route path="/admin/bank-details" element={<BankDetails />} />
         </Route>
-
+        
         <Route path="*" element={<NotFound />} />
       </Routes>
     </>

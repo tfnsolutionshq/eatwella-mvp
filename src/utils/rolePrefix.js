@@ -4,6 +4,7 @@ export const ROLE_PREFIXES = {
   kitchen: "/kitchen",
   delivery_agent: "/delivery",
   attendant: "/attendant",
+  store_keeper: "/store-keeper",
 };
 
 export function getPrefixForRole(role) {

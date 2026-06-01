@@ -1,5 +1,7 @@
 node_modules
-bugs.md
+bugs_dev.md
+bugs_user.md
+feats.md
 dist
 .env.development
 .env.production

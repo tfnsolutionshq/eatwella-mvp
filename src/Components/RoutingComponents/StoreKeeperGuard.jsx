@@ -1,17 +1,9 @@
-// Components/RoutingComponents/StaffGuard.jsx
+// Components/RoutingComponents/StoreKeeperGuard.jsx
 
 import { Outlet, Navigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 
-const STAFF_ROLES = [
-  "supervisor",
-  "kitchen",
-  "delivery_agent",
-  "attendant",
-  "store_keeper",
-];
-
-const StaffGuard = () => {
+const StoreKeeperGuard = () => {
   const { user, loading } = useAuth();
 
   if (loading) {
@@ -22,17 +14,16 @@ const StaffGuard = () => {
     return <Navigate to="/admin/login" replace />;
   }
 
-  // Allow staff
-  if (STAFF_ROLES.includes(user.role)) {
+  if (user.role === "store_keeper") {
     return <Outlet />;
   }
 
-  // Optional: allow admin too
+  // Redirect other roles to their appropriate home
   if (user.role === "admin") {
-    return <Outlet />;
+    return <Navigate to="/admin/dashboard" replace />;
   }
 
-  return <Navigate to="/" replace />;
+  return <Navigate to="/admin/orders" replace />;
 };
 
-export default StaffGuard;
+export default StoreKeeperGuard;

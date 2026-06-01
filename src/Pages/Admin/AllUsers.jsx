@@ -22,6 +22,7 @@ const ROLE_MAP = {
   "delivery agents": "delivery_agent",
   attendants: "attendant",
   kitchen: "kitchen",
+  "store keepers": "store_keeper",
 };
 
 const AllUsers = () => {
@@ -182,6 +183,7 @@ const AllUsers = () => {
       attendant: "bg-yellow-100 text-yellow-600",
       kitchen: "bg-red-100 text-red-600",
       customer: "bg-blue-100 text-blue-600",
+      store_keeper: "bg-teal-100 text-teal-600",
     };
     return styles[role] ?? "bg-gray-100 text-gray-600";
   };
@@ -189,7 +191,9 @@ const AllUsers = () => {
   const formatRoleLabel = (role) => {
     return role === "delivery_agent"
       ? "Delivery Agent"
-      : role.charAt(0).toUpperCase() + role.slice(1);
+      : role === "store_keeper"
+        ? "Store Keeper"
+        : role.charAt(0).toUpperCase() + role.slice(1);
   };
 
   return (
@@ -260,6 +264,7 @@ const AllUsers = () => {
                 "delivery agents",
                 "attendants",
                 "kitchen",
+                "store keepers",
               ].map((tab) => {
                 const count =
                   tab === "all"

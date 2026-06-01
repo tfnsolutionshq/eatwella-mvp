@@ -475,7 +475,9 @@ function VacancyItemDetails() {
       <div className="relative h-72 md:h-96 bg-gray-900 overflow-hidden">
         {opening.image_path ? (
           <img
-            src={`https://eatwella.tfnsolutions.us/storage/${opening.image_path}`}
+            src={
+              import.meta.env.VITE_API_URL_STORAGE + "/" + opening.image_path
+            }
             alt={opening.title}
             className="w-full h-full object-cover opacity-60"
           />

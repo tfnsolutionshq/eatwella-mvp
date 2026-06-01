@@ -6,6 +6,7 @@ import AddMenuItemModal from "../../Components/Modals/AddMenuItemModal";
 import EditMenuItemModal from "../../Components/Modals/EditMenuItemModal";
 import ConfirmDeleteModal from "../../Components/Modals/ConfirmDeleteModal";
 import { useToast } from "../../context/ToastContext";
+import { useAuth } from "../../context/AuthContext";
 import {
   FiPlus,
   FiFolderPlus,
@@ -19,6 +20,12 @@ import api from "../../utils/api";
 
 const Menu = () => {
   const { showToast } = useToast();
+  const { user } = useAuth();
+
+  // Route prefix: store keepers use the public endpoints
+  const isStoreKeeper = user?.role === "store_keeper";
+  const menuRoute = isStoreKeeper ? "/menus" : "/admin/menus";
+  const categoryRoute = isStoreKeeper ? "/categories" : "/admin/categories";
   const [activeTab, setActiveTab] = useState("all");
   const [categories, setCategories] = useState([]);
   const [menuItems, setMenuItems] = useState([]);
@@ -32,6 +39,10 @@ const Menu = () => {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // Stock management for store keepers
+  const [stockInputs, setStockInputs] = useState({});
+  const [stockSubmitting, setStockSubmitting] = useState({});
 
   // Search functionality
   const [searchTerm, setSearchTerm] = useState("");
@@ -59,7 +70,7 @@ const Menu = () => {
         setIsSearchLoading(true);
         try {
           const response = await api.get(
-            `/admin/menus?search=${encodeURIComponent(searchTerm.trim())}`,
+            `${menuRoute}?search=${encodeURIComponent(searchTerm.trim())}`,
           );
           const data = response.data?.data || response.data || [];
           setSearchResults(Array.isArray(data) ? data : []);
@@ -98,13 +109,13 @@ const Menu = () => {
       setIsLoading(true);
       try {
         const [categoriesRes, menuRes] = await Promise.all([
-          api.get("/admin/categories"),
-          api.get("/admin/menus?page=1"),
+          api.get(categoryRoute),
+          api.get(`${menuRoute}?page=1`),
         ]);
 
         // Full list fetch for modals — needs total from first response
         const allMenuRes = await api.get(
-          `/admin/menus?per_page=${menuRes.data.total}`,
+          `${menuRoute}?per_page=${menuRes.data.total}`,
         );
 
         setCategories(categoriesRes.data.data);
@@ -142,7 +153,7 @@ const Menu = () => {
           params.set("category_id", categoryId);
         }
 
-        const { data } = await api.get(`/admin/menus?${params.toString()}`);
+        const { data } = await api.get(`${menuRoute}?${params.toString()}`);
 
         const pageData = data.data ?? [];
         setMenuItems(pageData);
@@ -172,7 +183,7 @@ const Menu = () => {
 
   const refetchCategories = async () => {
     try {
-      const { data } = await api.get("/admin/categories");
+      const { data } = await api.get(categoryRoute);
       setCategories(data.data);
     } catch (err) {
       console.error("Failed to fetch categories:", err);
@@ -210,7 +221,7 @@ const Menu = () => {
     // Still fetch full list for modals
     try {
       const { data } = await api.get(
-        `/admin/menus?per_page=${pagination.total}`,
+        `${menuRoute}?per_page=${pagination.total}`,
       );
       setAllMenuItems(data.data);
     } catch (err) {
@@ -220,10 +231,49 @@ const Menu = () => {
 
   const fetchSingleMenuItem = async (itemId) => {
     try {
-      const data = await api.get(`/menus/${itemId}`);
+      const { data } = await api.get(`${menuRoute}/${itemId}`);
       return data.data;
     } catch (err) {
       console.error("Failed to fetch menu item details: ", err);
+    }
+  };
+
+  // ── Stock management handlers for store keepers ───────────────────────────
+
+  const handleStockInputChange = (itemId, field, value) => {
+    setStockInputs((prev) => ({
+      ...prev,
+      [itemId]: {
+        ...prev[itemId],
+        [field]: value,
+      },
+    }));
+  };
+
+  const handleStockSubmit = async (item) => {
+    const { quantity = "", note = "" } = stockInputs[item.id] || {};
+
+    if (!quantity || quantity === "") {
+      showToast("Please enter a quantity", "error");
+      return;
+    }
+
+    setStockSubmitting((prev) => ({ ...prev, [item.id]: true }));
+    try {
+      await api.patch(`/admin${menuRoute}/${item.id}/stock`, {
+        quantity: parseInt(quantity, 10),
+        note: note.trim(),
+      });
+      showToast(`Stock updated for ${item.name}`, "success");
+      setStockInputs((prev) => ({ ...prev, [item.id]: { quantity: "", note: "" } }));
+      refetchMenuItems();
+    } catch (err) {
+      showToast(
+        err.response?.data?.message || "Failed to update stock",
+        "error",
+      );
+    } finally {
+      setStockSubmitting((prev) => ({ ...prev, [item.id]: false }));
     }
   };
 
@@ -316,49 +366,53 @@ const Menu = () => {
 
   return (
     <>
-      <AddCategoryModal
-        isOpen={isAddCategoryOpen}
-        onClose={() => setIsAddCategoryOpen(false)}
-        onSuccess={refetchCategories}
-      />
-      <EditCategoryModal
-        isOpen={isEditCategoryOpen}
-        onClose={() => {
-          setIsEditCategoryOpen(false);
-          setEditingCategory(null);
-        }}
-        category={editingCategory}
-        onSuccess={refetchCategories}
-      />
-      <AddMenuItemModal
-        isOpen={isAddMenuItemOpen}
-        onClose={() => setIsAddMenuItemOpen(false)}
-        categories={categories}
-        onSuccess={refetchMenuItems}
-        menuItems={allMenuItems}
-      />
-      <EditMenuItemModal
-        isOpen={isEditMenuItemOpen}
-        onClose={() => {
-          setIsEditMenuItemOpen(false);
-          setEditingItem(null);
-        }}
-        item={editingItem}
-        categories={categories}
-        onSuccess={refetchMenuItems}
-        menuItems={allMenuItems}
-      />
-      <ConfirmDeleteModal
-        isOpen={isDeleteModalOpen}
-        onClose={() => {
-          setIsDeleteModalOpen(false);
-          setItemToDelete(null);
-        }}
-        onConfirm={confirmDeleteMenuItem}
-        title="Delete Menu Item"
-        message="Are you sure you want to delete this menu item? This action cannot be undone."
-        isLoading={isDeleting}
-      />
+      {user?.role !== "store_keeper" && (
+        <>
+          <AddCategoryModal
+            isOpen={isAddCategoryOpen}
+            onClose={() => setIsAddCategoryOpen(false)}
+            onSuccess={refetchCategories}
+          />
+          <EditCategoryModal
+            isOpen={isEditCategoryOpen}
+            onClose={() => {
+              setIsEditCategoryOpen(false);
+              setEditingCategory(null);
+            }}
+            category={editingCategory}
+            onSuccess={refetchCategories}
+          />
+          <AddMenuItemModal
+            isOpen={isAddMenuItemOpen}
+            onClose={() => setIsAddMenuItemOpen(false)}
+            categories={categories}
+            onSuccess={refetchMenuItems}
+            menuItems={allMenuItems}
+          />
+          <EditMenuItemModal
+            isOpen={isEditMenuItemOpen}
+            onClose={() => {
+              setIsEditMenuItemOpen(false);
+              setEditingItem(null);
+            }}
+            item={editingItem}
+            categories={categories}
+            onSuccess={refetchMenuItems}
+            menuItems={allMenuItems}
+          />
+          <ConfirmDeleteModal
+            isOpen={isDeleteModalOpen}
+            onClose={() => {
+              setIsDeleteModalOpen(false);
+              setItemToDelete(null);
+            }}
+            onConfirm={confirmDeleteMenuItem}
+            title="Delete Menu Item"
+            message="Are you sure you want to delete this menu item? This action cannot be undone."
+            isLoading={isDeleting}
+          />
+        </>
+      )}
 
       <DashboardLayout>
         <div className="p-6 space-y-6 bg-gray-50/50 min-h-full">
@@ -367,22 +421,24 @@ const Menu = () => {
             <h1 className="text-2xl font-bold text-gray-900">
               Menu Management
             </h1>
-            <div className="flex items-center gap-3">
-              <button
-                onClick={() => setIsAddCategoryOpen(true)}
-                className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
-              >
-                <FiFolderPlus className="w-4 h-4" />
-                Add Category
-              </button>
-              <button
-                onClick={() => setIsAddMenuItemOpen(true)}
-                className="flex items-center gap-2 px-4 py-2 bg-orange-500 text-white rounded-lg text-sm font-medium hover:bg-orange-600 transition-colors shadow-sm shadow-orange-200"
-              >
-                <FiPlus className="w-4 h-4" />
-                Add Menu Item
-              </button>
-            </div>
+            {user?.role !== "store_keeper" && (
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => setIsAddCategoryOpen(true)}
+                  className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+                >
+                  <FiFolderPlus className="w-4 h-4" />
+                  Add Category
+                </button>
+                <button
+                  onClick={() => setIsAddMenuItemOpen(true)}
+                  className="flex items-center gap-2 px-4 py-2 bg-orange-500 text-white rounded-lg text-sm font-medium hover:bg-orange-600 transition-colors shadow-sm shadow-orange-200"
+                >
+                  <FiPlus className="w-4 h-4" />
+                  Add Menu Item
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Search Input */}
@@ -433,21 +489,25 @@ const Menu = () => {
                       >
                         {cat.name}
                       </button>
-                      <button
-                        onClick={() => {
-                          setEditingCategory(cat);
-                          setIsEditCategoryOpen(true);
-                        }}
-                        className="p-1.5 text-gray-400 hover:text-blue-500 hover:bg-blue-50 rounded transition-colors"
-                      >
-                        <FiEdit2 className="w-3.5 h-3.5" />
-                      </button>
-                      <button
-                        onClick={() => handleDeleteCategory(cat.id)}
-                        className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors"
-                      >
-                        <FiTrash2 className="w-3.5 h-3.5" />
-                      </button>
+                      {user?.role !== "store_keeper" && (
+                        <>
+                          <button
+                            onClick={() => {
+                              setEditingCategory(cat);
+                              setIsEditCategoryOpen(true);
+                            }}
+                            className="p-1.5 text-gray-400 hover:text-blue-500 hover:bg-blue-50 rounded transition-colors"
+                          >
+                            <FiEdit2 className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteCategory(cat.id)}
+                            className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors"
+                          >
+                            <FiTrash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </>
+                      )}
                     </div>
                   ))}
                 </>
@@ -545,42 +605,79 @@ const Menu = () => {
 
                         {/* Actions */}
                         <div className="flex items-center gap-3 pt-4 border-t border-gray-100">
-                          <button
-                            onClick={() => handleToggleAvailability(item)}
-                            className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-gray-50 hover:bg-gray-100 rounded-lg text-sm font-medium text-gray-700 transition-colors"
-                          >
-                            {item.is_available ? (
-                              <>
-                                <FiEyeOff className="w-4 h-4" />
-                                <span>Deactivate</span>
-                              </>
-                            ) : (
-                              <>
-                                <FiEye className="w-4 h-4" />
-                                <span>Activate</span>
-                              </>
-                            )}
-                          </button>
-                          <button
-                            onClick={async () => {
-                              const itemDetails = await fetchSingleMenuItem(
-                                item.id,
-                              );
-                              if (itemDetails) {
-                                setEditingItem(itemDetails);
-                                setIsEditMenuItemOpen(true);
-                              }
-                            }}
-                            className="p-2 hover:bg-gray-100 rounded-lg text-gray-500 hover:text-blue-600 transition-colors"
-                          >
-                            <FiEdit2 className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => handleDeleteMenuItem(item.id)}
-                            className="p-2 hover:bg-red-50 rounded-lg text-gray-500 hover:text-red-600 transition-colors"
-                          >
-                            <FiTrash2 className="w-4 h-4" />
-                          </button>
+                          {user?.role === "store_keeper" ? (
+                            // Stock input form for store keepers
+                            <div className="flex-1 flex flex-col gap-2">
+                              <input
+                                type="number"
+                                min="0"
+                                value={stockInputs[item.id]?.quantity || ""}
+                                onChange={(e) =>
+                                  handleStockInputChange(item.id, "quantity", e.target.value)
+                                }
+                                placeholder="Quantity Added"
+                                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                              />
+                              <div className="flex items-center gap-2">
+                                <input
+                                  type="text"
+                                  value={stockInputs[item.id]?.note || ""}
+                                  onChange={(e) =>
+                                    handleStockInputChange(item.id, "note", e.target.value)
+                                  }
+                                  placeholder="Note (e.g. Weekly restock)"
+                                  className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                                />
+                                <button
+                                  onClick={() => handleStockSubmit(item)}
+                                  disabled={stockSubmitting[item.id]}
+                                  className="px-4 py-2 bg-orange-500 text-white rounded-lg text-sm font-medium hover:bg-orange-600 transition-colors whitespace-nowrap disabled:opacity-60 disabled:cursor-not-allowed"
+                                >
+                                  {stockSubmitting[item.id] ? "Saving..." : "Submit"}
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            // Regular action buttons for other roles
+                            <>
+                              <button
+                                onClick={() => handleToggleAvailability(item)}
+                                className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-gray-50 hover:bg-gray-100 rounded-lg text-sm font-medium text-gray-700 transition-colors"
+                              >
+                                {item.is_available ? (
+                                  <>
+                                    <FiEyeOff className="w-4 h-4" />
+                                    <span>Deactivate</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <FiEye className="w-4 h-4" />
+                                    <span>Activate</span>
+                                  </>
+                                )}
+                              </button>
+                              <button
+                                onClick={async () => {
+                                  const itemDetails = await fetchSingleMenuItem(
+                                    item.id,
+                                  );
+                                  if (itemDetails) {
+                                    setEditingItem(itemDetails);
+                                    setIsEditMenuItemOpen(true);
+                                  }
+                                }}
+                                className="p-2 hover:bg-gray-100 rounded-lg text-gray-500 hover:text-blue-600 transition-colors"
+                              >
+                                <FiEdit2 className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={() => handleDeleteMenuItem(item.id)}
+                                className="p-2 hover:bg-red-50 rounded-lg text-gray-500 hover:text-red-600 transition-colors"
+                              >
+                                <FiTrash2 className="w-4 h-4" />
+                              </button>
+                            </>
+                          )}
                         </div>
                       </div>
                     </div>

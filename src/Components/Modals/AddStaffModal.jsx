@@ -1,8 +1,11 @@
 import React, { useState } from "react";
 import { FiX, FiUser, FiMail, FiLock, FiEye, FiEyeOff } from "react-icons/fi";
 import api from "../../utils/api";
+import {useToast} from "../../context/ToastContext";
 
 const AddStaffModal = ({ isOpen, onClose, onSuccess }) => {
+  const {showToast} = useToast();
+  
   const [formData, setFormData] = useState({
     name: "",
     role: "",
@@ -23,7 +26,7 @@ const AddStaffModal = ({ isOpen, onClose, onSuccess }) => {
       setFormData({ name: "", role: "", email: "", password: "" });
       onSuccess();
       onClose();
-    } catch (err) {
+    } catch (error) {
       if (error.response) {
         console.log("Status:", error.response.status);
         console.log("Data:", error.response.data);
@@ -98,8 +101,9 @@ const AddStaffModal = ({ isOpen, onClose, onSuccess }) => {
             >
               <option value="">-- Select Role --</option>
               <option value="supervisor">Supervisor</option>
-              <option value="kitchen">Kitchen</option>
               <option value="attendant">Attendant</option>
+              <option value="kitchen">Kitchen</option>
+              <option value="store_keeper">Store Keeper</option>
               <option value="delivery_agent">Delivery Agent</option>
             </select>
           </div>

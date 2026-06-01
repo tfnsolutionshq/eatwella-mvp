@@ -82,6 +82,7 @@ function OrderTypeForm() {
   const [isLoadingTax, setIsLoadingTax] = useState(false);
   const [removingDiscount, setRemovingDiscount] = useState(false);
   const [taxList, setTaxList] = useState([]);
+  const [taxMode, setTaxMode] = useState(null); // "inclusive" | "exclusive"
   const [checkingHours, setCheckingHours] = useState(false);
   const [availableTables, setAvailableTables] = useState([]);
   const [isLoadingTables, setIsLoadingTables] = useState(false);
@@ -137,12 +138,17 @@ function OrderTypeForm() {
   const baseSubtotalAfterDiscount = baseSubtotal - safeDiscount;
 
   // Tax should apply to base food price AFTER discount (excluding packaging)
-  const totalTaxAmount = taxList.reduce(
-    (sum, tax) => sum + (tax.rate / 100) * baseSubtotalAfterDiscount,
-    0,
-  );
+  // Only applies when tax mode is exclusive; inclusive tax is already in item prices
+  const isExclusiveTax = taxMode === "exclusive";
 
-  // Final total includes discounted base price + packaging + delivery + tax
+  const totalTaxAmount = isExclusiveTax
+    ? taxList.reduce(
+        (sum, tax) => sum + (Number(tax.rate) / 100) * baseSubtotalAfterDiscount,
+        0,
+      )
+    : 0;
+
+  // Final total includes discounted base price + packaging + delivery + tax (if exclusive)
   const grandTotal =
     baseSubtotalAfterDiscount +
     totalPackagingFee +
@@ -157,8 +163,14 @@ function OrderTypeForm() {
   const getTaxes = async () => {
     setIsLoadingTax(true);
     try {
-      const { data } = await api.get("/taxes");
-      setTaxList(data);
+      const [taxRes, taxModeRes] = await Promise.all([
+        api.get("/taxes"),
+        api.get("/tax-mode"),
+      ]);
+      setTaxList(taxRes.data.taxes);
+      setTaxMode(
+        taxModeRes.data.data?.tax_mode || taxModeRes.data.tax_mode || null,
+      );
     } catch (err) {
       console.error("Failed to fetch taxes:", err);
     } finally {
@@ -802,7 +814,7 @@ function OrderTypeForm() {
                 <p className="text-center text-sm text-gray-400 p-2">
                   Loading Tax Amounts...
                 </p>
-              ) : (
+              ) : isExclusiveTax ? (
                 taxList?.map((tax) => {
                   const taxAmount =
                     (tax.rate / 100) * baseSubtotalAfterDiscount;
@@ -819,7 +831,7 @@ function OrderTypeForm() {
                     </div>
                   );
                 })
-              )}
+              ) : null}
             </div>
 
             <div className="flex justify-between items-center pt-4 border-t border-gray-200 mb-6">
@@ -854,7 +866,7 @@ function OrderTypeForm() {
               </p>
             )}
 
-            {!isLoadingTax && taxList.length === 0 && (
+            {!isLoadingTax && isExclusiveTax && taxList.length === 0 && (
               <p className="text-center text-xs text-green-600 mt-3">
                 No taxes for this order
               </p>

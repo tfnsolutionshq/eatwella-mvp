@@ -50,14 +50,14 @@ const fetchDeliveryAgents = async () => {
 };
 
 const STATUS_CONFIG = {
-  pending: { label: "Pending", color: "bg-gray-100 text-gray-600" },
-  confirmed: { label: "Confirmed", color: "bg-blue-100 text-blue-600" },
-  processing: { label: "Processing", color: "bg-purple-100 text-purple-600" },
-  in_kitchen: { label: "In Kitchen", color: "bg-orange-100 text-orange-600" },
-  ready: { label: "Ready", color: "bg-yellow-100 text-yellow-600" },
-  dispatched: { label: "Dispatched", color: "bg-indigo-100 text-indigo-600" },
-  completed: { label: "Completed", color: "bg-green-100 text-green-600" },
-  cancelled: { label: "Cancelled", color: "bg-red-100 text-red-600" },
+  pending:    { label: "Pending",    color: "bg-gray-100 text-gray-600",   icon: Clock },
+  confirmed:  { label: "Confirmed",  color: "bg-blue-100 text-blue-600",   icon: DollarSign },
+  processing: { label: "Processing", color: "bg-purple-100 text-purple-600", icon: Flame },
+  in_kitchen: { label: "In Kitchen", color: "bg-orange-100 text-orange-600", icon: ChefHat },
+  ready:      { label: "Ready",      color: "bg-yellow-100 text-yellow-600", icon: Package },
+  dispatched: { label: "Dispatched", color: "bg-indigo-100 text-indigo-600", icon: Truck },
+  completed:  { label: "Completed",  color: "bg-green-100 text-green-600",  icon: Check },
+  cancelled:  { label: "Cancelled",  color: "bg-red-100 text-red-600",     icon: X },
 };
 
 const getStatusColor = (status) =>
@@ -66,15 +66,8 @@ const getStatusColor = (status) =>
 const getStatusLabel = (status) => STATUS_CONFIG[status]?.label ?? status;
 
 const getStatusIcon = (status) => {
-  if (status === "pending") return <Clock className="w-3 h-3" />;
-  if (status === "completed") return <Check className="w-3 h-3" />;
-  if (status === "confirmed") return <DollarSign className="w-3 h-3" />;
-  if (status === "processing") return <Flame className="w-3 h-3" />;
-  if (status === "in_kitchen") return <ChefHat className="w-3 h-3" />;
-  if (status === "ready") return <Package className="w-3 h-3" />;
-  if (status === "dispatched") return <Truck className="w-3 h-3" />;
-  if (status === "cancelled") return <X className="w-3 h-3" />;
-  return null;
+  const Icon = STATUS_CONFIG[status]?.icon;
+  return Icon ? <Icon className="w-3 h-3" /> : null;
 };
 
 const TABS_BY_ROLE = {
@@ -1241,7 +1234,6 @@ const OrderManagement = () => {
             icon={CreditCard}
           />,
         );
-        buttons.push(<CancelBtn key="cancel" />);
       }
       if (status === "confirmed") {
         // Admin can send to kitchen for items that need preparation
@@ -1354,7 +1346,6 @@ const OrderManagement = () => {
             icon={CreditCard}
           />,
         );
-        buttons.push(<CancelBtn key="cancel" />);
       }
       if (status === "confirmed") {
         // Supervisor can route to kitchen OR mark as ready for counter items

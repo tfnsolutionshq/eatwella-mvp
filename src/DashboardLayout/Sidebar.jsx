@@ -69,8 +69,8 @@ export default function Sidebar({ isOpen, onToggle, isCollapsed, onCollapseToggl
       id: "menu",
       label: "Menu Management",
       icon: Utensils,
-      path: "/admin/menu",
-      roles: ["admin"],
+      path: user?.role === "store_keeper" ? "/store-keeper/menu" : "/admin/menu",
+      roles: ["admin", "store_keeper"],
     },
     {
       id: "food-packaging",

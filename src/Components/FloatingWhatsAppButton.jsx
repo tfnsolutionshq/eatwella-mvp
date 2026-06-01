@@ -12,7 +12,8 @@ function WhatsAppChatButton() {
   const isExcluded = location.pathname.startsWith("/admin") || 
                      location.pathname.startsWith("/attendant") || 
                      location.pathname.startsWith("/supervisor") || 
-                     location.pathname.startsWith("/delivery-agent");
+                     location.pathname.startsWith("/delivery-agent") ||
+                     location.pathname.startsWith("/store-keeper");
 
   if (isExcluded) return null;
 

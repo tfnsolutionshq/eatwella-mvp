@@ -167,7 +167,11 @@ function VacancyItems() {
                 {opening.image_path && (
                   <div className="md:w-72 h-56 md:h-auto relative overflow-hidden">
                     <img
-                      src={`https://eatwella.tfnsolutions.us/storage/${opening.image_path}`}
+                      src={
+                        import.meta.env.VITE_API_URL_STORAGE +
+                        "/" +
+                        opening.image_path
+                      }
                       alt={opening.title}
                       className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                     />

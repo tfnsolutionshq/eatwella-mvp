@@ -68,14 +68,6 @@ function ReceiptDetails() {
   const [isLoading, setIsLoading] = useState(!location.state?.order);
 
   // Log order details if passed via location state
-  useEffect(() => {
-    if (location.state?.order) {
-      console.log(
-        "📋 Receipt Order Details (from state):",
-        location.state.order,
-      );
-    }
-  }, [location.state?.order]);
   const [fetchError, setFetchError] = useState(null);
   const [zones, setZones] = useState([]);
   const [copied, setCopied] = useState(false);
@@ -417,7 +409,7 @@ function ReceiptDetails() {
                     style: "currency",
                     currency: "NGN",
                     minimumFractionDigits: 0,
-                  }).format(item.menu?.price || item.price || 0)}
+                  }).format(item.menu?.subtotal || item?.subtotal || 0)}
                 </span>
               </div>
             ))}
@@ -434,7 +426,7 @@ function ReceiptDetails() {
               </span>
             </div>
           )}
-          {order.tax_details?.VAT && (
+          {order.tax_details?.VAT && order.tax_details?.VAT.mode === "exclusive" && (
             <div className="flex justify-between font-semibold mt-4">
               <span>Tax Charges:</span>
               <span>
@@ -470,7 +462,7 @@ function ReceiptDetails() {
                 style: "currency",
                 currency: "NGN",
                 minimumFractionDigits: 0,
-              }).format(totalPayment)}
+              }).format(order.final_amount)}
             </span>
           </div>
           <div className="flex justify-between font-semibold">

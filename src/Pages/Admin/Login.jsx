@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { MdRestaurant } from "react-icons/md";
 import { FiMail, FiLock, FiEye, FiEyeOff } from "react-icons/fi";
@@ -31,7 +31,9 @@ const Login = () => {
               ? "/kitchen/orders"
               : data.user?.role === "supervisor"
                 ? "/supervisor/orders"
-                : "/admin/dashboard",
+                : data.user?.role === "store_keeper"
+                  ? "/store-keeper/menu"
+                  : "/admin/dashboard",
       );
     } catch (err) {
       console.error("Login error:", err);
