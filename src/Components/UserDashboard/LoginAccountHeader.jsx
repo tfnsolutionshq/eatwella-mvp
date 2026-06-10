@@ -3,8 +3,9 @@ import Navbar from '../LandingComponents/Navbar'
 
 function ReceiptHeader() {
   return (
-    <div className="bg-gradient-to-br from-green-600 to-green-700 pb-8">
-      <Navbar />  
+    <>
+      <Navbar />
+      <div className="bg-gradient-to-br from-green-600 to-green-700 pb-8">
       <div className="max-w-6xl mx-auto mt-12 px-6">
         <h1 className="text-6xl md:text-7xl font-black font-bolota text-white mb-4">
           Login
@@ -12,6 +13,7 @@ function ReceiptHeader() {
         <p className="text-xl text-white">Login to your account</p>
       </div>
     </div>
+    </>
   )
 }
 

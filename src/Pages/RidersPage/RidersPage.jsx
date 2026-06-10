@@ -143,8 +143,8 @@ function RidersPage() {
 
       <div className="min-h-screen bg-white">
         {/* ── Hero ─────────────────────────────────────────────────────────── */}
+        <Navbar />
         <div className="bg-gradient-to-br from-green-600 to-green-700 relative overflow-hidden min-h-screen">
-          <Navbar />
 
           {/* Decorative blobs */}
           <motion.div
@@ -176,7 +176,7 @@ function RidersPage() {
                   variants={fadeUp}
                   className="text-[48px] md:text-[64px] lg:text-[72px] font-bolota font-black text-white leading-tight mb-6"
                 >
-                  BECOME AN EATWELLA DELIVERY AGENT
+                  BECOME AN EATWELLA RIDER
                 </motion.h1>
                 <motion.p
                   variants={fadeUp}
@@ -416,18 +416,17 @@ function RidersPage() {
               transition={{ duration: 0.6 }}
             >
               <h2 className="text-[52px] md:text-[72px] lg:text-[90px] font-bolota font-black text-white leading-none mb-6">
-                PLACE YOUR ORDER IN SECONDS
+                READY TO JOIN THE TEAM? 
               </h2>
               <p className="text-green-200 text-lg mb-10 max-w-xl mx-auto">
-                And get your favourite meals delivered to your doorstep in
-                minutes.
+                Click the button below, fill in the required details and submit your application.
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
                 <button
-                  onClick={() => navigate("/menu")}
-                  className="bg-orange-500 hover:bg-orange-600 text-white px-6 py-3 rounded-full font-bold transition-colors"
+                  onClick={() => setIsRiderModalOpen(true)}
+                  className="bg-orange-500 hover:bg-orange-600 text-white px-8 py-3 rounded-full font-bold transition-colors shadow-lg hover:shadow-orange-500/30 transform hover:-translate-y-1"
                 >
-                  Browse Menu
+                  Join the Team
                 </button>
               </div>
             </motion.div>

@@ -5,7 +5,7 @@ import SEO from "../../Components/SEO";
 
 function ReceiptPage() {
   return (
-    <>
+    <div className="flex flex-col min-h-screen">
       <SEO
         title="Order Receipt"
         description="View your order receipt and details. Thank you for ordering from Eatwella."
@@ -13,7 +13,7 @@ function ReceiptPage() {
       <ReceiptHeader />
       <ReceiptDetails />
       <Footer />
-    </>
+    </div>
   );
 }
 

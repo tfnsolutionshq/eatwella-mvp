@@ -53,8 +53,9 @@ function Header() {
   };
 
   return (
+    <>
+    <Navbar />
     <div className="bg-gradient-to-br from-green-600 to-green-700 min-h-screen relative overflow-hidden">
-      <Navbar />
 
       {/* Hero Section */}
       <div className="max-w-6xl mx-auto px-6 py-12 lg:py-20 relative z-10">
@@ -153,6 +154,7 @@ function Header() {
         className="absolute top-1/2 right-1/4 w-16 h-16 bg-white rounded-full opacity-10 blur-lg"
       />
     </div>
+    </>
   );
 }
 

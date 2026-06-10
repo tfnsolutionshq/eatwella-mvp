@@ -12,35 +12,43 @@ function LoginContent() {
   const { clearCart } = useCart();
   const initialEmail = location.state?.email || "";
 
-  const [email, setEmail] = useState(initialEmail);
+  const [phoneOrEmail, setPhoneOrEmail] = useState(initialEmail);
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [errors, setErrors] = useState([]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError("");
-    if (!email || !password) {
-      setError("Please enter email and password");
+    setErrors([]);
+    if (!phoneOrEmail || !password) {
+      setErrors(prevErrors => [...prevErrors, "Please fill in both fields"]);
       return;
     }
 
     try {
       setLoading(true);
-      const response = await api.post("/customer/login", { email, password });
+      const response = await api.post("/customer/login", { login: phoneOrEmail, password });
       const data = response.data;
       if (data?.token && data?.user) {
         login(data.token, data.user);
         clearCart();
       }
       navigate("/account/dashboard", { replace: true });
-    } catch (err) {
-      const message =
-        err.response?.data?.message ||
-        err.response?.data?.error ||
-        "Failed to login";
-      setError(message);
+    } catch (error) {
+      if (error.response) {
+        if (error.response.data?.errors){
+          error.response.data?.errors?.login.map(loginError => {
+            setErrors(prevErrors => [...prevErrors, loginError]);
+          })
+        } else{
+          setErrors(prevErrors => [...prevErrors, error.response.data?.message || "Failed to login"]);
+        }
+      } else if (error.request) {
+        setErrors(prevErrors => [...prevErrors, "Network error. Please try again."]);
+      } else {
+        setErrors(prevErrors => [...prevErrors, "An unexpected error occurred"]);
+      }
     } finally {
       setLoading(false);
     }
@@ -53,13 +61,13 @@ function LoginContent() {
           <form onSubmit={handleSubmit} className="space-y-6 text-left">
             <div>
               <label className="block text-xs font-semibold text-gray-600 mb-1 uppercase tracking-wide">
-                Email
+                Phone Number or Email
               </label>
               <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@example.com"
+                type="text"
+                value={phoneOrEmail}
+                onChange={(e) => setPhoneOrEmail(e.target.value)}
+                placeholder="Enter your phone number or email"
                 className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-gray-50 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
               />
             </div>
@@ -73,7 +81,7 @@ function LoginContent() {
                   type={showPassword ? "text" : "password"}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Your password"
+                  placeholder="Enter your password"
                   className="w-full px-4 py-3 pr-14 rounded-2xl border border-gray-200 bg-gray-50 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                 />
                 <button
@@ -86,9 +94,11 @@ function LoginContent() {
               </div>
             </div>
 
-            {error && (
+            {errors.length > 0 && (
               <div className="text-xs text-red-500 bg-red-50 border border-red-100 rounded-2xl px-3 py-2">
-                {error}
+                {errors.map((error, index) => (
+                  <p key={index}>{error}</p>
+                ))}
               </div>
             )}
 

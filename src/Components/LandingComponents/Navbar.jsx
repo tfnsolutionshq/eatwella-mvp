@@ -44,7 +44,8 @@ function Navbar() {
   };
 
   return (
-    <nav className="max-w-6xl mx-auto px-6 py-8 flex items-center justify-between relative z-40">
+    <nav className="sticky top-0 z-50 bg-green-600">
+      <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
       <Link to="/" className="flex items-center gap-2">
         <img src={logo} alt="Eatwella Logo" className=" h-9" />
       </Link>
@@ -299,6 +300,7 @@ function Navbar() {
             )}
           </div>
         </div>
+      </div>
       </div>
     </nav>
   );

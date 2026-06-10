@@ -163,14 +163,11 @@ function OrderTypeForm() {
   const getTaxes = async () => {
     setIsLoadingTax(true);
     try {
-      const [taxRes, taxModeRes] = await Promise.all([
-        api.get("/taxes"),
-        api.get("/tax-mode"),
-      ]);
-      setTaxList(taxRes.data.taxes);
-      setTaxMode(
-        taxModeRes.data.data?.tax_mode || taxModeRes.data.tax_mode || null,
-      );
+      const response = await api.get("/tax-mode");
+      if (response.data.data?.tax_mode || response.data.tax_mode === "exclusive"){
+        const response = await api.get("/taxes");
+        setTaxList(response.data.taxes);
+      }
     } catch (err) {
       console.error("Failed to fetch taxes:", err);
     } finally {
@@ -814,7 +811,7 @@ function OrderTypeForm() {
                 <p className="text-center text-sm text-gray-400 p-2">
                   Loading Tax Amounts...
                 </p>
-              ) : isExclusiveTax ? (
+              ) : (
                 taxList?.map((tax) => {
                   const taxAmount =
                     (tax.rate / 100) * baseSubtotalAfterDiscount;
@@ -831,7 +828,7 @@ function OrderTypeForm() {
                     </div>
                   );
                 })
-              ) : null}
+              )}
             </div>
 
             <div className="flex justify-between items-center pt-4 border-t border-gray-200 mb-6">

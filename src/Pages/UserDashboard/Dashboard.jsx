@@ -5,7 +5,7 @@ import DashboardSidebar from "../../Components/UserDashboard/DashboardSidebar";
 
 function Dashboard() {
   return (
-    <div>
+    <div className="flex flex-col min-h-screen">
       <DashboardHeader />
       <div className="bg-gray-50">
         <main className="px-4 md:px-6 py-10">

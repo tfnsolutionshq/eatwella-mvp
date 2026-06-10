@@ -3,9 +3,9 @@ import Navbar from '../../Components/LandingComponents/Navbar'
 
 function MenuHeader() {
   return (
-    <div className="bg-gradient-to-br from-green-600 to-green-700 pb-8 px-0">
+    <>
       <Navbar />
-
+      <div className="bg-gradient-to-br from-green-600 to-green-700 pb-8">
       {/* Hero Text */}
       <div className="max-w-6xl mx-auto mt-20 px-6">
         <h1 className="text-6xl md:text-7xl font-bolota text-white mb-4">
@@ -14,6 +14,7 @@ function MenuHeader() {
         <p className="text-xl text-white">Manage your account, view orders, and more.</p>
       </div>
     </div>
+    </>
   )
 }
 

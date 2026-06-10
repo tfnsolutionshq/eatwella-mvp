@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { useToast } from "../../context/ToastContext";
@@ -22,6 +22,8 @@ const CareerOpenings = () => {
   const [loading, setLoading] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingOpening, setEditingOpening] = useState(null);
+  const [isSubmittingOpening, setIsSubmittingOpening] = useState(false);
+  const [deletingOpeningId, setDeletingOpeningId] = useState(null);
   const [formData, setFormData] = useState({
     title: "",
     role: "",
@@ -61,6 +63,9 @@ const CareerOpenings = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    setIsSubmittingOpening(true);
+
     const form = new FormData();
     form.append("title", formData.title);
     form.append("role", formData.role);
@@ -91,11 +96,16 @@ const CareerOpenings = () => {
         err.response?.data?.message || "Failed to save opening",
         "error",
       );
+    } finally{
+      setIsSubmittingOpening(false);
     }
   };
 
   const handleDelete = async (id) => {
     if (!confirm("Delete this opening?")) return;
+
+    setDeletingOpeningId(id);
+
     try {
       await api.delete(`/admin/careers/openings/${id}`);
       showToast("Opening deleted successfully!");
@@ -105,6 +115,8 @@ const CareerOpenings = () => {
         err.response?.data?.message || "Failed to delete opening",
         "error",
       );
+    } finally {
+      setDeletingOpeningId(null);
     }
   };
 
@@ -226,10 +238,17 @@ const CareerOpenings = () => {
                     </button>
                     <button
                       onClick={() => handleDelete(opening.id)}
-                      className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-red-50 text-red-600 rounded-lg text-sm font-medium hover:bg-red-100 transition-colors"
+                      className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-red-50 text-red-600 rounded-lg text-sm font-medium hover:bg-red-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      disabled={deletingOpeningId === opening.id}
                     >
-                      <FiTrash2 className="w-4 h-4" />
-                      Delete
+                      {deletingOpeningId === opening.id ? (
+                        "Deleting..."
+                      ) : (
+                        <>
+                          <FiTrash2 className="w-4 h-4" />
+                          Delete
+                        </>
+                      )}
                     </button>
                   </div>
                 </div>
@@ -401,9 +420,14 @@ const CareerOpenings = () => {
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 px-4 py-2.5 bg-orange-500 text-white rounded-xl text-sm font-medium hover:bg-orange-600 transition-colors"
+                  className="flex-1 px-4 py-2.5 bg-orange-500 text-white rounded-xl text-sm font-medium hover:bg-orange-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={isSubmittingOpening}
                 >
-                  {editingOpening ? "Update" : "Create"}
+                  {editingOpening 
+                  ? 
+                  isSubmittingOpening ? "Updating..." : "Update"
+                  : 
+                  isSubmittingOpening ? "Creating..." : "Create"}
                 </button>
               </div>
             </form>

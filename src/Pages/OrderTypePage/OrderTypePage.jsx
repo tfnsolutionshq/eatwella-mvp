@@ -5,7 +5,7 @@ import SEO from "../../Components/SEO";
 
 function OrderTypePage() {
   return (
-    <>
+    <div className="flex flex-col min-h-screen">
       <SEO
         title="Checkout Details"
         description="Enter your details to complete your order. Choose between delivery or dine-in options."
@@ -13,7 +13,7 @@ function OrderTypePage() {
       <OrderTypeHeader />
       <OrderTypeForm />
       <Footer />
-    </>
+    </div>
   );
 }
 

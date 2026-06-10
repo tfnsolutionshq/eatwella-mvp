@@ -4,7 +4,7 @@ import Footer from "../../Components/LandingComponents/Footer";
 
 function CreateAccount() {
   return (
-    <div>
+    <div className="flex flex-col min-h-screen">
       <CreateAccountHeader />
       <CreateAccountContent />
       <Footer />

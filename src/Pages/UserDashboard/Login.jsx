@@ -4,7 +4,7 @@ import LoginContent from "../../Components/UserDashboard/LoginContent";
 
 function Login() {
   return (
-    <div>
+    <div className="flex flex-col min-h-screen">
       <LoginAccountHeader />
       <LoginContent />
       <Footer />

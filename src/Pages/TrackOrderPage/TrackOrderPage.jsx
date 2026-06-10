@@ -12,9 +12,7 @@ function TrackOrderPage() {
           description="Track the status of your Eatwella order in real-time. Enter your order ID to see updates."
         />
         <TrackOrderHeader />
-        <div className="flex-grow bg-gray-50">
-            <TrackOrderContent />
-        </div>
+        <TrackOrderContent />
         <Footer />
     </div>
   )

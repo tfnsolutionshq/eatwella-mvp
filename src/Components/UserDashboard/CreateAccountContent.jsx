@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { FiMapPin, FiCheckCircle } from "react-icons/fi";
 import axios from "axios";
 import api from "../../utils/api";
 
@@ -402,7 +401,15 @@ function CreateAccountContent() {
 
             <button
               type="submit"
-              disabled={loading || !hasCompleteAddressFields()}
+              disabled={
+                loading ||
+                !firstName.trim() ||
+                !lastName.trim() ||
+                !email.trim() ||
+                !phone.trim() ||
+                !password ||
+                !hasCompleteAddressFields()
+              }
               className="w-full py-3 rounded-full bg-orange-500 hover:bg-orange-600 text-white font-semibold text-sm tracking-wide disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
             >
               {loading ? "Creating Account..." : "Create Account"}

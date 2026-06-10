@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { OrderCard, OrderDetailsModal } from "../../Components/UserDashboard/shared";
+import { Link } from "react-router-dom";
 import { ngn } from "../../Components/UserDashboard/shared/utils";
 import api from "../../utils/api";
 
@@ -41,6 +42,8 @@ function OrdersPage() {
         <div className="p-6">
           <h2 className="text-lg font-semibold">Order History</h2>
         </div>
+        {
+          orders.length > 0 ?
         <div className="px-6 pb-6 space-y-4">
           {orders.map((o) => (
             <OrderCard
@@ -53,7 +56,16 @@ function OrdersPage() {
               }}
             />
           ))}
+        </div> : <div className="px-6 pb-6 space-y-4 flex flex-col items-center justify-center">
+          <p>No orders placed yet.</p>
+          <Link
+                to="/menu"
+                className="bg-orange-500 hover:bg-orange-600 text-white px-8 py-3 rounded-full font-bold transition-colors transform inline-block"
+              >
+                Place an Order
+              </Link>
         </div>
+        }
       </div>
 
       {showOrderModal && selectedOrder && (

@@ -3,9 +3,9 @@ import Navbar from '../LandingComponents/Navbar'
 
 function RidersHeader() {
   return (
-    <div className="bg-gradient-to-br from-green-600 to-green-700 pb-8">
+    <>
       <Navbar />
-
+      <div className="bg-gradient-to-br from-green-600 to-green-700 pb-8">
       {/* Hero Text */}
       <div className="max-w-6xl mx-auto mt-20 px-6">
         <h1 className="text-6xl md:text-7xl font-bolota font-black text-white mb-4">
@@ -16,6 +16,7 @@ function RidersHeader() {
         </p>
       </div>
     </div>
+    </>
   )
 }
 

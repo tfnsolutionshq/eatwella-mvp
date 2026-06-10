@@ -217,6 +217,9 @@ const ReceiptPDFDocument = ({ order, paperSize = "A5" }) => {
       flexDirection: "row",
       justifyContent: "space-between",
       marginBottom: cfg.gap,
+      borderBottomWidth: 0.75,
+      borderBottomColor: "#d1d5db",
+      paddingBottom: cfg.gap * 1.5,
     },
     vatLabel: {
       fontSize: cfg.fontSm,
@@ -231,8 +234,8 @@ const ReceiptPDFDocument = ({ order, paperSize = "A5" }) => {
       flexDirection: "row",
       justifyContent: "space-between",
       alignItems: "center",
-      borderTopWidth: 0.75,
-      borderTopColor: "#d1d5db",
+      // borderTopWidth: 0.75,
+      // borderTopColor: "#d1d5db",
       marginTop: cfg.gap,
       paddingTop: cfg.gap * 1.5,
       marginBottom: cfg.gap,
@@ -389,10 +392,10 @@ const ReceiptPDFDocument = ({ order, paperSize = "A5" }) => {
                 </Text>
               </View>
             )}
-            <View style={S.vatRow}>
+            {order.tax_details.VAT.mode === "exclusive" ? <View style={S.vatRow}>
               <Text style={S.vatLabel}>Tax ({vatType})</Text>
               <Text style={S.vatValue}>{formatNGN(vatAmount)}</Text>
-            </View>
+            </View> : ""}
             <View style={S.totalRow}>
               <Text style={S.totalLabel}>TOTAL PAYMENT</Text>
               <Text style={S.totalValue}>{formatNGN(totalAmount)}</Text>
