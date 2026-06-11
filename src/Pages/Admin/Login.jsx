@@ -36,12 +36,15 @@ const Login = () => {
                   : "/admin/dashboard",
       );
     } catch (err) {
-      console.error("Login error:", err);
-      setError(
-        err.response?.data?.message ||
-          err.message ||
-          "Login failed. Please try again.",
-      );
+      if (err.response.status === 401 || err.response.status === 403){
+        setError("Invalid credentials");
+      } else{
+        setError(
+          err.response?.data?.message ||
+            err.message ||
+            "Login failed. Please try again.",
+        );
+      }
     } finally {
       setLoading(false);
     }

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { BiBasket } from "react-icons/bi";
 import {
   FiMenu,
@@ -9,18 +9,79 @@ import {
   FiLoader,
 } from "react-icons/fi";
 import { Link, NavLink, useNavigate } from "react-router-dom";
+import Marquee from "react-fast-marquee";
 import { useAuth } from "../../context/AuthContext";
 import { useCart } from "../../context/CartContext";
 import api from "../../utils/api";
 import logo from "../../assets/eatwellalogo.png";
 
+function isActiveCampaign(c) {
+  const now = new Date();
+  return (
+    c.status === "published" &&
+    new Date(c.start_date) <= now &&
+    new Date(c.end_date) >= now
+  );
+}
+
+function CampaignBanner({ campaigns, isLoading }) {
+  const banners = campaigns.filter(
+    (c) => isActiveCampaign(c) && c.type === "banner",
+  );
+
+  if (isLoading) {
+    return (
+      <div className="w-full bg-gray-100 animate-pulse flex items-center justify-center py-2.5">
+        <div className="h-4 w-48 bg-gray-200 rounded" />
+      </div>
+    );
+  }
+
+  if (!banners.length) return null;
+
+  return (
+    <div className="bg-green-50 border-b border-green-100 py-2">
+      <Marquee speed={50} gradient={false} pauseOnHover>
+        {banners.map((campaign) => (
+          <Link
+            to={campaign.url || "#"}
+            target={campaign.url ? "_blank" : "_self"}
+            key={campaign.id}
+            className="mx-10 text-green-700 font-medium text-sm hover:underline"
+          >
+            📢 {campaign.title} — {campaign.brief}
+          </Link>
+        ))}
+      </Marquee>
+    </div>
+  );
+}
+
 function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [campaigns, setCampaigns] = useState([]);
+  const [isCampaignsLoading, setIsCampaignsLoading] = useState(true);
   const { user, logout } = useAuth();
   const { cartItemCount } = useCart();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const fetchCampaigns = async () => {
+      try {
+        setIsCampaignsLoading(true);
+        const { data } = await api.get("/campaigns");
+        const list = Array.isArray(data) ? data : (data.data ?? []);
+        setCampaigns(list);
+      } catch (err) {
+        console.error("Failed to load campaigns:", err);
+      } finally {
+        setIsCampaignsLoading(false);
+      }
+    };
+    fetchCampaigns();
+  }, []);
 
   const avatarUrl =
     user?.avatar_url || user?.avatar || user?.profile_image || user?.image;
@@ -45,6 +106,7 @@ function Navbar() {
 
   return (
     <nav className="sticky top-0 z-50 bg-green-600">
+      <CampaignBanner campaigns={campaigns} isLoading={isCampaignsLoading} />
       <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
       <Link to="/" className="flex items-center gap-2">
         <img src={logo} alt="Eatwella Logo" className=" h-9" />

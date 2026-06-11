@@ -9,7 +9,7 @@ import Footer from "../../Components/LandingComponents/Footer";
 import RiderApplicationModal from "../../Components/Modals/RiderApplicationModal";
 
 import riderLoginImg from "../../assets/rider_login.png";
-import riderDashboardImg from "../../assets/rider_dashboard.png";
+import riderDashboardImg from "../../assets/rider_application_form.png";
 import riderCompleteImg from "../../assets/rider_complete.png";
 import deliveryImg from "../../assets/feeling/eatwella_delivery.jpeg";
 import dineInImg from "../../assets/feeling/eatwella_dinein.jpeg";
@@ -27,6 +27,15 @@ const fadeUp = {
   },
 };
 
+const floatingAnimation = {
+  y: [0, -15, 0],
+  transition: {
+    duration: 4,
+    repeat: Infinity,
+    ease: "easeInOut",
+  },
+};
+
 const stagger = {
   hidden: { opacity: 0 },
   visible: {
@@ -39,22 +48,22 @@ const stagger = {
 
 const networkCards = [
   {
-    title: "Order in 3 steps",
+    title: "Apply to Ride",
     description:
-      "Receive your assignments directly on your dashboard. Log in, check your orders, and head out — it's that simple.",
+      "Fill out our quick rider application form. Tell us about yourself, your bike/vehicle, and your city. Takes less than 3 minutes.",
     image: riderDashboardImg,
   },
   {
-    title: "Start earning",
+    title: "Get Approved & Onboarded",
     description:
-      "Every completed delivery adds to your earnings. Withdraw straight to your bank account at any time with no delays.",
-    image: deliveryImg,
+      "Once we review and approve your application, we’ll activate your rider account and get you set up on the Eatwella rider app or web.",
+    image: riderCompleteImg,
   },
   {
-    title: "Behind the scenes",
+    title: "Deliver & Earn",
     description:
-      "Our team is always available to support you. From order disputes to technical issues, we've got your back.",
-    image: riderCompleteImg,
+      "Accept delivery requests near you, complete orders, and get paid. Earnings are sent weekly straight to your bank account.",    
+    image: deliveryImg,
   },
 ];
 
@@ -145,7 +154,6 @@ function RidersPage() {
         {/* ── Hero ─────────────────────────────────────────────────────────── */}
         <Navbar />
         <div className="bg-gradient-to-br from-green-600 to-green-700 relative overflow-hidden min-h-screen">
-
           {/* Decorative blobs */}
           <motion.div
             animate={{ scale: [1, 1.2, 1], opacity: [0.3, 0.15, 0.3] }}
@@ -207,12 +215,18 @@ function RidersPage() {
                 }}
                 className="flex items-center justify-center h-full"
               >
-                <div className="w-[80%] h-[90%] max-w-md rounded-3xl overflow-hidden shadow-2xl border-8 border-white rotate-3">
-                  <img
-                    src={deliveryImg}
-                    alt="Image of an Eatwella delivery agent"
-                    className="h-full object-cover"
-                  />
+                {/* rotate-12 lives here, untouched by framer-motion transforms */}
+                <div className="rotate-6 h-full flex items-center justify-center">
+                  <motion.div
+                    animate={floatingAnimation}
+                    className="w-[85%] h-[90%] max-w-md rounded-[35px] overflow-hidden shadow-2xl border-[7px] border-white"
+                  >
+                    <img
+                      src={deliveryImg}
+                      alt="Image of an Eatwella delivery agent"
+                      className="w-full h-full object-cover"
+                    />
+                  </motion.div>
                 </div>
               </motion.div>
             </div>
@@ -323,8 +337,7 @@ function RidersPage() {
               className="text-center mb-14"
             >
               <h2 className="text-4xl md:text-5xl font-bolota font-black text-gray-900">
-                Join our growing network{" "}
-                <span className="inline-block">👇</span>
+                3 Easy Steps to Start Earning with Eatwella
               </h2>
             </motion.div>
 
@@ -416,10 +429,11 @@ function RidersPage() {
               transition={{ duration: 0.6 }}
             >
               <h2 className="text-[52px] md:text-[72px] lg:text-[90px] font-bolota font-black text-white leading-none mb-6">
-                READY TO JOIN THE TEAM? 
+                READY TO JOIN THE TEAM?
               </h2>
               <p className="text-green-200 text-lg mb-10 max-w-xl mx-auto">
-                Click the button below, fill in the required details and submit your application.
+                Click the button below, fill in the required details and submit
+                your application.
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
                 <button

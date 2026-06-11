@@ -1,7 +1,5 @@
 import { useEffect, useState } from "react";
-import Marquee from "react-fast-marquee";
 import api from "../../utils/api";
-import { Link } from "react-router-dom";
 
 import Header from "../../Components/LandingComponents/Header";
 import Feeling from "../../Components/LandingComponents/Feeling";
@@ -19,41 +17,6 @@ function isActiveCampaign(c) {
     c.status === "published" &&
     new Date(c.start_date) <= now &&
     new Date(c.end_date) >= now
-  );
-}
-
-// ─── Banner ───────────────────────────────────────────────────────────────────
-
-function CampaignBanner({ campaigns, isLoading }) {
-  const banners = campaigns.filter(
-    (c) => isActiveCampaign(c) && c.type === "banner",
-  );
-
-  if (isLoading) {
-    return (
-      <div className="w-full bg-gray-100 animate-pulse flex items-center justify-center py-2.5">
-        <div className="h-4 w-48 bg-gray-200 rounded" />
-      </div>
-    );
-  }
-
-  if (!banners.length) return null;
-
-  return (
-    <div className="bg-green-50 border-b border-green-100 py-2">
-      <Marquee speed={50} gradient={false} pauseOnHover>
-        {banners.map((campaign) => (
-          <Link
-            to={campaign.url || "#"}
-            target={campaign.url ? "_blank" : "_self"}
-            key={campaign.id}
-            className="mx-10 text-green-700 font-medium text-sm hover:underline"
-          >
-            📢 {campaign.title} — {campaign.brief}
-          </Link>
-        ))}
-      </Marquee>
-    </div>
   );
 }
 
@@ -227,23 +190,18 @@ function CampaignModal({ campaigns, onClose }) {
 // ─── Homepage ─────────────────────────────────────────────────────────────────
 
 function Homepage() {
-  const [campaigns, setCampaigns] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [modalCampaigns, setModalCampaigns] = useState([]);
 
   useEffect(() => {
     const fetchCampaigns = async () => {
       try {
-        setIsLoading(true);
         const { data } = await api.get("/campaigns");
         const list = Array.isArray(data) ? data : (data.data ?? []);
-        setCampaigns(list);
 
         const activeModals = list
           .filter((c) => isActiveCampaign(c) && c.type === "modal")
           .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-
         if (!activeModals.length) return;
 
         const now = Date.now();
@@ -261,8 +219,6 @@ function Homepage() {
         }
       } catch (err) {
         console.error("Failed to load campaigns:", err);
-      } finally {
-        setIsLoading(false);
       }
     };
 
@@ -286,7 +242,6 @@ function Homepage() {
         description="Eatwella - Delicious, healthy, and affordable meals delivered to your doorstep. Experience the best of Nigerian cuisine."
       />
 
-      <CampaignBanner campaigns={campaigns} isLoading={isLoading} />
       <Header />
       <Menu />
       <Feeling />
