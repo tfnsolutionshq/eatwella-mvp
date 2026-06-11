@@ -32,11 +32,9 @@ jobs:
           chmod 600 ~/.ssh/id_ed25519
           ssh-keyscan -H ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
 
-      - name: Verify SSH key
+      - name: Test SSH connection
         run: |
-          wc -l ~/.ssh/id_ed25519
-          head -1 ~/.ssh/id_ed25519
-          tail -1 ~/.ssh/id_ed25519
+          ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no -v tfnsolutions@${{ secrets.SSH_HOST }} "echo SSH_SUCCESS"
 
       - name: Deploy with rsync
         run: |
