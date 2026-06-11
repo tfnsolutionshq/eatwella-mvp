@@ -9,7 +9,7 @@ function PaymentPage() {
     <>
       <SEO 
         title="Payment" 
-        description="Securely pay for your EatWella order. Choose from multiple payment options including card and cash."
+        description="Securely pay for your Eatwella order. Choose from multiple payment options including card and cash."
       />
       <PaymentHeader />
       <PaymentMethods />

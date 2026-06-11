@@ -8,7 +8,7 @@ const STAFF_ROLES = [
   "kitchen",
   "delivery_agent",
   "attendant",
-  "cashier",
+  "store_keeper",
 ];
 
 const StaffGuard = () => {

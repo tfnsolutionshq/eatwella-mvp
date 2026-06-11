@@ -13,9 +13,9 @@ function Ordertype() {
   }
 
   return (
-    <div className="bg-gradient-to-br from-green-600 to-green-700 pb-8 px-0">
+    <>
       <Navbar />
-
+      <div className="bg-gradient-to-br from-green-600 to-green-700 pb-8 px-0">
       {/* Hero Text */}
       <div className="max-w-6xl mx-auto mt-12 px-6">
         <h1 className="text-6xl md:text-7xl font-black font-bolota text-white mb-1">
@@ -24,6 +24,7 @@ function Ordertype() {
         <p className="text-xl text-white">Choose your preferred order type</p>
       </div>
     </div>
+    </>
   )
 }
 

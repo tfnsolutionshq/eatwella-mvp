@@ -6,7 +6,7 @@ import SEO from '../../Components/SEO'
 
 function VacancyPage() {
   return (
-    <>
+    <div className="flex flex-col min-h-screen">
       <SEO 
         title="Vacancy" 
         description="Apply for our available job positions. Get hired and start your career."
@@ -14,7 +14,7 @@ function VacancyPage() {
       <VacancyHeader />
       <VacancyContent />
       <Footer />
-    </>
+    </div>
   )
 }
 

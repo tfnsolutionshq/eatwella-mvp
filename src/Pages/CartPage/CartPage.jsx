@@ -6,15 +6,15 @@ import SEO from '../../Components/SEO'
 
 function CartPage() {
   return (
-    <>
+    <div className="flex flex-col min-h-screen">
       <SEO 
         title="Your Cart" 
-        description="Review your order and proceed to checkout. EatWella - Healthy meals delivered."
+        description="Review your order and proceed to checkout. Eatwella - Healthy meals delivered."
       />
       <CartHeader />
       <CartItems />
       <Footer />
-    </>
+    </div>
   )
 }
 

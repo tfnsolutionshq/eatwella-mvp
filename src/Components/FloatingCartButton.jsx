@@ -1,9 +1,8 @@
 import { BiBasket } from "react-icons/bi";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useLocation, NavLink } from "react-router-dom";
 import { useCart } from "../context/CartContext";
 
 function FloatingCartButton() {
-  const navigate = useNavigate();
   const location = useLocation();
   const { cartItemCount } = useCart();
 
@@ -14,15 +13,19 @@ function FloatingCartButton() {
   const isExcluded =
     excludedPaths.includes(location.pathname) ||
     location.pathname.startsWith("/receipt") ||
-    location.pathname.startsWith("/admin");
+    location.pathname.startsWith("/admin") ||
+    location.pathname.startsWith("/attendant") ||
+    location.pathname.startsWith("/supervisor") ||
+    location.pathname.startsWith("/delivery-agent") ||
+    location.pathname.startsWith("/store-keeper");
 
   if (isExcluded) {
     return null;
   }
 
   return (
-    <button
-      onClick={() => navigate("/cart")}
+    <NavLink
+      to="/cart"
       className="fixed right-0 top-1/2 transform -translate-y-1/2 bg-orange-500 hover:bg-orange-600 text-white p-3 rounded-l-xl shadow-lg z-50 transition-colors"
       aria-label="View Cart"
     >
@@ -35,14 +38,14 @@ function FloatingCartButton() {
             </span>
           )}
         </div>
-        <div className="text-sm font-medium writing-mode-vertical text-orientation-upright hidden md:block">
+        <div className="text-sm font-medium writing-mode-vertical text-orientation-upright hidden lg:block">
           <p className="text-left">
             Your
             <br /> Food Basket
           </p>
         </div>
       </div>
-    </button>
+    </NavLink>
   );
 }
 

@@ -1,10 +1,12 @@
 import { useState, useEffect, useCallback } from "react";
-import { Link } from "react-router-dom";
 import DashboardLayout from "../../DashboardLayout/DashboardLayout";
 import AddCategoryModal from "../../Components/Modals/AddCategoryModal";
 import EditCategoryModal from "../../Components/Modals/EditCategoryModal";
 import AddMenuItemModal from "../../Components/Modals/AddMenuItemModal";
 import EditMenuItemModal from "../../Components/Modals/EditMenuItemModal";
+import ConfirmDeleteModal from "../../Components/Modals/ConfirmDeleteModal";
+import { useToast } from "../../context/ToastContext";
+import { useAuth } from "../../context/AuthContext";
 import {
   FiPlus,
   FiFolderPlus,
@@ -13,9 +15,17 @@ import {
   FiEye,
   FiEyeOff,
 } from "react-icons/fi";
+import SearchInput from "../../Components/SearchInput";
 import api from "../../utils/api";
 
 const Menu = () => {
+  const { showToast } = useToast();
+  const { user } = useAuth();
+
+  // Route prefix: store keepers use the public endpoints
+  const isStoreKeeper = user?.role === "store_keeper";
+  const menuRoute = isStoreKeeper ? "/menus" : "/admin/menus";
+  const categoryRoute = isStoreKeeper ? "/categories" : "/admin/categories";
   const [activeTab, setActiveTab] = useState("all");
   const [categories, setCategories] = useState([]);
   const [menuItems, setMenuItems] = useState([]);
@@ -26,6 +36,57 @@ const Menu = () => {
   const [isAddMenuItemOpen, setIsAddMenuItemOpen] = useState(false);
   const [isEditMenuItemOpen, setIsEditMenuItemOpen] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  // Stock management for store keepers
+  const [stockInputs, setStockInputs] = useState({});
+  const [stockSubmitting, setStockSubmitting] = useState({});
+
+  // Search functionality
+  const [searchTerm, setSearchTerm] = useState("");
+  const [searchResults, setSearchResults] = useState([]);
+  const [isSearchLoading, setIsSearchLoading] = useState(false);
+
+  const handleSearchChange = useCallback((e) => {
+    setSearchTerm(e.target.value);
+  }, []);
+
+  const clearSearch = useCallback(() => {
+    setSearchTerm("");
+    setSearchResults([]);
+  }, []);
+
+  // Debounced search for admin menu items
+  useEffect(() => {
+    const timerId = setTimeout(() => {
+      if (!searchTerm.trim()) {
+        setSearchResults([]);
+        return;
+      }
+
+      const performSearch = async () => {
+        setIsSearchLoading(true);
+        try {
+          const response = await api.get(
+            `${menuRoute}?search=${encodeURIComponent(searchTerm.trim())}`,
+          );
+          const data = response.data?.data || response.data || [];
+          setSearchResults(Array.isArray(data) ? data : []);
+        } catch (err) {
+          console.error("Search error:", err);
+          setSearchResults([]);
+        } finally {
+          setIsSearchLoading(false);
+        }
+      };
+
+      performSearch();
+    }, 300);
+
+    return () => clearTimeout(timerId);
+  }, [searchTerm]);
 
   // Numbered pagination state (mirrors MenuItems.jsx)
   const [page, setPage] = useState(1);
@@ -48,13 +109,13 @@ const Menu = () => {
       setIsLoading(true);
       try {
         const [categoriesRes, menuRes] = await Promise.all([
-          api.get("/admin/categories"),
-          api.get("/admin/menus?page=1"),
+          api.get(categoryRoute),
+          api.get(`${menuRoute}?page=1`),
         ]);
 
         // Full list fetch for modals — needs total from first response
         const allMenuRes = await api.get(
-          `/admin/menus?per_page=${menuRes.data.total}`,
+          `${menuRoute}?per_page=${menuRes.data.total}`,
         );
 
         setCategories(categoriesRes.data.data);
@@ -92,7 +153,7 @@ const Menu = () => {
           params.set("category_id", categoryId);
         }
 
-        const { data } = await api.get(`/admin/menus?${params.toString()}`);
+        const { data } = await api.get(`${menuRoute}?${params.toString()}`);
 
         const pageData = data.data ?? [];
         setMenuItems(pageData);
@@ -122,44 +183,97 @@ const Menu = () => {
 
   const refetchCategories = async () => {
     try {
-      const { data } = await api.get("/admin/categories");
+      const { data } = await api.get(categoryRoute);
       setCategories(data.data);
     } catch (err) {
       console.error("Failed to fetch categories:", err);
     }
   };
 
+  // const refetchMenuItems = async () => {
+  //   try {
+  //     const firstResponse = await api.get(
+  //       `/admin/menus?page=${pagination.current_page}`,
+  //     );
+  //     const allMenuRes = await api.get(
+  //       `/admin/menus?per_page=${firstResponse.data.total}`,
+  //     );
+  //     const pageData = firstResponse.data.data ?? [];
+  //     setMenuItems(pageData);
+  //     setAllMenuItems(allMenuRes.data.data);
+  //     setPagination({
+  //       current_page:
+  //         firstResponse.data.current_page ?? pagination.current_page,
+  //       last_page: firstResponse.data.last_page ?? 1,
+  //       total: firstResponse.data.total ?? pageData.length,
+  //       from: firstResponse.data.from ?? (pageData.length ? 1 : 0),
+  //       to: firstResponse.data.to ?? pageData.length,
+  //       per_page: firstResponse.data.per_page ?? 15,
+  //     });
+  //   } catch (err) {
+  //     console.error("Failed to fetch menu items:", err);
+  //   }
+  // };
+
   const refetchMenuItems = async () => {
+    await fetchMenuItems(activeTab, pagination.current_page);
+
+    // Still fetch full list for modals
     try {
-      const firstResponse = await api.get(
-        `/admin/menus?page=${pagination.current_page}`,
+      const { data } = await api.get(
+        `${menuRoute}?per_page=${pagination.total}`,
       );
-      const allMenuRes = await api.get(
-        `/admin/menus?per_page=${firstResponse.data.total}`,
-      );
-      const pageData = firstResponse.data.data ?? [];
-      setMenuItems(pageData);
-      setAllMenuItems(allMenuRes.data.data);
-      setPagination({
-        current_page:
-          firstResponse.data.current_page ?? pagination.current_page,
-        last_page: firstResponse.data.last_page ?? 1,
-        total: firstResponse.data.total ?? pageData.length,
-        from: firstResponse.data.from ?? (pageData.length ? 1 : 0),
-        to: firstResponse.data.to ?? pageData.length,
-        per_page: firstResponse.data.per_page ?? 15,
-      });
+      setAllMenuItems(data.data);
     } catch (err) {
-      console.error("Failed to fetch menu items:", err);
+      console.error("Failed to fetch all menu items:", err);
     }
   };
 
   const fetchSingleMenuItem = async (itemId) => {
     try {
-      const data = await api.get(`/menus/${itemId}`);
+      const { data } = await api.get(`${menuRoute}/${itemId}`);
       return data.data;
     } catch (err) {
       console.error("Failed to fetch menu item details: ", err);
+    }
+  };
+
+  // ── Stock management handlers for store keepers ───────────────────────────
+
+  const handleStockInputChange = (itemId, field, value) => {
+    setStockInputs((prev) => ({
+      ...prev,
+      [itemId]: {
+        ...prev[itemId],
+        [field]: value,
+      },
+    }));
+  };
+
+  const handleStockSubmit = async (item) => {
+    const { quantity = "", note = "" } = stockInputs[item.id] || {};
+
+    if (!quantity || quantity === "") {
+      showToast("Please enter a quantity", "error");
+      return;
+    }
+
+    setStockSubmitting((prev) => ({ ...prev, [item.id]: true }));
+    try {
+      await api.patch(`/admin${menuRoute}/${item.id}/stock`, {
+        quantity: parseInt(quantity, 10),
+        note: note.trim(),
+      });
+      showToast(`Stock updated for ${item.name}`, "success");
+      setStockInputs((prev) => ({ ...prev, [item.id]: { quantity: "", note: "" } }));
+      refetchMenuItems();
+    } catch (err) {
+      showToast(
+        err.response?.data?.message || "Failed to update stock",
+        "error",
+      );
+    } finally {
+      setStockSubmitting((prev) => ({ ...prev, [item.id]: false }));
     }
   };
 
@@ -198,19 +312,32 @@ const Menu = () => {
     try {
       await api.delete(`/admin/categories/${id}`);
       refetchCategories();
+      showToast("Category deleted successfully", "success");
       if (activeTab === id) handleTabChange("all");
     } catch (err) {
-      alert(err.response?.data?.message || "Failed to delete category");
+      showToast(err.response?.data?.message || "Failed to delete category", "error");
     }
   };
 
   const handleDeleteMenuItem = async (id) => {
-    if (!confirm("Are you sure you want to delete this item?")) return;
+    setItemToDelete(id);
+    setIsDeleteModalOpen(true);
+  };
+
+  const confirmDeleteMenuItem = async () => {
+    if (!itemToDelete) return;
+    
+    setIsDeleting(true);
     try {
-      await api.delete(`/admin/menus/${id}`);
+      await api.delete(`/admin/menus/${itemToDelete}`);
       refetchMenuItems();
+      showToast("Menu item deleted successfully", "success");
     } catch (err) {
-      alert(err.response?.data?.message || "Failed to delete item");
+      showToast(err.response?.data?.message || "Failed to delete item", "error");
+    } finally {
+      setIsDeleting(false);
+      setIsDeleteModalOpen(false);
+      setItemToDelete(null);
     }
   };
 
@@ -220,50 +347,72 @@ const Menu = () => {
         is_available: item.is_available ? 0 : 1,
       });
       refetchMenuItems();
+      showToast(
+        `Item ${item.is_available ? "deactivated" : "activated"} successfully`,
+        "success"
+      );
     } catch (err) {
-      alert(err.response?.data?.message || "Failed to update item");
+      showToast(err.response?.data?.message || "Failed to update item", "error");
     }
   };
 
-  const filteredItems =
-    activeTab === "all"
+  const filteredItems = searchTerm
+    ? searchResults.filter(
+        (item) => activeTab === "all" || item.category_id === activeTab,
+      )
+    : activeTab === "all"
       ? menuItems
       : menuItems.filter((item) => item.category_id === activeTab);
 
   return (
     <>
-      <AddCategoryModal
-        isOpen={isAddCategoryOpen}
-        onClose={() => setIsAddCategoryOpen(false)}
-        onSuccess={refetchCategories}
-      />
-      <EditCategoryModal
-        isOpen={isEditCategoryOpen}
-        onClose={() => {
-          setIsEditCategoryOpen(false);
-          setEditingCategory(null);
-        }}
-        category={editingCategory}
-        onSuccess={refetchCategories}
-      />
-      <AddMenuItemModal
-        isOpen={isAddMenuItemOpen}
-        onClose={() => setIsAddMenuItemOpen(false)}
-        categories={categories}
-        onSuccess={refetchMenuItems}
-        menuItems={allMenuItems}
-      />
-      <EditMenuItemModal
-        isOpen={isEditMenuItemOpen}
-        onClose={() => {
-          setIsEditMenuItemOpen(false);
-          setEditingItem(null);
-        }}
-        item={editingItem}
-        categories={categories}
-        onSuccess={refetchMenuItems}
-        menuItems={allMenuItems}
-      />
+      {user?.role !== "store_keeper" && (
+        <>
+          <AddCategoryModal
+            isOpen={isAddCategoryOpen}
+            onClose={() => setIsAddCategoryOpen(false)}
+            onSuccess={refetchCategories}
+          />
+          <EditCategoryModal
+            isOpen={isEditCategoryOpen}
+            onClose={() => {
+              setIsEditCategoryOpen(false);
+              setEditingCategory(null);
+            }}
+            category={editingCategory}
+            onSuccess={refetchCategories}
+          />
+          <AddMenuItemModal
+            isOpen={isAddMenuItemOpen}
+            onClose={() => setIsAddMenuItemOpen(false)}
+            categories={categories}
+            onSuccess={refetchMenuItems}
+            menuItems={allMenuItems}
+          />
+          <EditMenuItemModal
+            isOpen={isEditMenuItemOpen}
+            onClose={() => {
+              setIsEditMenuItemOpen(false);
+              setEditingItem(null);
+            }}
+            item={editingItem}
+            categories={categories}
+            onSuccess={refetchMenuItems}
+            menuItems={allMenuItems}
+          />
+          <ConfirmDeleteModal
+            isOpen={isDeleteModalOpen}
+            onClose={() => {
+              setIsDeleteModalOpen(false);
+              setItemToDelete(null);
+            }}
+            onConfirm={confirmDeleteMenuItem}
+            title="Delete Menu Item"
+            message="Are you sure you want to delete this menu item? This action cannot be undone."
+            isLoading={isDeleting}
+          />
+        </>
+      )}
 
       <DashboardLayout>
         <div className="p-6 space-y-6 bg-gray-50/50 min-h-full">
@@ -272,22 +421,35 @@ const Menu = () => {
             <h1 className="text-2xl font-bold text-gray-900">
               Menu Management
             </h1>
-            <div className="flex items-center gap-3">
-              <button
-                onClick={() => setIsAddCategoryOpen(true)}
-                className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
-              >
-                <FiFolderPlus className="w-4 h-4" />
-                Add Category
-              </button>
-              <button
-                onClick={() => setIsAddMenuItemOpen(true)}
-                className="flex items-center gap-2 px-4 py-2 bg-orange-500 text-white rounded-lg text-sm font-medium hover:bg-orange-600 transition-colors shadow-sm shadow-orange-200"
-              >
-                <FiPlus className="w-4 h-4" />
-                Add Menu Item
-              </button>
-            </div>
+            {user?.role !== "store_keeper" && (
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => setIsAddCategoryOpen(true)}
+                  className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+                >
+                  <FiFolderPlus className="w-4 h-4" />
+                  Add Category
+                </button>
+                <button
+                  onClick={() => setIsAddMenuItemOpen(true)}
+                  className="flex items-center gap-2 px-4 py-2 bg-orange-500 text-white rounded-lg text-sm font-medium hover:bg-orange-600 transition-colors shadow-sm shadow-orange-200"
+                >
+                  <FiPlus className="w-4 h-4" />
+                  Add Menu Item
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Search Input */}
+          <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm mb-4">
+            <SearchInput
+              value={searchTerm}
+              onChange={handleSearchChange}
+              onClear={clearSearch}
+              isLoading={isSearchLoading}
+              placeholder="Search menu items..."
+            />
           </div>
 
           {/* Filter Tabs — skeleton pills while loading, real tabs after */}
@@ -327,21 +489,25 @@ const Menu = () => {
                       >
                         {cat.name}
                       </button>
-                      <button
-                        onClick={() => {
-                          setEditingCategory(cat);
-                          setIsEditCategoryOpen(true);
-                        }}
-                        className="p-1.5 text-gray-400 hover:text-blue-500 hover:bg-blue-50 rounded transition-colors"
-                      >
-                        <FiEdit2 className="w-3.5 h-3.5" />
-                      </button>
-                      <button
-                        onClick={() => handleDeleteCategory(cat.id)}
-                        className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors"
-                      >
-                        <FiTrash2 className="w-3.5 h-3.5" />
-                      </button>
+                      {user?.role !== "store_keeper" && (
+                        <>
+                          <button
+                            onClick={() => {
+                              setEditingCategory(cat);
+                              setIsEditCategoryOpen(true);
+                            }}
+                            className="p-1.5 text-gray-400 hover:text-blue-500 hover:bg-blue-50 rounded transition-colors"
+                          >
+                            <FiEdit2 className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteCategory(cat.id)}
+                            className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors"
+                          >
+                            <FiTrash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </>
+                      )}
                     </div>
                   ))}
                 </>
@@ -362,7 +528,16 @@ const Menu = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                 {filteredItems.length === 0 ? (
                   <div className="col-span-full text-center py-16 text-gray-400 text-sm">
-                    No menu items found.
+                    {searchTerm && isSearchLoading ? (
+                      <div className="flex flex-col items-center gap-4">
+                        <div className="w-8 h-8 border-4 border-gray-200 border-t-orange-500 rounded-full animate-spin" />
+                        <p>Searching...</p>
+                      </div>
+                    ) : searchTerm ? (
+                      "This item does not exist"
+                    ) : (
+                      "No menu items found."
+                    )}
                   </div>
                 ) : (
                   filteredItems.map((item) => (
@@ -423,46 +598,86 @@ const Menu = () => {
                           <span className="px-2.5 py-1 rounded-md bg-gray-100 text-gray-600 text-xs font-medium border border-gray-200">
                             {item.category?.name}
                           </span>
+                          <span className="px-2.5 py-1 rounded-md bg-gray-100 text-gray-600 text-xs font-medium border border-gray-200">
+                            Quantity Left: {item.stock_quantity}
+                          </span>
                         </div>
 
                         {/* Actions */}
                         <div className="flex items-center gap-3 pt-4 border-t border-gray-100">
-                          <button
-                            onClick={() => handleToggleAvailability(item)}
-                            className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-gray-50 hover:bg-gray-100 rounded-lg text-sm font-medium text-gray-700 transition-colors"
-                          >
-                            {item.is_available ? (
-                              <>
-                                <FiEyeOff className="w-4 h-4" />
-                                <span>Deactivate</span>
-                              </>
-                            ) : (
-                              <>
-                                <FiEye className="w-4 h-4" />
-                                <span>Activate</span>
-                              </>
-                            )}
-                          </button>
-                          <button
-                            onClick={async () => {
-                              const itemDetails = await fetchSingleMenuItem(
-                                item.id,
-                              );
-                              if (itemDetails) {
-                                setEditingItem(itemDetails);
-                                setIsEditMenuItemOpen(true);
-                              }
-                            }}
-                            className="p-2 hover:bg-gray-100 rounded-lg text-gray-500 hover:text-blue-600 transition-colors"
-                          >
-                            <FiEdit2 className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => handleDeleteMenuItem(item.id)}
-                            className="p-2 hover:bg-red-50 rounded-lg text-gray-500 hover:text-red-600 transition-colors"
-                          >
-                            <FiTrash2 className="w-4 h-4" />
-                          </button>
+                          {user?.role === "store_keeper" ? (
+                            // Stock input form for store keepers
+                            <div className="flex-1 flex flex-col gap-2">
+                              <input
+                                type="number"
+                                min="0"
+                                value={stockInputs[item.id]?.quantity || ""}
+                                onChange={(e) =>
+                                  handleStockInputChange(item.id, "quantity", e.target.value)
+                                }
+                                placeholder="Quantity Added"
+                                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                              />
+                              <div className="flex items-center gap-2">
+                                <input
+                                  type="text"
+                                  value={stockInputs[item.id]?.note || ""}
+                                  onChange={(e) =>
+                                    handleStockInputChange(item.id, "note", e.target.value)
+                                  }
+                                  placeholder="Note (e.g. Weekly restock)"
+                                  className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                                />
+                                <button
+                                  onClick={() => handleStockSubmit(item)}
+                                  disabled={stockSubmitting[item.id]}
+                                  className="px-4 py-2 bg-orange-500 text-white rounded-lg text-sm font-medium hover:bg-orange-600 transition-colors whitespace-nowrap disabled:opacity-60 disabled:cursor-not-allowed"
+                                >
+                                  {stockSubmitting[item.id] ? "Saving..." : "Submit"}
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            // Regular action buttons for other roles
+                            <>
+                              <button
+                                onClick={() => handleToggleAvailability(item)}
+                                className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-gray-50 hover:bg-gray-100 rounded-lg text-sm font-medium text-gray-700 transition-colors"
+                              >
+                                {item.is_available ? (
+                                  <>
+                                    <FiEyeOff className="w-4 h-4" />
+                                    <span>Deactivate</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <FiEye className="w-4 h-4" />
+                                    <span>Activate</span>
+                                  </>
+                                )}
+                              </button>
+                              <button
+                                onClick={async () => {
+                                  const itemDetails = await fetchSingleMenuItem(
+                                    item.id,
+                                  );
+                                  if (itemDetails) {
+                                    setEditingItem(itemDetails);
+                                    setIsEditMenuItemOpen(true);
+                                  }
+                                }}
+                                className="p-2 hover:bg-gray-100 rounded-lg text-gray-500 hover:text-blue-600 transition-colors"
+                              >
+                                <FiEdit2 className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={() => handleDeleteMenuItem(item.id)}
+                                className="p-2 hover:bg-red-50 rounded-lg text-gray-500 hover:text-red-600 transition-colors"
+                              >
+                                <FiTrash2 className="w-4 h-4" />
+                              </button>
+                            </>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -471,7 +686,7 @@ const Menu = () => {
               </div>
 
               {/* Numbered pagination (mirrors MenuItems.jsx) */}
-              {pagination.last_page > 1 && (
+              {!searchTerm && pagination.last_page > 1 && (
                 <div className="mt-8 flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-gray-200 pt-6">
                   <div className="text-sm text-gray-500">
                     Showing {pagination.from} to {pagination.to} of{" "}

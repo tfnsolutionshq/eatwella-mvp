@@ -21,6 +21,10 @@ const PublicRouteGuard = () => {
     ) {
       return <Navigate to="/admin/orders" replace />;
     }
+
+    if (user.role === "store_keeper") {
+      return <Navigate to="/store-keeper/menu" replace />;
+    }
   }
 
   return <Outlet />;

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   CheckCircle,
   Download,
@@ -10,7 +10,54 @@ import {
 } from "lucide-react";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { useCart } from "../../context/CartContext";
+import { PDFDownloadLink, pdf } from "@react-pdf/renderer";
+import ReceiptPDF from "../ReceiptPDF";
 import api from "../../utils/api";
+
+// ── Device detection ──────────────────────────────────────────────────────────
+// POS machines typically have narrow screens (≤ 480px), touch interfaces,
+// and may identify themselves via user-agent strings common in embedded browsers.
+function useDeviceType() {
+  const [deviceType, setDeviceType] = useState("desktop");
+
+  useEffect(() => {
+    const detectDevice = () => {
+      const width = window.screen.width;
+      const ua = navigator.userAgent.toLowerCase();
+
+      const isPOSByWidth = width <= 600;
+      const isPOSByUA =
+        /pos|terminal|sunmi|ingenico|pax |verifone|newland|epson|star\s?micronics/i.test(
+          ua,
+        );
+      // Touch-only narrow devices are almost always POS in a food-service context
+      const isPOSByTouch =
+        width <= 600 &&
+        navigator.maxTouchPoints > 0 &&
+        !/iphone|ipad|android/i.test(ua);
+
+      if (isPOSByUA || isPOSByWidth || isPOSByTouch) {
+        setDeviceType("pos");
+      } else {
+        setDeviceType("desktop");
+      }
+    };
+
+    detectDevice();
+    window.addEventListener("resize", detectDevice);
+    return () => window.removeEventListener("resize", detectDevice);
+  }, []);
+
+  return deviceType;
+}
+
+// Paper size config per device
+const PAPER_SIZE_MAP = {
+  pos: "58mm", // Standard thermal receipt width; swap to "80mm" if your POS uses 80mm rolls
+  desktop: "A5",
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 function ReceiptDetails() {
   const location = useLocation();
@@ -19,11 +66,14 @@ function ReceiptDetails() {
   const { orderId } = useParams();
   const [order, setOrder] = useState(location.state?.order || null);
   const [isLoading, setIsLoading] = useState(!location.state?.order);
+
+  // Log order details if passed via location state
   const [fetchError, setFetchError] = useState(null);
   const [zones, setZones] = useState([]);
   const [copied, setCopied] = useState(false);
 
-  console.log("The order details: ", order);
+  const deviceType = useDeviceType();
+  const paperSize = PAPER_SIZE_MAP[deviceType];
 
   useEffect(() => {
     const clearAndFetch = async () => {
@@ -48,38 +98,56 @@ function ReceiptDetails() {
         console.error("Failed to load zones", e);
       }
     };
-
     loadZones();
   }, []);
 
+  const fetchOrderDetails = useCallback(async () => {
+    if (!orderId) return;
+    try {
+      setIsLoading(true);
+      setFetchError(null);
+      const res = await api.get(`/orders/track/${orderId}`);
+      setOrder(res.data);
+    } catch (e) {
+      if (e.response?.status === 404) {
+        setFetchError("not_found");
+      } else {
+        setFetchError("network_error");
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  }, [orderId]);
+
   useEffect(() => {
     if (!order && orderId) {
-      (async () => {
-        try {
-          setIsLoading(true);
-          setFetchError(null);
-          const res = await api.get(`/orders/track/${orderId}`);
-          console.log("Here we are: ", res.data);
-          setOrder(res.data);
-        } catch (e) {
-          if (e.response?.status === 404) {
-            setFetchError("not_found");
-          } else {
-            setFetchError("network_error");
-          }
-        } finally {
-          setIsLoading(false);
-        }
-      })();
+      fetchOrderDetails();
     }
-  }, [order, orderId]);
+  }, [order, orderId, fetchOrderDetails]);
+
+  // Generates a PDF blob and opens the browser/OS print dialog
+  const handlePrint = useCallback(async () => {
+    if (!order) return;
+    try {
+      const blob = await pdf(
+        <ReceiptPDF order={order} paperSize={paperSize} />,
+      ).toBlob();
+      const url = URL.createObjectURL(blob);
+      const printWindow = window.open(url, "_blank");
+      if (printWindow) {
+        printWindow.onload = () => {
+          printWindow.focus();
+          printWindow.print();
+        };
+      }
+    } catch (err) {
+      console.error("Print failed:", err);
+    }
+  }, [order, paperSize]);
 
   const statusValue = (order?.status || "pending").toLowerCase();
-
-  const statusLabel = (() => {
-    if (!statusValue) return "Pending";
-    return statusValue.charAt(0).toUpperCase() + statusValue.slice(1);
-  })();
+  const statusLabel =
+    statusValue.charAt(0).toUpperCase() + statusValue.slice(1);
 
   const handleCopyOrderId = () => {
     const idToCopy = order.order_number || order.id || "";
@@ -95,11 +163,11 @@ function ReceiptDetails() {
     return "bg-yellow-100 text-yellow-700";
   })();
 
-  // const subtotal =
-  //   order.order_items?.reduce((sum, item) => {
-  //     const packagingPrice = item.packaging?.price ?? 0;
-  //     return sum + (item.subtotal ?? 0) + packagingPrice * (item.quantity ?? 1);
-  //   }, 0) ?? 0;
+  // Format phone number: replace +234 with 0 for display
+  const formatPhoneNumber = (phone) => {
+    if (!phone) return "N/A";
+    return phone.replace(/^\+234/, "0");
+  };
 
   // ── Loading state ──
   if (isLoading) {
@@ -129,7 +197,6 @@ function ReceiptDetails() {
   // ── Error state ──
   if (fetchError) {
     const isNotFound = fetchError === "not_found";
-
     return (
       <div className="max-w-2xl mx-auto px-6 py-12">
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8">
@@ -154,10 +221,7 @@ function ReceiptDetails() {
             <div className="flex flex-col sm:flex-row gap-3 w-full">
               {!isNotFound && (
                 <button
-                  onClick={() => {
-                    setFetchError(null);
-                    setOrder(null);
-                  }}
+                  onClick={fetchOrderDetails}
                   className="flex-1 bg-orange-500 text-white px-6 py-3 rounded-full font-bold hover:bg-orange-600 transition-colors"
                 >
                   Try Again
@@ -165,7 +229,11 @@ function ReceiptDetails() {
               )}
               <button
                 onClick={() => navigate("/menu")}
-                className={`flex-1 font-bold px-6 py-3 rounded-full transition-colors ${isNotFound ? "bg-orange-500 text-white hover:bg-orange-600" : "border border-gray-200 text-gray-700 hover:bg-gray-50"}`}
+                className={`flex-1 font-bold px-6 py-3 rounded-full transition-colors ${
+                  isNotFound
+                    ? "bg-orange-500 text-white hover:bg-orange-600"
+                    : "border border-gray-200 text-gray-700 hover:bg-gray-50"
+                }`}
               >
                 Return to Menu
               </button>
@@ -210,6 +278,12 @@ function ReceiptDetails() {
       const packagingPrice = item.packaging_price ?? 0;
       return sum + (item.subtotal ?? 0) + packagingPrice * (item.quantity ?? 1);
     }, 0) ?? 0;
+
+  const discountAmount = Number(order.discount_amount ?? 0);
+  const deliveryFee =
+    order.order_type === "delivery" ? Number(order.delivery_fee ?? 0) : 0;
+  const taxAmount = Number(order.tax_details?.VAT?.amount ?? 0);
+  const totalPayment = subtotal + deliveryFee + taxAmount - discountAmount;
 
   return (
     <div className="max-w-2xl mx-auto px-6 py-12">
@@ -262,35 +336,31 @@ function ReceiptDetails() {
               </span>
             </div>
           </div>
-          {order.delivery_pin && (
-            <div className="text-center mt-5">
-              <p>
-                Your Delivery PIN:{" "}
-                <span className="font-bold">{order.delivery_pin}</span>
-              </p>
-              <p className="text-gray-500 mt-1 italic">
-                Save and provide this PIN to the delivery agent who will come
-                with your order.
-              </p>
-            </div>
+          {order.order_type === "delivery" && (
+            <p className="text-gray-500 italic text-center mt-5">
+              Check your email address for your delivery PIN. You will provide
+              the PIN to the delivery agent who will come with your order.
+            </p>
           )}
         </div>
 
         <div className="mb-6">
           <h3 className="font-semibold mb-4">Order Details</h3>
           <div className="space-y-3 text-sm">
+            {order.order_type === "delivery" && (
+              <div className="flex justify-between">
+                <span className="text-gray-500">Address:</span>
+                <span className="text-gray-900">{receiptAddress}</span>
+              </div>
+            )}
             <div className="flex justify-between">
-              <span className="text-gray-500">Address</span>
-              <span className="text-gray-900">{receiptAddress}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-500">Order Type</span>
+              <span className="text-gray-500">Order Type:</span>
               <span className="text-gray-900 capitalize">
-                {order.order_type || "N/A"}
+                {(order.order_type === "dine" && "dine-in") || order.order_type}
               </span>
             </div>
             <div className="flex justify-between">
-              <span className="text-gray-500">Customer</span>
+              <span className="text-gray-500">Customer:</span>
               <span className="text-gray-900">
                 {order.customer_name || "Guest"}
               </span>
@@ -304,7 +374,7 @@ function ReceiptDetails() {
             <div className="flex justify-between">
               <span className="text-gray-500">Phone:</span>
               <span className="text-gray-900">
-                {order.customer_phone || "N/A"}
+                {formatPhoneNumber(order.customer_phone)}
               </span>
             </div>
             {order.table_number && (
@@ -325,7 +395,7 @@ function ReceiptDetails() {
                   <br />
                   <span className="text-xs text-gray-500">
                     {item.packaging_price
-                      ? "Packaging Price: " +
+                      ? "Packaging: " +
                         new Intl.NumberFormat("en-NG", {
                           style: "currency",
                           currency: "NGN",
@@ -339,22 +409,49 @@ function ReceiptDetails() {
                     style: "currency",
                     currency: "NGN",
                     minimumFractionDigits: 0,
-                  }).format(item.menu?.price || item.price || 0)}
+                  }).format(item.menu?.subtotal || item?.subtotal || 0)}
                 </span>
               </div>
             ))}
           </div>
-          <div className="flex justify-between font-semibold mt-4">
-            <span>Tax Charges:</span>
-            <span>
-              {new Intl.NumberFormat("en-NG", {
-                style: "currency",
-                currency: "NGN",
-                minimumFractionDigits: 0,
-              }).format(order.tax_details.VAT.amount)}{" "}
-              ({order.tax_details.VAT.type})
-            </span>
-          </div>
+          {order.delivery_fee && order.order_type === "delivery" && (
+            <div className="flex justify-between font-semibold mt-4">
+              <span>Delivery Fee:</span>
+              <span>
+                {new Intl.NumberFormat("en-NG", {
+                  style: "currency",
+                  currency: "NGN",
+                  minimumFractionDigits: 0,
+                }).format(order.delivery_fee)}
+              </span>
+            </div>
+          )}
+          {order.tax_details?.VAT && order.tax_details?.VAT.mode === "exclusive" && (
+            <div className="flex justify-between font-semibold mt-4">
+              <span>Tax Charges:</span>
+              <span>
+                {new Intl.NumberFormat("en-NG", {
+                  style: "currency",
+                  currency: "NGN",
+                  minimumFractionDigits: 0,
+                }).format(order.tax_details.VAT.amount)}{" "}
+                ({order.tax_details.VAT.type})
+              </span>
+            </div>
+          )}
+          {discountAmount > 0 && (
+            <div className="flex justify-between font-semibold mt-4">
+              <span className="text-green-600">Discount:</span>
+              <span className="text-green-600">
+                -
+                {new Intl.NumberFormat("en-NG", {
+                  style: "currency",
+                  currency: "NGN",
+                  minimumFractionDigits: 0,
+                }).format(discountAmount)}
+              </span>
+            </div>
+          )}
         </div>
 
         <div className="border-t pt-4 mb-4">
@@ -365,7 +462,7 @@ function ReceiptDetails() {
                 style: "currency",
                 currency: "NGN",
                 minimumFractionDigits: 0,
-              }).format(subtotal + (order.tax_details?.VAT?.amount ?? 0))}
+              }).format(order.final_amount)}
             </span>
           </div>
           <div className="flex justify-between font-semibold">
@@ -386,6 +483,22 @@ function ReceiptDetails() {
               Create Account
             </button>
           </Link>
+        </div>
+
+        {/* Download / Print button — fires print dialog on click */}
+        <div className="mt-4">
+          <button
+            onClick={handlePrint}
+            className="w-full bg-orange-500 text-white py-3 rounded-full flex flex-col lg:flex-row items-center justify-center gap-2 hover:bg-orange-600 transition-colors"
+          >
+            <div className="flex items-center">
+              <Download className="w-4 h-4 mr-3" />
+              <span>Download / Print Receipt</span>
+            </div>
+            <span className="text-xs opacity-75 ml-1">
+              ({deviceType === "pos" ? "POS thermal" : "A5 PDF"})
+            </span>
+          </button>
         </div>
 
         <button

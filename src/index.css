@@ -3,15 +3,15 @@
 @tailwind utilities;
 
 @font-face {
-  font-family: 'Bolota';
-  src: url('./assets/fonts/bolota-bold.ttf') format('truetype');
+  font-family: "Bolota";
+  src: url("./assets/fonts/bolota-bold.ttf") format("truetype");
   font-weight: bold;
   font-style: normal;
 }
 
 @layer utilities {
   .font-bolota {
-    font-family: 'Bolota', sans-serif;
+    font-family: "Bolota", sans-serif;
   }
 }
 
@@ -64,9 +64,15 @@
 }
 
 @keyframes float {
-  0% { transform: translateY(0px); }
-  50% { transform: translateY(-10px); }
-  100% { transform: translateY(0px); }
+  0% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+  100% {
+    transform: translateY(0px);
+  }
 }
 
 .animate-float {
@@ -74,8 +80,13 @@
 }
 
 @keyframes pulse-soft {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.7; }
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
 }
 
 .animate-pulse-soft {
@@ -165,10 +176,12 @@
 }
 
 @keyframes blink {
-  0%, 49% {
+  0%,
+  49% {
     opacity: 1;
   }
-  50%, 100% {
+  50%,
+  100% {
     opacity: 0;
   }
 }
@@ -178,12 +191,21 @@
 }
 
 /* Stagger delays */
-.delay-100 { animation-delay: 100ms; }
-.delay-200 { animation-delay: 200ms; }
-.delay-300 { animation-delay: 300ms; }
-.delay-400 { animation-delay: 400ms; }
-.delay-500 { animation-delay: 500ms; }
-
+.delay-100 {
+  animation-delay: 100ms;
+}
+.delay-200 {
+  animation-delay: 200ms;
+}
+.delay-300 {
+  animation-delay: 300ms;
+}
+.delay-400 {
+  animation-delay: 400ms;
+}
+.delay-500 {
+  animation-delay: 500ms;
+}
 
 /* Custom scrollbar styles */
 .scrollbar-thin::-webkit-scrollbar {
@@ -211,8 +233,12 @@
 
 /* Menu slider marquee */
 @keyframes marqueeScroll {
-  0% { transform: translateX(0); }
-  100% { transform: translateX(-50%); }
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
 }
 .animate-marquee {
   animation: marqueeScroll 30s linear infinite;
@@ -221,8 +247,13 @@
 
 /* Hover zoom pulse */
 @keyframes zoomPulse {
-  0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.05); }
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
 }
 .hover-zoom {
   transition: transform 200ms ease;
@@ -233,10 +264,19 @@
 
 /* Bounce in place for fixed buttons */
 @keyframes bounceStay {
-  0%, 100% { transform: translateY(0); }
-  25% { transform: translateY(-6px); }
-  50% { transform: translateY(0); }
-  75% { transform: translateY(-3px); }
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  25% {
+    transform: translateY(-6px);
+  }
+  50% {
+    transform: translateY(0);
+  }
+  75% {
+    transform: translateY(-3px);
+  }
 }
 .animate-bounce-stay {
   animation: bounceStay 2.4s ease-in-out infinite;
@@ -245,17 +285,35 @@
 
 /* Spinner utility */
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 .spinner {
   width: 1rem;
   height: 1rem;
-  border: 2px solid rgba(255,255,255,0.5);
+  border: 2px solid rgba(255, 255, 255, 0.5);
   border-top-color: #ffffff;
   border-radius: 9999px;
-  animation: spin .8s linear infinite;
+  animation: spin 0.8s linear infinite;
 }
 .spinner-dark {
-  border-color: rgba(0,0,0,0.2);
+  border-color: rgba(0, 0, 0, 0.2);
   border-top-color: #000000;
+}
+
+.tiptap ul {
+  list-style-type: disc;
+  margin-left: 1rem;
+  padding-left: 0.5rem;
+}
+
+.tiptap ol {
+  list-style-type: decimal;
+  margin-left: 1rem;
+  padding-left: 0.5rem;
+}
+
+.tiptap:focus {
+  outline: none;
 }

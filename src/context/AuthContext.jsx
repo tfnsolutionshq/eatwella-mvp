@@ -1,4 +1,6 @@
+// src/context/AuthContext.jsx
 import { createContext, useContext, useState, useEffect } from "react";
+import { getPrefixForRole } from "../utils/rolePrefix";
 
 const AuthContext = createContext(null);
 
@@ -18,7 +20,6 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   const login = (token, user) => {
-    console.log("The user here: ", user);
     setToken(token);
     setUser(user);
     localStorage.setItem("token", token);
@@ -32,8 +33,12 @@ export const AuthProvider = ({ children }) => {
     localStorage.removeItem("user");
   };
 
+  const routePrefix = getPrefixForRole(user?.role);
+
   return (
-    <AuthContext.Provider value={{ user, token, login, logout, loading }}>
+    <AuthContext.Provider
+      value={{ user, token, login, logout, loading, routePrefix }}
+    >
       {children}
     </AuthContext.Provider>
   );

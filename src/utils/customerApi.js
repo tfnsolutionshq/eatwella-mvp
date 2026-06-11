@@ -1,20 +1,20 @@
-import axios from 'axios'
+import axios from "axios";
 
 const customerApi = axios.create({
-  baseURL: 'https://eatwella.tfnsolutions.us/api',
+  baseURL: "https://api.eatwella.ng/api",
   headers: {
-    Accept: 'application/json',
-    'Content-Type': 'application/json'
+    Accept: "application/json",
+    "Content-Type": "application/json",
   },
-  withCredentials: true
-})
+  withCredentials: true,
+});
 
 customerApi.interceptors.request.use((config) => {
-  const token = localStorage.getItem('customer_token')
+  const token = localStorage.getItem("customer_token");
   if (token) {
-    config.headers.Authorization = `Bearer ${token}`
+    config.headers.Authorization = `Bearer ${token}`;
   }
-  return config
-})
+  return config;
+});
 
-export default customerApi
+export default customerApi;

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import api from "../../utils/api";
 import {
   FiUpload,
@@ -9,6 +9,7 @@ import {
   FiBriefcase,
   FiX,
 } from "react-icons/fi";
+import { Link } from "react-router-dom";
 
 function VacancyItems() {
   const [openings, setOpenings] = useState([]);
@@ -138,17 +139,6 @@ function VacancyItems() {
   return (
     <div className="bg-gray-50/50 py-16 px-4 md:px-8 min-h-screen font-sans">
       <div className="max-w-5xl mx-auto">
-        <div className="text-center mb-16 relative">
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-24 h-24 bg-orange-100 rounded-full blur-3xl -z-10"></div>
-          <h2 className="text-4xl md:text-5xl font-black mb-4 text-gray-900 font-bolota tracking-tight">
-            Current Openings
-          </h2>
-          <p className="text-gray-500 text-lg max-w-2xl mx-auto">
-            Join our passionate team and help us deliver happiness, one meal at
-            a time.
-          </p>
-        </div>
-
         {loading ? (
           <div className="grid gap-8 mb-12">
             {Array.from({ length: 3 }).map((_, i) => (
@@ -177,7 +167,11 @@ function VacancyItems() {
                 {opening.image_path && (
                   <div className="md:w-72 h-56 md:h-auto relative overflow-hidden">
                     <img
-                      src={`https://eatwella.tfnsolutions.us/storage/${opening.image_path}`}
+                      src={
+                        import.meta.env.VITE_API_URL_STORAGE +
+                        "/" +
+                        opening.image_path
+                      }
                       alt={opening.title}
                       className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                     />
@@ -210,12 +204,20 @@ function VacancyItems() {
                     <span className="text-sm font-medium text-gray-400">
                       Posted recently
                     </span>
-                    <button
-                      onClick={() => openApplicationModal(opening)}
-                      className="px-8 py-3 rounded-full bg-gray-900 text-white font-bold hover:bg-orange-500 transition-all duration-300 shadow-lg hover:shadow-orange-500/30 transform active:scale-95"
-                    >
-                      Apply Now
-                    </button>
+                    <div className="flex items-center gap-3">
+                      <Link
+                        to={`/careers/${opening.id}`}
+                        className="px-6 py-3 rounded-full border-2 border-gray-900 text-gray-900 font-bold hover:border-orange-500 hover:text-orange-500 transition-all duration-300"
+                      >
+                        View Details
+                      </Link>
+                      <button
+                        onClick={() => openApplicationModal(opening)}
+                        className="px-8 py-3 rounded-full bg-gray-900 text-white font-bold hover:bg-orange-500 transition-all duration-300 shadow-lg hover:shadow-orange-500/30 transform active:scale-95"
+                      >
+                        Apply Now
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>

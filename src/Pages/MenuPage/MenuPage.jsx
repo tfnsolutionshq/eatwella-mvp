@@ -6,7 +6,7 @@ import SEO from '../../Components/SEO'
 
 function MenuPage() {
   return (
-    <>
+    <div className="flex flex-col min-h-screen">
       <SEO 
         title="Our Menu" 
         description="Explore our diverse menu of authentic Nigerian dishes, healthy meal plans, and delicious sides. Order online for delivery or pickup."
@@ -14,7 +14,7 @@ function MenuPage() {
       <MenuHeader />
       <MenuItems />
       <Footer />
-    </>
+    </div>
   )
 }
 

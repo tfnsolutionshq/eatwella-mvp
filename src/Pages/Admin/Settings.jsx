@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import DashboardLayout from "../../DashboardLayout/DashboardLayout";
 import { FiClock, FiSave, FiInfo } from "react-icons/fi";
+import { Utensils, Package, Truck, ShoppingCart } from "lucide-react";
 import api from "../../utils/api";
 import { useToast } from "../../context/ToastContext";
 
@@ -34,6 +35,7 @@ const defaultDayConfig = () => ({
   enabled: false,
   open: { hour: "09", minute: "00", period: "AM" },
   close: { hour: "09", minute: "00", period: "PM" },
+  order_types: { dine: true, pickup: true, delivery: true },
 });
 
 // Build schedule from API response
@@ -46,12 +48,13 @@ const buildScheduleFromApi = (apiData) => {
     DAYS.map((day) => [day, defaultDayConfig()]),
   );
 
-  data.forEach(({ day, enabled, open, close }) => {
+  data.forEach(({ day, enabled, open, close, order_types }) => {
     if (schedule[day] !== undefined) {
       schedule[day] = {
         enabled: !!enabled,
         open: parseTimeString(open),
         close: parseTimeString(close),
+        order_types: order_types || { dine: true, pickup: true, delivery: true },
       };
     }
   });
@@ -151,6 +154,18 @@ const AvailabilityHours = () => {
   const updateTime = (day, type, val) =>
     setSchedule((prev) => ({ ...prev, [day]: { ...prev[day], [type]: val } }));
 
+  const updateOrderType = (day, orderType, enabled) =>
+    setSchedule((prev) => ({
+      ...prev,
+      [day]: {
+        ...prev[day],
+        order_types: {
+          ...prev[day].order_types,
+          [orderType]: enabled,
+        },
+      },
+    }));
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSaving(true);
@@ -165,12 +180,13 @@ const AvailabilityHours = () => {
         close: config.enabled
           ? `${config.close.hour}:${config.close.minute} ${config.close.period}`
           : null,
+        order_types: config.order_types,
       })),
     };
 
     try {
       const res = await api.put("/admin/availability-hours", payload);
-      showToast(res.data.message, "success");
+      showToast("Settings saved successfully!", "success");
     } catch (err) {
       console.error("Failed to save availability hours:", err);
     } finally {
@@ -432,6 +448,199 @@ const AvailabilityHours = () => {
   );
 };
 
+const OrderTypesManagement = () => {
+  const [schedule, setSchedule] = useState(
+    Object.fromEntries(DAYS.map((day) => [day, defaultDayConfig()])),
+  );
+  const [isLoading, setIsLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  const { showToast } = useToast();
+
+  useEffect(() => {
+    const fetchAvailability = async () => {
+      setIsLoading(true);
+      try {
+        const res = await api.get("/availability-hours");
+        const apiHours = res.data?.availability_hours || [];
+        setSchedule(buildScheduleFromApi(apiHours));
+      } catch (err) {
+        console.error("Failed to fetch availability hours:", err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchAvailability();
+  }, []);
+
+  const updateOrderType = (day, orderType, enabled) =>
+    setSchedule((prev) => ({
+      ...prev,
+      [day]: {
+        ...prev[day],
+        order_types: {
+          ...prev[day].order_types,
+          [orderType]: enabled,
+        },
+      },
+    }));
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setSaving(true);
+
+    const payload = {
+      availability_hours: Object.entries(schedule).map(([day, config]) => ({
+        day,
+        enabled: config.enabled,
+        open: config.enabled
+          ? `${config.open.hour}:${config.open.minute} ${config.open.period}`
+          : null,
+        close: config.enabled
+          ? `${config.close.hour}:${config.close.minute} ${config.close.period}`
+          : null,
+        order_types: config.order_types,
+      })),
+    };
+
+    try {
+      const res = await api.put("/admin/availability-hours", payload);
+      showToast("Settings saved successfully!", "success");
+    } catch (err) {
+      console.error("Failed to save order types:", err);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const ORDER_TYPES = [
+    { key: "dine", label: "Dine-in", icon: Utensils },
+    { key: "pickup", label: "Pickup", icon: Package },
+    { key: "delivery", label: "Delivery", icon: Truck },
+  ];
+
+  return (
+    <section className="space-y-4">
+      {/* Section Header */}
+      <div className="flex items-center gap-3">
+        <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
+          <ShoppingCart className="w-4 h-4 text-blue-500" />
+        </div>
+        <div>
+          <h2 className="text-base font-semibold text-gray-900">
+            Order Type Management
+          </h2>
+          <p className="text-xs text-gray-500">
+            Enable/disable order types for each day of the week
+          </p>
+        </div>
+      </div>
+
+      {isLoading ? (
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+          <div className="divide-y divide-gray-100">
+            {DAYS.map((day) => (
+              <div key={day} className="px-6 py-4 bg-gray-50/60">
+                <div className="space-y-3">
+                  <div className="h-4 w-24 bg-gray-200 rounded animate-pulse" />
+                  <div className="flex gap-4">
+                    {ORDER_TYPES.map((_, i) => (
+                      <div key={i} className="h-8 w-16 bg-gray-200 rounded-lg animate-pulse" />
+                    ))}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : (
+        <form onSubmit={handleSubmit} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+          {/* Column Labels */}
+          <div className="hidden sm:grid sm:grid-cols-[160px_1fr_1fr_1fr] gap-4 px-6 py-3 bg-gray-50 border-b border-gray-100">
+            <span className="text-xs font-medium text-gray-400 uppercase tracking-wide">
+              Day
+            </span>
+            <span className="text-xs font-medium text-gray-400 uppercase tracking-wide">
+              Dine-in
+            </span>
+            <span className="text-xs font-medium text-gray-400 uppercase tracking-wide">
+              Pickup
+            </span>
+            <span className="text-xs font-medium text-gray-400 uppercase tracking-wide">
+              Delivery
+            </span>
+          </div>
+
+          <div className="divide-y divide-gray-100 overflow-y-auto max-h-[420px]">
+            {DAYS.map((day) => {
+              const config = schedule[day];
+              return (
+                <div
+                  key={day}
+                  className={`transition-colors px-4 sm:px-6 py-4 ${config.enabled ? "bg-white" : "bg-gray-50/60"}`}
+                >
+                  <div className="flex flex-col gap-3 sm:grid sm:grid-cols-[160px_1fr_1fr_1fr] sm:items-center sm:gap-4">
+                    {/* Day Label */}
+                    <span
+                      className={`text-sm font-semibold transition-colors ${config.enabled ? "text-gray-800" : "text-gray-400"}`}
+                    >
+                      {day}
+                    </span>
+
+                    {/* Order Type Toggles */}
+                    <div className="flex gap-3 sm:contents">
+                      {ORDER_TYPES.map(({ key, label, icon }) => (
+                        <label key={key} className="flex items-center gap-2 cursor-pointer select-none">
+                          <div className="relative shrink-0">
+                            <input
+                              type="checkbox"
+                              className="sr-only peer"
+                              checked={config.order_types[key]}
+                              onChange={(e) => updateOrderType(day, key, e.target.checked)}
+                            />
+                            <div className="w-9 h-5 bg-gray-200 peer-checked:bg-orange-500 rounded-full transition-colors" />
+                            <div className="absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform peer-checked:translate-x-4" />
+                          </div>
+                          <span className="text-sm text-gray-700 flex items-center gap-2">
+                            <icon className="w-4 h-4" />
+                            {label}
+                          </span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Submit */}
+          <div className="px-6 py-4 border-t border-gray-100 bg-gray-50/50">
+            <button
+              type="submit"
+              disabled={saving}
+              className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-orange-500 text-white rounded-xl text-sm font-medium hover:bg-orange-600 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {saving ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  Saving Order Types...
+                </>
+              ) : (
+                <>
+                  <FiSave className="w-4 h-4" />
+                  Save Order Types
+                </>
+              )}
+            </button>
+          </div>
+        </form>
+      )}
+    </section>
+  );
+};
+
 const Settings = () => {
   return (
     <DashboardLayout>
@@ -457,6 +666,7 @@ const Settings = () => {
         </div>
 
         <AvailabilityHours />
+        <OrderTypesManagement />
       </div>
     </DashboardLayout>
   );

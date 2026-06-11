@@ -12,6 +12,7 @@ import {
   FiToggleRight,
 } from "react-icons/fi";
 import api from "../../utils/api";
+import { useToast } from "../../context/ToastContext";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // DEV TOGGLE
@@ -399,6 +400,7 @@ const getSizeStyle = (name = "") =>
 const PackagingManagement = () => {
   const [packages, setPackages] = useState([]);
   const [loading, setLoading] = useState(true);
+  const { showToast } = useToast();
 
   // Modal visibility
   const [editModal, setEditModal] = useState(false);
@@ -490,7 +492,7 @@ const PackagingManagement = () => {
         );
       }
     } catch (err) {
-      alert(err.response?.data?.message || "Failed to update availability.");
+      showToast(err.response?.data?.message || "Failed to update availability.", "error");
     } finally {
       setTogglingId(null);
     }

@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { useToast } from "../../context/ToastContext";
 import { FiX, FiSearch, FiChevronDown } from "react-icons/fi";
 import api from "../../utils/api";
 
@@ -23,6 +24,7 @@ const EditMenuItemModal = ({
   onSuccess,
   menuItems = [],
 }) => {
+  const { showToast } = useToast();
   const [formData, setFormData] = useState({
     category_id: "",
     name: "",
@@ -31,6 +33,7 @@ const EditMenuItemModal = ({
     is_available: 1,
     takeawayPack: 0,
     sideDishes: [],
+    stock_quantity: 0,
   });
   const [images, setImages] = useState([]);
   const [currentImage, setCurrentImage] = useState("");
@@ -45,16 +48,12 @@ const EditMenuItemModal = ({
 
   useEffect(() => {
     if (item) {
-      console.log("The item here: ", item.complements);
-
       // Resolve existing side dish IDs from the item, or inject mock data for testing
       const existingSideIds = SIMULATE_EXISTING_SIDES
         ? MOCK_SIDES.map((s) => s.id)
         : (item.complements ?? []).map((s) =>
             typeof s === "object" ? s.id : s,
           );
-
-      console.log("just checking: ", existingSideIds);
 
       setFormData({
         category_id: item.category_id || "",
@@ -64,6 +63,7 @@ const EditMenuItemModal = ({
         is_available: item.is_available ?? 1,
         takeawayPack: (item.requires_takeaway === true ? 1 : 0) ?? 0,
         sideDishes: existingSideIds,
+        stock_quantity: item.stock_quantity ?? 0,
       });
       setCurrentImage(item.images?.[0] || "");
       setImages([]);
@@ -127,26 +127,43 @@ const EditMenuItemModal = ({
     setError("");
     setLoading(true);
 
-    console.log("form data: ", formData);
-
     try {
       const data = new FormData();
       data.append("category_id", formData.category_id);
       data.append("name", formData.name);
       data.append("description", formData.description);
       data.append("price", formData.price);
-      data.append("is_available", formData.is_available);
+      data.append("is_available", formData.is_available ? 1 : 0);
       data.append("requires_takeaway", formData.takeawayPack);
+      data.append("stock_quantity", formData.stock_quantity);
       formData.sideDishes.forEach((id) => data.append("complements[]", id));
       images.forEach((img) => data.append("images[]", img));
 
-      await api.put(`/admin/menus/${item.id}`, data, {
+      const response = await api.post(`/admin/menus/${item.id}`, data, {
         headers: { "Content-Type": "multipart/form-data" },
       });
-      onSuccess?.();
-      onClose();
+
+      if (response.status === 200) {
+        showToast("Menu item edited successfully!", "success");
+        onSuccess?.();
+        onClose();
+      }
     } catch (err) {
-      setError(err.response?.data?.message || "Failed to update menu item");
+      if (error.response) {
+        console.log("Status:", error.response.status);
+        console.log("Data:", error.response.data);
+        console.log("Validation errors:", error.response.data.errors);
+        showToast(
+          error.response.data?.message || "Failed to create menu item",
+          "error",
+        );
+      } else if (error.request) {
+        console.log("No response received:", error.request);
+        showToast("Network error. Please try again.", "error");
+      } else {
+        console.log("Error setting up request:", error.message);
+        showToast("An unexpected error occurred", "error");
+      }
     } finally {
       setLoading(false);
     }
@@ -260,6 +277,29 @@ const EditMenuItemModal = ({
                   ))}
                 </select>
               </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Stock Quantity <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="number"
+                min="0"
+                value={formData.stock_quantity}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    stock_quantity: e.target.value,
+                  })
+                }
+                placeholder="e.g., 20"
+                required
+                className="w-full px-4 py-3 rounded-xl border border-gray-200 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-100 focus:border-orange-500 transition-all"
+              />
+              <p className="text-xs text-gray-400 mt-1">
+                Number of portions currently available
+              </p>
             </div>
 
             <div>

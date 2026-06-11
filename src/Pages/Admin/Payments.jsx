@@ -1,12 +1,12 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import DashboardLayout from "../../DashboardLayout/DashboardLayout";
 import {
   FiDollarSign,
   FiCreditCard,
   FiLayout,
   FiSearch,
-  FiFilter,
   FiTrendingUp,
+  FiClock,
 } from "react-icons/fi";
 import api from "../../utils/api";
 
@@ -16,13 +16,55 @@ function Payments() {
   const [payments, setPayments] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  // All-payments dataset for client-side search
+  const [allPayments, setAllPayments] = useState([]);
+  const [allPaymentsLoading, setAllPaymentsLoading] = useState(false);
+  const [filteredPayments, setFilteredPayments] = useState([]);
+
+  // Pagination state (mirrors Menu.jsx)
+  const [page, setPage] = useState(1);
+  const [pagination, setPagination] = useState({
+    current_page: 1,
+    last_page: 1,
+    total: 0,
+    from: 0,
+    to: 0,
+    per_page: 15,
+  });
+
+  // Initial load — fetch first page + full dataset for search
   useEffect(() => {
     const fetchPayments = async () => {
       setLoading(true);
       try {
-        const { data } = await api.get("/admin/payments");
-        setTotals(data.totals);
-        setPayments(data.payments.data);
+        const { data } = await api.get("/admin/payments?page=1");
+        const fetchedTotals = data.totals;
+        setTotals(fetchedTotals);
+        const paymentsData = data.payments.data ?? [];
+        setPayments(paymentsData);
+        setPagination({
+          current_page: data.payments.current_page ?? 1,
+          last_page: data.payments.last_page ?? 1,
+          total: data.payments.total ?? paymentsData.length,
+          from: data.payments.from ?? (paymentsData.length ? 1 : 0),
+          to: data.payments.to ?? paymentsData.length,
+          per_page: data.payments.per_page ?? 15,
+        });
+
+        // Fetch full dataset for client-side search
+        if (fetchedTotals?.total_transactions) {
+          setAllPaymentsLoading(true);
+          try {
+            const { data: allData } = await api.get(
+              `/admin/payments?per_page=${fetchedTotals.total_transactions}`
+            );
+            setAllPayments(allData.payments.data ?? []);
+          } catch (err) {
+            console.error("Failed to fetch all payments for search:", err);
+          } finally {
+            setAllPaymentsLoading(false);
+          }
+        }
       } catch (err) {
         console.error("Failed to fetch payments:", err);
       } finally {
@@ -32,41 +74,101 @@ function Payments() {
     fetchPayments();
   }, []);
 
-  const stats = [
+  // Fetch payments for specific page
+  const fetchPayments = useCallback(
+    async (pageNumber = 1) => {
+      setLoading(true);
+      try {
+        const { data } = await api.get(`/admin/payments?page=${pageNumber}`);
+        const paymentsData = data.payments.data ?? [];
+        setPayments(paymentsData);
+        setPagination({
+          current_page: data.payments.current_page ?? pageNumber,
+          last_page: data.payments.last_page ?? 1,
+          total: data.payments.total ?? paymentsData.length,
+          from: data.payments.from ?? (paymentsData.length ? 1 : 0),
+          to: data.payments.to ?? paymentsData.length,
+          per_page: data.payments.per_page ?? 15,
+        });
+      } catch (err) {
+        console.error("Failed to fetch payments:", err);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [],
+  );
+
+  // Update payments when page changes
+  useEffect(() => {
+    fetchPayments(page);
+  }, [page, fetchPayments]);
+
+  // Live search — filter allPayments by invoice_number or order_number
+  useEffect(() => {
+    if (!searchTerm.trim()) {
+      setFilteredPayments([]);
+      return;
+    }
+    const term = searchTerm.trim().toLowerCase();
+    const results = allPayments.filter((p) => {
+      const invoice = (p.invoice_number ?? "").toLowerCase();
+      const orderNum = (p.order?.order_number ?? "").toLowerCase();
+      return invoice.includes(term) || orderNum.includes(term);
+    });
+    setFilteredPayments(results);
+  }, [searchTerm, allPayments]);
+
+  // Pagination helpers (mirrors Menu.jsx)
+  const getVisiblePageNumbers = () => {
+    const totalPages = pagination.last_page;
+    if (totalPages <= 7) {
+      return Array.from({ length: totalPages }, (_, idx) => idx + 1);
+    }
+
+    const current = pagination.current_page;
+    const maxPages = 6;
+    let start = Math.max(2, current - Math.floor(maxPages / 2));
+    let end = start + maxPages - 1;
+
+    if (end > totalPages - 1) {
+      end = totalPages - 1;
+      start = Math.max(2, end - maxPages + 1);
+    }
+
+    return Array.from({ length: end - start + 1 }, (_, idx) => start + idx);
+  };
+
+  const stats = totals ? [
     {
       label: "Total Revenue",
       value: new Intl.NumberFormat("en-NG", {
         style: "currency",
         currency: "NGN",
         minimumFractionDigits: 0,
-      }).format(Math.ceil(totals?.total_revenue ?? 0)),
+      }).format(Math.ceil(totals.total_revenue)),
       icon: FiDollarSign,
       color: "bg-green-500",
-      trend: "+12%",
     },
     {
       label: "Pending",
-      value: new Intl.NumberFormat("en-NG", {
-        style: "currency",
-        currency: "NGN",
-        minimumFractionDigits: 0,
-      }).format(Math.ceil(totals?.total_pending ?? 0)),
-      icon: FiDollarSign,
+      value: totals.total_pending,
+      icon: FiClock,
       color: "bg-orange-500",
     },
     {
       label: "Completed",
-      value: totals?.total_completed ?? 0,
+      value: totals.total_completed,
       icon: FiCreditCard,
       color: "bg-blue-500",
     },
     {
       label: "Transactions",
-      value: totals?.total_transactions ?? 0,
+      value: totals.total_transactions,
       icon: FiLayout,
       color: "bg-purple-500",
     },
-  ];
+  ] : [];
 
   const statColors = [
     "bg-green-500",
@@ -87,6 +189,9 @@ function Payments() {
         return "bg-gray-100 text-gray-700 border-gray-200";
     }
   };
+
+  const capitalize = (str) =>
+    str ? str.charAt(0).toUpperCase() + str.slice(1) : "—";
 
   const getMethodColor = (method) => {
     switch (method) {
@@ -158,25 +263,24 @@ function Payments() {
               ))}
         </div>
 
-        {/* Search & filter — always visible */}
-        <div className="flex flex-col md:flex-row gap-4">
-          <div className="relative flex-grow">
-            <FiSearch
-              className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400"
-              size={20}
-            />
-            <input
-              type="text"
-              placeholder="Search by order ID, customer, or invoice..."
-              className="w-full pl-12 pr-4 py-3 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
-          <button className="flex items-center gap-2 px-6 py-3 bg-white border border-gray-200 rounded-xl text-gray-700 font-medium hover:bg-gray-50 transition-colors shadow-sm">
-            <FiFilter size={20} />
-            <span>Filter</span>
-          </button>
+        {/* Search bar */}
+        <div className="relative">
+          <FiSearch
+            className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"
+            size={20}
+          />
+          <input
+            type="text"
+            placeholder="Search by invoice number or order number..."
+            className="w-full pl-12 pr-4 py-3 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+          {allPaymentsLoading && (
+            <div className="absolute right-4 top-1/2 -translate-y-1/2">
+              <div className="w-4 h-4 border-2 border-gray-200 border-t-orange-500 rounded-full animate-spin" />
+            </div>
+          )}
         </div>
 
         {/* Payments table — spinner while loading, table after */}
@@ -189,6 +293,14 @@ function Payments() {
           </div>
         ) : (
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+            {/* Search result count */}
+            {searchTerm.trim() && (
+              <div className="px-6 py-3 border-b border-gray-100 bg-gray-50/50 text-sm text-gray-500">
+                {filteredPayments.length === 0
+                  ? "No results found"
+                  : `${filteredPayments.length} result${filteredPayments.length !== 1 ? "s" : ""} for "${searchTerm}"`}
+              </div>
+            )}
             <div className="overflow-x-auto">
               <table className="w-full text-left">
                 <thead>
@@ -212,17 +324,25 @@ function Payments() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
-                  {payments.length === 0 ? (
-                    <tr>
-                      <td
-                        colSpan={7}
-                        className="px-6 py-16 text-center text-sm text-gray-400"
-                      >
-                        No payments found.
-                      </td>
-                    </tr>
-                  ) : (
-                    payments.map((payment) => (
+                  {(() => {
+                    const displayPayments = searchTerm.trim()
+                      ? filteredPayments
+                      : payments;
+                    if (displayPayments.length === 0) {
+                      return (
+                        <tr>
+                          <td
+                            colSpan={7}
+                            className="px-6 py-16 text-center text-sm text-gray-400"
+                          >
+                            {searchTerm.trim()
+                              ? "No payments match your search."
+                              : "No payments found."}
+                          </td>
+                        </tr>
+                      );
+                    }
+                    return displayPayments.map((payment) => (
                       <tr
                         key={payment.id}
                         className="hover:bg-gray-50/50 transition-colors"
@@ -247,14 +367,14 @@ function Payments() {
                           <span
                             className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium border ${getMethodColor(payment.payment_method)}`}
                           >
-                            {payment.payment_method}
+                            {capitalize(payment.payment_method)}
                           </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span
-                            className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold border ${getStatusColor(payment.payment_status)}`}
+                            className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium border ${getStatusColor(payment.payment_status)}`}
                           >
-                            {payment.payment_status}
+                            {capitalize(payment.payment_status)}
                           </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
@@ -268,10 +388,71 @@ function Payments() {
                           )}
                         </td>
                       </tr>
-                    ))
-                  )}
+                    ));
+                  })()}
                 </tbody>
               </table>
+            </div>
+          </div>
+        )}
+
+        {/* Pagination controls — hidden during search (mirrors Menu.jsx) */}
+        {!loading && !searchTerm.trim() && pagination.last_page > 1 && (
+          <div className="mt-8 flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-gray-200 pt-6">
+            <div className="text-sm text-gray-500">
+              Showing {pagination.from} to {pagination.to} of{" "}
+              {pagination.total} payments
+            </div>
+            <div className="flex flex-wrap items-center justify-center gap-2">
+              <button
+                disabled={pagination.current_page === 1}
+                onClick={() => setPage((prev) => Math.max(1, prev - 1))}
+                className="px-4 py-2 border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                Previous
+              </button>
+              <button
+                disabled={pagination.current_page === 1}
+                onClick={() => setPage(1)}
+                className="px-4 py-2 border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                First
+              </button>
+              {getVisiblePageNumbers().map((pageNumber) => (
+                <button
+                  key={pageNumber}
+                  onClick={() => setPage(pageNumber)}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium border border-gray-200 transition-colors ${
+                    pagination.current_page === pageNumber
+                      ? "bg-orange-500 text-white border-orange-500"
+                      : "text-gray-700 hover:bg-gray-100"
+                  }`}
+                >
+                  {pageNumber}
+                </button>
+              ))}
+              <button
+                disabled={
+                  pagination.current_page === pagination.last_page
+                }
+                onClick={() => setPage(pagination.last_page)}
+                className="px-4 py-2 border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                Last
+              </button>
+              <button
+                disabled={
+                  pagination.current_page === pagination.last_page
+                }
+                onClick={() =>
+                  setPage((prev) =>
+                    Math.min(pagination.last_page, prev + 1),
+                  )
+                }
+                className="px-4 py-2 border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                Next
+              </button>
             </div>
           </div>
         )}

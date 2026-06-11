@@ -2,9 +2,9 @@ import React from 'react'
 import { Helmet } from 'react-helmet-async'
 
 function SEO({ title, description, keywords, url, image }) {
-  const siteName = 'EatWella'
+  const siteName = 'Eatwella'
   const defaultDescription = 'Delicious, healthy, and affordable meals delivered to your doorstep. Experience the best of Nigerian cuisine with our curated menu and meal plans.'
-  const defaultKeywords = 'EatWella, food delivery, Nigerian cuisine, healthy meals, meal plans, restaurant, online food order, Awka, Nigeria'
+  const defaultKeywords = 'Eatwella, food delivery, Nigerian cuisine, healthy meals, meal plans, restaurant, online food order, Awka, Nigeria'
   const defaultImage = 'https://eatwella.com/Vector.png'
   const defaultUrl = 'https://eatwella.com/'
 

@@ -1,3 +1,10 @@
 node_modules
 notes.md
+bugs_user.md
+feats.md
 dist
+.env.development
+.env.production
+.env.staging
+dist_staging
+dist_production

@@ -1,8 +1,11 @@
 import React, { useState } from "react";
-import { FiX, FiUser, FiMail, FiLock } from "react-icons/fi";
+import { FiX, FiUser, FiMail, FiLock, FiEye, FiEyeOff } from "react-icons/fi";
 import api from "../../utils/api";
+import {useToast} from "../../context/ToastContext";
 
 const AddStaffModal = ({ isOpen, onClose, onSuccess }) => {
+  const {showToast} = useToast();
+  
   const [formData, setFormData] = useState({
     name: "",
     role: "",
@@ -11,21 +14,34 @@ const AddStaffModal = ({ isOpen, onClose, onSuccess }) => {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
     setLoading(true);
 
-    console.log("Over here: ", formData);
-
     try {
       await api.post("/admin/staff", formData);
       setFormData({ name: "", role: "", email: "", password: "" });
       onSuccess();
       onClose();
-    } catch (err) {
-      setError(err.response?.data?.message || "Failed to create cashier");
+    } catch (error) {
+      if (error.response) {
+        console.log("Status:", error.response.status);
+        console.log("Data:", error.response.data);
+        console.log("Validation errors:", error.response.data.errors);
+        showToast(
+          error.response.data?.message || "Failed to create menu item",
+          "error",
+        );
+      } else if (error.request) {
+        console.log("No response received:", error.request);
+        showToast("Network error. Please try again.", "error");
+      } else {
+        console.log("Error setting up request:", error.message);
+        showToast("An unexpected error occurred", "error");
+      }
     } finally {
       setLoading(false);
     }
@@ -85,8 +101,9 @@ const AddStaffModal = ({ isOpen, onClose, onSuccess }) => {
             >
               <option value="">-- Select Role --</option>
               <option value="supervisor">Supervisor</option>
-              <option value="kitchen">Kitchen</option>
               <option value="attendant">Attendant</option>
+              <option value="kitchen">Kitchen</option>
+              <option value="store_keeper">Store Keeper</option>
               <option value="delivery_agent">Delivery Agent</option>
             </select>
           </div>
@@ -117,15 +134,22 @@ const AddStaffModal = ({ isOpen, onClose, onSuccess }) => {
             <div className="relative">
               <FiLock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
               <input
-                type="password"
+                type={showPassword ? "text" : "password"}
                 value={formData.password}
                 onChange={(e) =>
                   setFormData({ ...formData, password: e.target.value })
                 }
                 placeholder="Enter password"
                 required
-                className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2.5 pl-10 pr-4 text-sm text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-orange-100 focus:border-orange-500 outline-none"
+                className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2.5 pl-10 pr-12 text-sm text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-orange-100 focus:border-orange-500 outline-none"
               />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                {showPassword ? <FiEyeOff className="w-5 h-5" /> : <FiEye className="w-5 h-5" />}
+              </button>
             </div>
           </div>
 

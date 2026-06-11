@@ -18,15 +18,21 @@ const getCartId = () => {
 };
 
 const cartApi = axios.create({
-  baseURL: "https://eatwella.tfnsolutions.us/api",
+  baseURL: import.meta.env.VITE_API_URL,
   headers: { Accept: "application/json", "Content-Type": "application/json" },
   withCredentials: true,
 });
 
 cartApi.interceptors.request.use(
   (config) => {
+    const token = localStorage.getItem("token");
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+
     const cartId = getCartId();
     if (cartId) config.headers["X-Cart-ID"] = cartId;
+
     return config;
   },
   (error) => Promise.reject(error),
@@ -50,7 +56,6 @@ export const CartProvider = ({ children }) => {
 
   const updateItemPackaging = (cartItemId, packagingOption) => {
     // packagingOption is the full packaging object, or null to clear
-    console.log("Siuuu: ", packagingOption);
     setItemPackaging((prev) => ({ ...prev, [cartItemId]: packagingOption }));
   };
 
@@ -84,9 +89,7 @@ export const CartProvider = ({ children }) => {
   const fetchCart = async () => {
     try {
       const { data } = await cartApi.get("/cart");
-      console.log("✅ Fetched cart:", data);
       if (!data.items || data.items.length === 0) {
-        console.log("ℹ️ Server cart empty. Clearing local cart for sync.");
         clearCart();
       } else {
         setCart(data);
@@ -105,11 +108,10 @@ export const CartProvider = ({ children }) => {
   const addToCart = async (menuId, quantity = 1) => {
     setLoadingItems((prev) => ({ ...prev, [menuId]: true }));
     try {
-      const { data } = await cartApi.post("/cart", {
+      const { data, headers } = await cartApi.post("/cart", {
         menu_id: menuId,
         quantity,
       });
-      console.log("✅ Added to cart:", data);
       if (data && data.items) {
         setCart(data);
       } else {
@@ -129,37 +131,58 @@ export const CartProvider = ({ children }) => {
     quantity = null,
     packageId = null,
   ) => {
-    console.log(
-      "cart item ID: ",
-      cartItemId,
-      "quantity: ",
-      quantity,
-      "package ID: ",
-      packageId,
-    );
     try {
       const { data } = await cartApi.put(`/cart/${cartItemId}`, {
         quantity,
         packaging_id: packageId,
       });
-      console.log("✅ Updated cart item:", data);
       if (data && data.items) {
         setCart(data);
       } else {
         await fetchCart();
       }
-      return true;
+      return { success: true };
     } catch (err) {
       console.error("Failed to update cart item:", err);
+
+      // Extract the exact error message from server response
+      let errorMessage = "Failed to update cart item";
+
+      if (err.response?.data) {
+        // Handle different error response formats
+        if (err.response.data.message) {
+          errorMessage = err.response.data.message;
+        } else if (err.response.data.error) {
+          errorMessage = err.response.data.error;
+        } else if (err.response.data.errors) {
+          // Handle validation errors (array of messages)
+          if (Array.isArray(err.response.data.errors)) {
+            errorMessage = err.response.data.errors.join(", ");
+          } else if (typeof err.response.data.errors === "object") {
+            // Handle object-based validation errors
+            const errorMessages = Object.values(
+              err.response.data.errors,
+            ).flat();
+            errorMessage = errorMessages.join(", ");
+          }
+        }
+      } else if (err.message) {
+        errorMessage = err.message;
+      }
+
       await fetchCart();
-      return false;
+      return {
+        success: false,
+        message: errorMessage,
+        status: err.response?.status,
+        statusText: err.response?.statusText,
+      };
     }
   };
 
   const removeFromCart = async (cartItemId) => {
     try {
       const { data } = await cartApi.delete(`/cart/${cartItemId}`);
-      console.log("✅ Removed from cart:", data);
       // Clean up this item's packaging selection when it's removed
       removePackagingForItem(cartItemId);
       if (data && data.items) {
@@ -178,7 +201,6 @@ export const CartProvider = ({ children }) => {
   const applyDiscount = async (code) => {
     try {
       const { data } = await cartApi.post("/cart/apply-discount", { code });
-      console.log("✅ Discount applied:", data);
       if (data && data.cart && data.cart.items) {
         setCart(data.cart);
       } else if (data && data.items) {
@@ -202,7 +224,6 @@ export const CartProvider = ({ children }) => {
   const removeDiscount = async () => {
     try {
       const { data } = await cartApi.delete("/cart/remove-discount");
-      console.log("✅ Discount removed:", data);
       if (data && data.items) {
         setCart(data);
       } else if (data && data.cart && data.cart.items) {
@@ -233,7 +254,6 @@ export const CartProvider = ({ children }) => {
         await Promise.all(
           itemsToRemove.map((item) => cartApi.delete(`/cart/${item.id}`)),
         );
-        console.log("✅ All cart items removed from server");
       }
     } catch (err) {
       console.error("Failed to clear cart from server:", err);
@@ -247,8 +267,6 @@ export const CartProvider = ({ children }) => {
       console.error("Failed to clear cart from local storage:", err);
     }
   };
-
-  console.log("🛍️ Current cart item count:", cartItemCount, cart);
 
   return (
     <CartContext.Provider

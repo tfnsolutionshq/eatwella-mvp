@@ -1,3 +1,4 @@
+import api from "./api";
 /**
  * Fetches the availability schedule and checks whether the current
  * local time falls within a working window.
@@ -12,7 +13,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // DEV TOGGLE — flip to false and uncomment the API call when endpoint is ready
 // ─────────────────────────────────────────────────────────────────────────────
-const USING_DUMMY_SCHEDULE = true;
+const USING_DUMMY_SCHEDULE = false;
 
 const DUMMY_SCHEDULE = [
   { day: "Monday", enabled: true, open: "09:00 AM", close: "09:00 PM" },
@@ -33,7 +34,7 @@ export const checkWorkingHourAvailability = async () => {
       await new Promise((res) => setTimeout(res, 300)); // simulate network
       schedule = DUMMY_SCHEDULE;
     } else {
-      const { data } = await api.get("/admin/settings");
+      const { data } = await api.get("/availability-hours");
       schedule = data.availability_hours;
     }
 
@@ -57,7 +58,7 @@ export const checkWorkingHourAvailability = async () => {
     if (!todaySchedule || !todaySchedule.enabled) {
       return {
         available: false,
-        message: `Sorry, we are closed today (${todayName}). Please check back on an operating day.`,
+        message: `Sorry, but online ordering is unavailable at the moment. Please call <b>09017777701</b> to make your order or visit our outlet to dine in.`,
         schedule,
       };
     }
