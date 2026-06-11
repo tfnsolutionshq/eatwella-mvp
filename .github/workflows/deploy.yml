@@ -24,6 +24,9 @@ jobs:
 
       - name: Build Vite project
         run: npm run build
+        env:
+          VITE_API_URL: ${{ secrets.VITE_API_URL }}
+          VITE_API_URL_STORAGE: ${{ secrets.VITE_API_URL_STORAGE }}
 
       - name: Set up SSH key
         run: |
