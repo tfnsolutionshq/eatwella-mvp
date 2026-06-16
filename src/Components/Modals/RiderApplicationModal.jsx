@@ -1,6 +1,7 @@
-import React, { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { FiX, FiUser, FiMail, FiPhone, FiMapPin, FiUpload, FiChevronDown } from "react-icons/fi";
 import { AnimatePresence, motion } from "framer-motion";
+import api from "../../utils/api";
 
 const VEHICLE_TYPES = ["Bicycle", "Tricycle", "Motorcycle", "Car"];
 
@@ -18,7 +19,72 @@ const RiderApplicationModal = ({ isOpen, onClose }) => {
   const [formData, setFormData] = useState(initialForm);
   const [photoPreview, setPhotoPreview] = useState(null);
   const [photoError, setPhotoError] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
   const fileInputRef = useRef(null);
+
+  // Location state
+  const [states, setStates] = useState([]);
+  const [cities, setCities] = useState([]);
+  const [zones, setZones] = useState([]);
+  const [selectedState, setSelectedState] = useState("");
+  const [selectedCity, setSelectedCity] = useState("");
+  const [selectedZone, setSelectedZone] = useState("");
+  const [isCitiesLoading, setIsCitiesLoading] = useState(false);
+  const [isZonesLoading, setIsZonesLoading] = useState(false);
+
+  useEffect(() => {
+    if (isOpen) {
+      fetchStates();
+    }
+  }, [isOpen]);
+
+  const fetchStates = async () => {
+    try {
+      const { data } = await api.get("/states");
+      setStates(data);
+    } catch (err) {
+      console.error("Failed to fetch states:", err);
+    }
+  };
+
+  const handleStateChange = async (stateId) => {
+    setSelectedState(stateId);
+    setSelectedCity("");
+    setSelectedZone("");
+    setCities([]);
+    setZones([]);
+
+    if (stateId) {
+      setIsCitiesLoading(true);
+      try {
+        const { data } = await api.get(`/cities?state_id=${stateId}`);
+        setCities(data);
+      } catch (err) {
+        console.error("Failed to fetch cities:", err);
+      } finally {
+        setIsCitiesLoading(false);
+      }
+    }
+  };
+
+  const handleCityChange = async (cityId) => {
+    setSelectedCity(cityId);
+    setSelectedZone("");
+    setZones([]);
+
+    if (cityId) {
+      setIsZonesLoading(true);
+      try {
+        const { data } = await api.get(`/zones?city_id=${cityId}`);
+        const activeZones = data.filter((zone) => zone.is_active);
+        setZones(activeZones);
+      } catch (err) {
+        console.error("Failed to fetch zones:", err);
+      } finally {
+        setIsZonesLoading(false);
+      }
+    }
+  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -47,29 +113,65 @@ const RiderApplicationModal = ({ isOpen, onClose }) => {
     setPhotoPreview(URL.createObjectURL(file));
   };
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
+  const isFormComplete =
+    formData.firstName.trim() &&
+    formData.lastName.trim() &&
+    formData.email.trim() &&
+    formData.phone.trim() &&
+    formData.address.trim() &&
+    formData.vehicleType &&
+    selectedState &&
+    selectedCity &&
+    selectedZone &&
+    formData.profilePhoto;
 
+  const handleSubmit = async (e) => {
+    e.preventDefault();
     if (!formData.profilePhoto) {
       setPhotoError("Please upload a profile photo.");
       return;
     }
+    setIsLoading(true);
 
-    console.log("Rider Application Submitted:", {
-      firstName: formData.firstName,
-      lastName: formData.lastName,
-      email: formData.email,
-      phone: formData.phone,
-      address: formData.address,
-      vehicleType: formData.vehicleType,
-      profilePhoto: formData.profilePhoto,
-    });
+    try{
+      const res = await api.post("/rider/apply", {
+        first_name: formData.firstName,
+        last_name: formData.lastName,
+        email: formData.email,
+        phone: formData.phone,
+        address: formData.address,
+        vehicle_type: formData.vehicleType,
+        state_id: selectedState,
+        city_id: selectedCity,
+        zone_id: selectedZone,
+        profilePhoto: formData.profilePhoto,
+      });
+  
+      console.log("this is it: ", res);
+    } catch (error) {
+      if (error.response) {
+        console.log("Status:", error.response.status);
+        console.log("Data:", error.response.data);
+        console.log("Validation errors:", error.response.data.errors);
+      } else if (error.request) {
+        console.log("No response received:", error.request);
+      } else {
+        console.log("Error setting up request:", error.message);
+      }
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleClose = () => {
     setFormData(initialForm);
     setPhotoPreview(null);
     setPhotoError("");
+    setSelectedState("");
+    setSelectedCity("");
+    setSelectedZone("");
+    setCities([]);
+    setZones([]);
     onClose();
   };
 
@@ -206,6 +308,81 @@ const RiderApplicationModal = ({ isOpen, onClose }) => {
               </div>
             </div>
 
+            {/* State */}
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                State <span className="text-red-500">*</span>
+              </label>
+              <div className="relative">
+                <select
+                  value={selectedState}
+                  onChange={(e) => handleStateChange(e.target.value)}
+                  required
+                  className="w-full appearance-none bg-gray-50 border border-gray-200 rounded-xl py-2.5 pl-4 pr-10 text-sm text-gray-900 focus:ring-2 focus:ring-green-100 focus:border-green-500 outline-none transition"
+                >
+                  <option value="">-- Select state --</option>
+                  {states.map((state) => (
+                    <option key={state.id} value={state.id}>
+                      {state.name}
+                    </option>
+                  ))}
+                </select>
+                <FiChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+              </div>
+            </div>
+
+            {/* City */}
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                City <span className="text-red-500">*</span>
+              </label>
+              <div className="relative">
+                <select
+                  value={selectedCity}
+                  onChange={(e) => handleCityChange(e.target.value)}
+                  required
+                  disabled={!selectedState || isCitiesLoading}
+                  className="w-full appearance-none bg-gray-50 border border-gray-200 rounded-xl py-2.5 pl-4 pr-10 text-sm text-gray-900 focus:ring-2 focus:ring-green-100 focus:border-green-500 outline-none transition disabled:opacity-50"
+                >
+                  <option value="">
+                    {isCitiesLoading ? "Loading cities..." : "-- Select city --"}
+                  </option>
+                  {cities.map((city) => (
+                    <option key={city.id} value={city.id}>
+                      {city.name}
+                    </option>
+                  ))}
+                </select>
+                <FiChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+              </div>
+            </div>
+
+            {/* Zone */}
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                Zone <span className="text-red-500">*</span>
+              </label>
+              <div className="relative">
+                <select
+                  value={selectedZone}
+                  onChange={(e) => setSelectedZone(e.target.value)}
+                  required
+                  disabled={!selectedCity || isZonesLoading}
+                  className="w-full appearance-none bg-gray-50 border border-gray-200 rounded-xl py-2.5 pl-4 pr-10 text-sm text-gray-900 focus:ring-2 focus:ring-green-100 focus:border-green-500 outline-none transition disabled:opacity-50"
+                >
+                  <option value="">
+                    {isZonesLoading ? "Loading zones..." : "-- Select zone --"}
+                  </option>
+                  {zones.map((zone) => (
+                    <option key={zone.id} value={zone.id}>
+                      {zone.name}
+                    </option>
+                  ))}
+                </select>
+                <FiChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+              </div>
+            </div>
+
             {/* Vehicle Type */}
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-1.5">
@@ -282,9 +459,10 @@ const RiderApplicationModal = ({ isOpen, onClose }) => {
               </button>
               <button
                 type="submit"
-                className="flex-1 px-4 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-xl text-sm font-semibold transition-colors shadow-sm"
+                className="flex-1 px-4 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-xl text-sm font-semibold transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={isLoading || !isFormComplete}
               >
-                Submit Application
+                {isLoading ? "Submitting..." : "Submit Application"}
               </button>
             </div>
           </form>

@@ -14,6 +14,7 @@ import {
   FiAward,
   FiPackage,
   FiBell,
+  FiHome,
 } from "react-icons/fi";
 import { MdRestaurant, MdQrCodeScanner } from "react-icons/md";
 import { 
@@ -71,6 +72,13 @@ export default function Sidebar({ isOpen, onToggle, isCollapsed, onCollapseToggl
       icon: Utensils,
       path: user?.role === "store_keeper" ? "/store-keeper/menu" : "/admin/menu",
       roles: ["admin", "store_keeper"],
+    },
+        {
+      id: "outlet-management",
+      label: "Outlet Management",
+      icon: FiHome,
+      path: "/admin/outlet-management",
+      roles: ["admin"],
     },
     {
       id: "food-packaging",

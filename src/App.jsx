@@ -16,6 +16,7 @@ import FloatingWhatsAppButton from "./Components/FloatingWhatsAppButton";
 
 import Dashboard from "./Pages/Admin/Dashboard";
 import AdminMenu from "./Pages/Admin/Menu";
+import OutletManagement from "./Pages/Admin/OutletManagement";
 import OrderManagement from "./Pages/Admin/OrderManagement";
 import DiscountManagement from "./Pages/Admin/DiscountManagement";
 import StaffManagement from "./Pages/Admin/StaffManagement";
@@ -30,6 +31,9 @@ import TaxAndVat from "./Pages/Admin/TaxAndVat";
 import CreateOrder from "./Pages/Admin/CreateOrder";
 import Login from "./Pages/Admin/Login";
 import DeliveryLocationManagement from "./Pages/Admin/DeliveryLocationManagement";
+import FoodPackaging from "./Pages/Admin/FoodPackaging";
+import Settings from "./Pages/Admin/Settings";
+import Campaigns from "./Pages/Admin/Campaigns";
 import UserLogin from "./Pages/UserDashboard/Login";
 import CreateAccount from "./Pages/UserDashboard/CreateAccount";
 import UserDashboard from "./Pages/UserDashboard/Dashboard";
@@ -52,9 +56,6 @@ import RidersPage from "./Pages/RidersPage/RidersPage";
 import NotFound from "./Pages/NotFound/NotFound";
 import ScrollToTop from "./Components/ScrollToTop";
 import ScrollToTopButton from "./Components/ScrollToTopButton";
-import FoodPackaging from "./Pages/Admin/FoodPackaging";
-import Settings from "./Pages/Admin/Settings";
-import Campaigns from "./Pages/Admin/Campaigns";
 
 function AppRoutes() {
   const { routePrefix } = useAuth();
@@ -98,6 +99,7 @@ function AppRoutes() {
 
         {/* ── Admin-only Routes ── */}
         <Route element={<AdminGuard />}>
+          <Route path={`${p}/outlet-management`} element={<OutletManagement />} />
           <Route path={`${p}/dashboard`} element={<Dashboard />} />
           <Route path={`${p}/users`} element={<AllUsers />} />
           <Route path={`${p}/users/:userId`} element={<SingleUser />} />
