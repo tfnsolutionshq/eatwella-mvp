@@ -1,20 +1,53 @@
-import React, { useState } from "react";
-import { FiX, FiUser, FiMail, FiLock, FiEye, FiEyeOff } from "react-icons/fi";
+import React, { useState, useEffect } from "react";
+import {
+  FiX,
+  FiUser,
+  FiMail,
+  FiLock,
+  FiEye,
+  FiEyeOff,
+  FiLoader,
+} from "react-icons/fi";
 import api from "../../utils/api";
-import {useToast} from "../../context/ToastContext";
+import { useToast } from "../../context/ToastContext";
 
 const AddStaffModal = ({ isOpen, onClose, onSuccess }) => {
-  const {showToast} = useToast();
-  
+  const { showToast } = useToast();
+
   const [formData, setFormData] = useState({
     name: "",
     role: "",
     email: "",
     password: "",
+    outlet_id: "",
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [outlets, setOutlets] = useState([]);
+  const [outletsLoading, setOutletsLoading] = useState(false);
+
+  useEffect(() => {
+    const fetchOutlets = async () => {
+      if (isOpen) {
+        try {
+          setOutletsLoading(true);
+          const response = await api.get("/admin/outlets");
+          const activeOutlets = response.data.data.filter(
+            (outlet) => outlet.is_active !== false,
+          );
+          setOutlets(activeOutlets);
+        } catch (error) {
+          console.error("Failed to fetch outlets:", error);
+          showToast("Failed to load outlets", "error");
+        } finally {
+          setOutletsLoading(false);
+        }
+      }
+    };
+
+    fetchOutlets();
+  }, [isOpen, showToast]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -23,7 +56,13 @@ const AddStaffModal = ({ isOpen, onClose, onSuccess }) => {
 
     try {
       await api.post("/admin/staff", formData);
-      setFormData({ name: "", role: "", email: "", password: "" });
+      setFormData({
+        name: "",
+        role: "",
+        email: "",
+        password: "",
+        outlet_id: "",
+      });
       onSuccess();
       onClose();
     } catch (error) {
@@ -96,8 +135,13 @@ const AddStaffModal = ({ isOpen, onClose, onSuccess }) => {
               name="role"
               className="w-full bg-gray-50 border border-gray-200 rounded-xl p-2.5 pr-4 text-sm text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-orange-100 focus:border-orange-500 outline-none"
               onChange={(e) =>
-                setFormData({ ...formData, role: e.target.value })
+                setFormData({
+                  ...formData,
+                  role: e.target.value,
+                  outlet_id: "",
+                })
               }
+              value={formData.role}
             >
               <option value="">-- Select Role --</option>
               <option value="supervisor">Supervisor</option>
@@ -107,6 +151,37 @@ const AddStaffModal = ({ isOpen, onClose, onSuccess }) => {
               <option value="delivery_agent">Delivery Agent</option>
             </select>
           </div>
+
+          {formData.role && formData.role !== "delivery_agent" && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Outlet
+              </label>
+              {outletsLoading ? (
+                <div className="w-full bg-gray-50 border border-gray-200 rounded-xl p-2.5 text-sm text-gray-500 flex items-center gap-2">
+                  <FiLoader className="animate-spin" />
+                  <>Loading outlets...</>
+                </div>
+              ) : (
+                <select
+                  name="outlet_id"
+                  className="w-full bg-gray-50 border border-gray-200 rounded-xl p-2.5 pr-4 text-sm text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-orange-100 focus:border-orange-500 outline-none"
+                  onChange={(e) =>
+                    setFormData({ ...formData, outlet_id: e.target.value })
+                  }
+                  value={formData.outlet_id}
+                  required
+                >
+                  <option value="">-- Select Outlet --</option>
+                  {outlets.map((outlet) => (
+                    <option key={outlet.id} value={outlet.id}>
+                      {outlet.name}
+                    </option>
+                  ))}
+                </select>
+              )}
+            </div>
+          )}
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -148,7 +223,11 @@ const AddStaffModal = ({ isOpen, onClose, onSuccess }) => {
                 onClick={() => setShowPassword(!showPassword)}
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
               >
-                {showPassword ? <FiEyeOff className="w-5 h-5" /> : <FiEye className="w-5 h-5" />}
+                {showPassword ? (
+                  <FiEyeOff className="w-5 h-5" />
+                ) : (
+                  <FiEye className="w-5 h-5" />
+                )}
               </button>
             </div>
           </div>

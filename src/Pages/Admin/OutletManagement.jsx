@@ -657,7 +657,7 @@ const AssignSupervisorModal = ({ isOpen, onClose, outlet, onAssigned }) => {
 
       {/* Supervisor list */}
       {loadingSupervisors ? (
-        <div className="flex items-center justify-center py-10">
+        <div className="flex items-center justify-center py-10 h-full">
           <div className="w-8 h-8 border-4 border-gray-200 border-t-orange-500 rounded-full animate-spin" />
         </div>
       ) : supervisors.length === 0 ? (
@@ -665,7 +665,7 @@ const AssignSupervisorModal = ({ isOpen, onClose, outlet, onAssigned }) => {
           No supervisors found on this page.
         </div>
       ) : (
-        <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
+        <div className="space-y-2 pr-1">
           {supervisors.map((sup) => {
             const selected = selectedIds.includes(sup.id);
             const alreadyAssigned = sup.outlet_id === outlet?.id;
@@ -1256,10 +1256,6 @@ const OutletCard = ({
         <div className="flex items-center mt-5 justify-between gap-2 text-sm text-gray-600">
           <span className="text-xs">Supervisors Assigned</span>
           <span className="font-bold">{item.supervisors_count}</span>
-        </div>
-        <div className="flex items-center justify-between gap-2 text-sm text-gray-600">
-          <span className="text-xs">Delivery Agents Assigned</span>
-          <span className="font-bold">{item.delivery_agents_count}</span>
         </div>
       </div>
 
