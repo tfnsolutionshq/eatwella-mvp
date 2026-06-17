@@ -1,4 +1,3 @@
-// src/App.jsx
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { HelmetProvider } from "react-helmet-async";
 import { AuthProvider } from "./context/AuthContext";
@@ -10,7 +9,6 @@ import AdminGuard from "./Components/RoutingComponents/AdminGuard";
 import StaffGuard from "./Components/RoutingComponents/StaffGuard";
 import PublicRouteGuard from "./Components/RoutingComponents/PublicRouteGuard";
 import AdminOrSupervisorGuard from "./Components/RoutingComponents/AdminOrSupervisorGuard";
-import StoreKeeperGuard from "./Components/RoutingComponents/StoreKeeperGuard";
 import FloatingCartButton from "./Components/FloatingCartButton";
 import FloatingWhatsAppButton from "./Components/FloatingWhatsAppButton";
 
@@ -99,7 +97,10 @@ function AppRoutes() {
 
         {/* ── Admin-only Routes ── */}
         <Route element={<AdminGuard />}>
-          <Route path={`${p}/outlet-management`} element={<OutletManagement />} />
+          <Route
+            path={`${p}/outlet-management`}
+            element={<OutletManagement />}
+          />
           <Route path={`${p}/dashboard`} element={<Dashboard />} />
           <Route path={`${p}/users`} element={<AllUsers />} />
           <Route path={`${p}/users/:userId`} element={<SingleUser />} />
@@ -131,7 +132,7 @@ function AppRoutes() {
           <Route path={`${p}/menu`} element={<AdminMenu />} />
           <Route path="/admin/bank-details" element={<BankDetails />} />
         </Route>
-        
+
         <Route path="*" element={<NotFound />} />
       </Routes>
     </>
