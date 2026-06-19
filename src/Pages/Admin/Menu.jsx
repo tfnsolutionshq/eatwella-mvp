@@ -39,6 +39,7 @@ const Menu = () => {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [editingItemLoading, setEditingItemLoading] = useState(null);
 
   // Stock management for store keepers
   const [stockInputs, setStockInputs] = useState({});
@@ -680,17 +681,26 @@ const Menu = () => {
                               </button>
                               <button
                                 onClick={async () => {
-                                  const itemDetails = await fetchSingleMenuItem(
-                                    item.id,
-                                  );
-                                  if (itemDetails) {
-                                    setEditingItem(itemDetails);
-                                    setIsEditMenuItemOpen(true);
+                                  setEditingItemLoading(item.id);
+                                  try {
+                                    const itemDetails =
+                                      await fetchSingleMenuItem(item.id);
+                                    if (itemDetails) {
+                                      setEditingItem(itemDetails);
+                                      setIsEditMenuItemOpen(true);
+                                    }
+                                  } finally {
+                                    setEditingItemLoading(null);
                                   }
                                 }}
-                                className="p-2 hover:bg-gray-100 rounded-lg text-gray-500 hover:text-blue-600 transition-colors"
+                                disabled={editingItemLoading === item.id}
+                                className="p-2 hover:bg-gray-100 rounded-lg text-gray-500 hover:text-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                               >
-                                <FiEdit2 className="w-4 h-4" />
+                                {editingItemLoading === item.id ? (
+                                  <div className="w-4 h-4 border-2 border-gray-400 border-t-orange-500 rounded-full animate-spin" />
+                                ) : (
+                                  <FiEdit2 className="w-4 h-4" />
+                                )}
                               </button>
                               <button
                                 onClick={() => handleDeleteMenuItem(item.id)}
