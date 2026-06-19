@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
 import DashboardLayout from "../../DashboardLayout/DashboardLayout";
 import AddStaffModal from "../../Components/Modals/AddStaffModal";
 import {
@@ -11,7 +11,7 @@ import {
   FiUserPlus,
   FiX,
 } from "react-icons/fi";
-import { Search, X } from "lucide-react";
+import { Search } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import api from "../../utils/api";
 
@@ -68,7 +68,7 @@ const AllUsers = () => {
   const fetchUsers = async () => {
     try {
       setLoading(true);
-      
+
       // Build params
       const params = { page, per_page: pagination.per_page };
       let response;
@@ -437,22 +437,16 @@ const AllUsers = () => {
                   </button>
                 ))}
                 <button
-                  disabled={
-                    pagination.current_page === pagination.last_page
-                  }
+                  disabled={pagination.current_page === pagination.last_page}
                   onClick={() => setPage(pagination.last_page)}
                   className="px-4 py-2 border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
                   Last
                 </button>
                 <button
-                  disabled={
-                    pagination.current_page === pagination.last_page
-                  }
+                  disabled={pagination.current_page === pagination.last_page}
                   onClick={() =>
-                    setPage((prev) =>
-                      Math.min(pagination.last_page, prev + 1),
-                    )
+                    setPage((prev) => Math.min(pagination.last_page, prev + 1))
                   }
                   className="px-4 py-2 border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >

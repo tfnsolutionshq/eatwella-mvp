@@ -1,4 +1,3 @@
-// src/App.jsx
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { HelmetProvider } from "react-helmet-async";
 import { AuthProvider } from "./context/AuthContext";
@@ -10,12 +9,12 @@ import AdminGuard from "./Components/RoutingComponents/AdminGuard";
 import StaffGuard from "./Components/RoutingComponents/StaffGuard";
 import PublicRouteGuard from "./Components/RoutingComponents/PublicRouteGuard";
 import AdminOrSupervisorGuard from "./Components/RoutingComponents/AdminOrSupervisorGuard";
-import StoreKeeperGuard from "./Components/RoutingComponents/StoreKeeperGuard";
 import FloatingCartButton from "./Components/FloatingCartButton";
 import FloatingWhatsAppButton from "./Components/FloatingWhatsAppButton";
 
 import Dashboard from "./Pages/Admin/Dashboard";
 import AdminMenu from "./Pages/Admin/Menu";
+import OutletManagement from "./Pages/Admin/OutletManagement";
 import OrderManagement from "./Pages/Admin/OrderManagement";
 import DiscountManagement from "./Pages/Admin/DiscountManagement";
 import StaffManagement from "./Pages/Admin/StaffManagement";
@@ -30,6 +29,10 @@ import TaxAndVat from "./Pages/Admin/TaxAndVat";
 import CreateOrder from "./Pages/Admin/CreateOrder";
 import Login from "./Pages/Admin/Login";
 import DeliveryLocationManagement from "./Pages/Admin/DeliveryLocationManagement";
+import FoodPackaging from "./Pages/Admin/FoodPackaging";
+import RiderManagement from "./Pages/Admin/RiderManagement";
+import Settings from "./Pages/Admin/Settings";
+import Campaigns from "./Pages/Admin/Campaigns";
 import UserLogin from "./Pages/UserDashboard/Login";
 import CreateAccount from "./Pages/UserDashboard/CreateAccount";
 import UserDashboard from "./Pages/UserDashboard/Dashboard";
@@ -52,9 +55,6 @@ import RidersPage from "./Pages/RidersPage/RidersPage";
 import NotFound from "./Pages/NotFound/NotFound";
 import ScrollToTop from "./Components/ScrollToTop";
 import ScrollToTopButton from "./Components/ScrollToTopButton";
-import FoodPackaging from "./Pages/Admin/FoodPackaging";
-import Settings from "./Pages/Admin/Settings";
-import Campaigns from "./Pages/Admin/Campaigns";
 
 function AppRoutes() {
   const { routePrefix } = useAuth();
@@ -98,6 +98,11 @@ function AppRoutes() {
 
         {/* ── Admin-only Routes ── */}
         <Route element={<AdminGuard />}>
+          <Route
+            path={`${p}/outlet-management`}
+            element={<OutletManagement />}
+          />
+          <Route path={`${p}/rider-management`} element={<RiderManagement />} />
           <Route path={`${p}/dashboard`} element={<Dashboard />} />
           <Route path={`${p}/users`} element={<AllUsers />} />
           <Route path={`${p}/users/:userId`} element={<SingleUser />} />
@@ -129,7 +134,7 @@ function AppRoutes() {
           <Route path={`${p}/menu`} element={<AdminMenu />} />
           <Route path="/admin/bank-details" element={<BankDetails />} />
         </Route>
-        
+
         <Route path="*" element={<NotFound />} />
       </Routes>
     </>

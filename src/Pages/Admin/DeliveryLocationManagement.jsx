@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import DashboardLayout from "../../DashboardLayout/DashboardLayout";
 import {
-  FiMapPin,
   FiPlus,
   FiEdit2,
   FiTrash2,
@@ -14,7 +13,6 @@ import {
   FiGlobe,
   FiMap,
   FiNavigation,
-  FiHome,
 } from "react-icons/fi";
 import api from "../../utils/api";
 import { useToast } from "../../context/ToastContext";
@@ -22,8 +20,7 @@ import { useToast } from "../../context/ToastContext";
 // ─────────────────────────────────────────────────────────────────────────────
 // DEV TOGGLES — flip independently per resource
 // ─────────────────────────────────────────────────────────────────────────────
-const USING_DUMMY_DATA = false;          // states / cities / zones
-const USING_DUMMY_OUTLETS = false;        // outlets only
+const USING_DUMMY_DATA = false; // states / cities / zones
 
 const DUMMY_STATES = [
   { id: 1, name: "Anambra", is_active: true, code: "AN" },
@@ -58,40 +55,6 @@ const DUMMY_ZONES = [
     is_active: false,
   },
 ];
-const DUMMY_OUTLETS = [
-  {
-    id: 1,
-    name: "Eatwella — NAU Branch",
-    city_id: 1,
-    address: "Nnamdi Azikiwe University Main Gate, Awka",
-    phone: "08011111111",
-    is_active: true,
-  },
-  {
-    id: 2,
-    name: "Eatwella — Awka Town",
-    city_id: 1,
-    address: "15 Zik Avenue, Awka",
-    phone: "08022222222",
-    is_active: true,
-  },
-  {
-    id: 3,
-    name: "Eatwella — Onitsha",
-    city_id: 2,
-    address: "Bridge Head Market Road, Onitsha",
-    phone: "08033333333",
-    is_active: false,
-  },
-  {
-    id: 4,
-    name: "Eatwella — Ikeja",
-    city_id: 3,
-    address: "Allen Avenue, Ikeja, Lagos",
-    phone: "08044444444",
-    is_active: true,
-  },
-];
 // ─────────────────────────────────────────────────────────────────────────────
 
 // ── Tab config ────────────────────────────────────────────────────────────────
@@ -99,7 +62,6 @@ const TABS = [
   { key: "states", label: "States", icon: FiGlobe, endpoint: "/states" },
   { key: "cities", label: "Cities", icon: FiMap, endpoint: "/cities" },
   { key: "zones", label: "Zones", icon: FiNavigation, endpoint: "/zones" },
-  { key: "outlets", label: "Outlets", icon: FiHome, endpoint: "/admin/outlets" },
 ];
 
 // ── Shared modal shell ────────────────────────────────────────────────────────
@@ -658,28 +620,6 @@ const ToggleRow = ({ label, description, value, onChange }) => (
   </div>
 );
 
-// ── Skeleton Card ─────────────────────────────────────────────────────────────
-const SkeletonCard = () => (
-  <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden animate-pulse">
-    <div className="p-5 border-b border-gray-50">
-      <div className="flex items-center gap-3">
-        <div className="w-10 h-10 bg-gray-100 rounded-xl" />
-        <div className="flex-1 space-y-2">
-          <div className="h-4 bg-gray-100 rounded-lg w-3/4" />
-          <div className="h-3 bg-gray-100 rounded-lg w-1/2" />
-        </div>
-      </div>
-    </div>
-    <div className="p-5 space-y-3">
-      <div className="h-3 bg-gray-100 rounded-lg w-full" />
-      <div className="h-3 bg-gray-100 rounded-lg w-2/3" />
-    </div>
-    <div className="p-4 bg-gray-50 border-t border-gray-100">
-      <div className="h-9 bg-gray-100 rounded-xl" />
-    </div>
-  </div>
-);
-
 // ── State Card ────────────────────────────────────────────────────────────────
 const StateCard = ({ item, onEdit, onDelete }) => (
   <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden flex flex-col">
@@ -856,253 +796,6 @@ const ZoneCard = ({ item, onEdit, onToggle, togglingId, cityMap }) => {
   );
 };
 
-// ── Outlet Modal ──────────────────────────────────────────────────────────────
-const OutletModal = ({ isOpen, onClose, onSuccess, editingItem, cities }) => {
-  const isEdit = !!editingItem;
-  const [form, setForm] = useState({
-    name: "",
-    city_id: "",
-    address: "",
-    phone: "",
-    is_active: true,
-  });
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
-
-  useEffect(() => {
-    if (!isOpen) return;
-    setError("");
-    setForm(
-      isEdit
-        ? {
-            name: editingItem.name ?? "",
-            city_id: editingItem.city_id ?? "",
-            address: editingItem.address ?? "",
-            phone: editingItem.phone ?? "",
-            is_active: editingItem.is_active ?? true,
-          }
-        : {
-            name: "",
-            city_id: cities[0]?.id ?? "",
-            address: "",
-            phone: "",
-            is_active: true,
-          },
-    );
-  }, [isOpen, editingItem, cities]);
-
-  const handleSubmit = async () => {
-    if (!form.name.trim()) {
-      setError("Outlet name is required.");
-      return;
-    }
-    if (!form.city_id) {
-      setError("Please select a city.");
-      return;
-    }
-    setSaving(true);
-    setError("");
-    try {
-      const payload = {
-        name: form.name.trim(),
-        city_id: Number(form.city_id),
-        address: form.address.trim() || undefined,
-        phone: form.phone.trim() || undefined,
-        is_active: form.is_active,
-      };
-      if (isEdit) {
-        const { data } = await api.put(`/admin/outlets/${editingItem.id}`, payload);
-        onSuccess({ type: "edit", data });
-      } else {
-        const { data } = await api.post("/admin/outlets", payload);
-        onSuccess({ type: "add", data });
-      }
-      onClose();
-    } catch (err) {
-      setError(
-        err.response?.data?.message || "Failed to save outlet. Please try again.",
-      );
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  return (
-    <ModalShell
-      isOpen={isOpen}
-      onClose={onClose}
-      icon={FiHome}
-      title={isEdit ? "Edit Outlet" : "Add Outlet"}
-      subtitle={isEdit ? editingItem?.name : "Add a new restaurant outlet"}
-      footer={
-        <>
-          <CancelBtn onClose={onClose} />
-          <SpinnerBtn
-            saving={saving}
-            savingLabel="Saving…"
-            defaultLabel={isEdit ? "Save Changes" : "Add Outlet"}
-            onClick={handleSubmit}
-          />
-        </>
-      }
-    >
-      <ErrorBanner message={error} />
-      <div>
-        <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
-          Outlet Name *
-        </label>
-        <input
-          type="text"
-          value={form.name}
-          onChange={(e) => setForm({ ...form, name: e.target.value })}
-          placeholder="e.g. Eatwella NAU Branch"
-          className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent transition"
-          autoFocus
-          onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
-        />
-      </div>
-      <div>
-        <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
-          City *
-        </label>
-        <select
-          value={form.city_id}
-          onChange={(e) => setForm({ ...form, city_id: e.target.value })}
-          className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent transition bg-white"
-        >
-          <option value="">Select a city…</option>
-          {cities.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.name}
-            </option>
-          ))}
-        </select>
-      </div>
-      <div>
-        <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
-          Address
-        </label>
-        <input
-          type="text"
-          value={form.address}
-          onChange={(e) => setForm({ ...form, address: e.target.value })}
-          placeholder="e.g. 12 University Road, Awka"
-          className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent transition"
-          onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
-        />
-      </div>
-      <div>
-        <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
-          Phone
-        </label>
-        <input
-          type="tel"
-          value={form.phone}
-          onChange={(e) => setForm({ ...form, phone: e.target.value })}
-          placeholder="e.g. 08012345678"
-          className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent transition"
-          onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
-        />
-      </div>
-      <ToggleRow
-        label="Active"
-        description="Outlet is open and accepting orders"
-        value={form.is_active}
-        onChange={(v) => setForm({ ...form, is_active: v })}
-      />
-    </ModalShell>
-  );
-};
-
-// ── Outlet Card ───────────────────────────────────────────────────────────────
-const OutletCard = ({ item, onEdit, onToggle, togglingId, cityMap }) => {
-  const toggling = togglingId === item.id;
-  const cityName =
-    cityMap[item.city_id] ?? (item.city_id ? `City #${item.city_id}` : null);
-  return (
-    <div
-      className={`bg-white rounded-2xl border shadow-sm overflow-hidden flex flex-col transition-opacity ${item.is_active ? "border-gray-100" : "border-gray-100 opacity-60"}`}
-    >
-      <div className="p-5 border-b border-gray-50 flex items-start justify-between gap-3">
-        <div className="flex items-center gap-3 min-w-0">
-          <div
-            className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${item.is_active ? "bg-orange-100" : "bg-gray-100"}`}
-          >
-            <FiHome
-              className={`w-5 h-5 ${item.is_active ? "text-orange-500" : "text-gray-400"}`}
-            />
-          </div>
-          <div className="min-w-0">
-            <h3 className="font-bold text-gray-900 text-base leading-tight truncate">
-              {item.name}
-            </h3>
-            {cityName && (
-              <p className="text-sm text-gray-500 mt-0.5 truncate">{cityName}</p>
-            )}
-          </div>
-        </div>
-        <span
-          className={`flex-shrink-0 px-2.5 py-1 rounded-full text-xs font-semibold ${item.is_active ? "bg-green-100 text-green-600" : "bg-gray-100 text-gray-500"}`}
-        >
-          {item.is_active ? "Active" : "Inactive"}
-        </span>
-      </div>
-
-      <div className="p-5 flex-1 space-y-2">
-        {cityName && (
-          <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-purple-50 rounded-lg">
-            <FiMap className="w-3.5 h-3.5 text-purple-500" />
-            <span className="text-xs font-semibold text-purple-600">{cityName}</span>
-          </div>
-        )}
-        {item.address && (
-          <div className="flex items-start gap-2 text-sm text-gray-600">
-            <FiMapPin className="w-4 h-4 text-gray-400 flex-shrink-0 mt-0.5" />
-            <span className="leading-snug">{item.address}</span>
-          </div>
-        )}
-        {item.phone && (
-          <div className="flex items-center gap-2 text-sm text-gray-600">
-            <span className="text-gray-400 text-xs">📞</span>
-            <span>{item.phone}</span>
-          </div>
-        )}
-        <div className="flex items-center justify-between pt-2 border-t border-dashed border-gray-100">
-          <span className="text-sm text-gray-500">Status</span>
-          <button
-            onClick={() => onToggle(item)}
-            disabled={toggling}
-            title={item.is_active ? "Click to disable" : "Click to enable"}
-            className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full border transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
-              item.is_active
-                ? "bg-green-50 text-green-600 border-green-100 hover:bg-green-100"
-                : "bg-gray-100 text-gray-500 border-gray-200 hover:bg-gray-200"
-            }`}
-          >
-            {toggling ? (
-              <span className="w-3.5 h-3.5 border-2 border-current/30 border-t-current rounded-full animate-spin" />
-            ) : item.is_active ? (
-              <FiToggleRight className="w-4 h-4" />
-            ) : (
-              <FiToggleLeft className="w-4 h-4" />
-            )}
-            {item.is_active ? "Active" : "Inactive"}
-          </button>
-        </div>
-      </div>
-
-      <div className="p-4 bg-gray-50 border-t border-gray-100 flex items-center gap-2">
-        <button
-          onClick={() => onEdit(item)}
-          className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-100 transition-colors shadow-sm"
-        >
-          <FiEdit2 className="w-4 h-4" /> Edit
-        </button>
-      </div>
-    </div>
-  );
-};
-
 // ── Main Page ─────────────────────────────────────────────────────────────────
 const DeliveryLocationManagement = () => {
   const [activeTab, setActiveTab] = useState("states");
@@ -1191,56 +884,31 @@ const DeliveryLocationManagement = () => {
         states: "/states",
         cities: "/cities",
         zones: "/zones",
-        outlets: "/admin/outlets",
       };
       const dummyMap = {
         states: DUMMY_STATES,
         cities: DUMMY_CITIES,
         zones: DUMMY_ZONES,
-        outlets: DUMMY_OUTLETS,
       };
 
-      if (tab === "outlets" ? USING_DUMMY_OUTLETS : USING_DUMMY_DATA) {
-        await new Promise((r) => setTimeout(r, 400));
-        const list = dummyMap[tab];
-        setItems(list);
-        // Keep reference maps up to date
-        if (tab === "states") {
-          const map = {};
-          list.forEach((s) => {
-            map[s.id] = s.name;
-          });
-          setStateMap(map);
-          setStatesList(list);
-        }
-        if (tab === "cities") {
-          const map = {};
-          list.forEach((c) => {
-            map[c.id] = c.name;
-          });
-          setCityMap(map);
-          setCitiesList(list);
-        }
-      } else {
-        const { data } = await api.get(endpointMap[tab]);
-        const list = Array.isArray(data) ? data : (data.data ?? []);
-        setItems(list);
-        if (tab === "states") {
-          const map = {};
-          list.forEach((s) => {
-            map[s.id] = s.name;
-          });
-          setStateMap(map);
-          setStatesList(list);
-        }
-        if (tab === "cities") {
-          const map = {};
-          list.forEach((c) => {
-            map[c.id] = c.name;
-          });
-          setCityMap(map);
-          setCitiesList(list);
-        }
+      const { data } = await api.get(endpointMap[tab]);
+      const list = Array.isArray(data) ? data : (data.data ?? []);
+      setItems(list);
+      if (tab === "states") {
+        const map = {};
+        list.forEach((s) => {
+          map[s.id] = s.name;
+        });
+        setStateMap(map);
+        setStatesList(list);
+      }
+      if (tab === "cities") {
+        const map = {};
+        list.forEach((c) => {
+          map[c.id] = c.name;
+        });
+        setCityMap(map);
+        setCitiesList(list);
       }
     } catch (err) {
       setFetchError(err.response?.data?.message || `Failed to load ${tab}.`);
@@ -1268,20 +936,10 @@ const DeliveryLocationManagement = () => {
   };
 
   const handleModalSuccess = ({ type, data }) => {
-    const usingDummy =
-      activeTab === "outlets" ? USING_DUMMY_OUTLETS : USING_DUMMY_DATA;
-    if (usingDummy) {
-      setItems((prev) =>
-        type === "add"
-          ? [...prev, data]
-          : prev.map((i) => (i.id === data.id ? data : i)),
-      );
-    } else {
-      fetchItems(activeTab);
-      // Refresh reference maps if state/city changed
-      if (activeTab === "states") loadStates();
-      if (activeTab === "cities") loadCities();
-    }
+    fetchItems(activeTab);
+    // Refresh reference maps if state/city changed
+    if (activeTab === "states") loadStates();
+    if (activeTab === "cities") loadCities();
   };
 
   const handleDeleteSuccess = (id) => {
@@ -1296,23 +954,19 @@ const DeliveryLocationManagement = () => {
 
   const handleToggle = async (item) => {
     setTogglingId(item.id);
-    const endpoint =
-      activeTab === "outlets"
-        ? `/admin/outlets/${item.id}/toggle`
-        : `/admin/zones/${item.id}/toggle`;
+    const endpoint = `/admin/zones/${item.id}/toggle`;
     try {
-      if (activeTab === "outlets" ? USING_DUMMY_OUTLETS : USING_DUMMY_DATA) {
-        await new Promise((r) => setTimeout(r, 400));
-      } else {
-        await api.patch(endpoint);
-      }
+      await api.patch(endpoint);
       setItems((prev) =>
         prev.map((i) =>
           i.id === item.id ? { ...i, is_active: !i.is_active } : i,
         ),
       );
     } catch (err) {
-      showToast(err.response?.data?.message || "Failed to update availability.", "error");
+      showToast(
+        err.response?.data?.message || "Failed to update availability.",
+        "error",
+      );
     } finally {
       setTogglingId(null);
     }
@@ -1331,9 +985,7 @@ const DeliveryLocationManagement = () => {
       ? "Add State"
       : activeTab === "cities"
         ? "Add City"
-        : activeTab === "outlets"
-          ? "Add Outlet"
-          : "Add Zone";
+        : "Add Zone";
 
   const deleteEndpointMap = {
     states: "/admin/states",
@@ -1372,16 +1024,6 @@ const DeliveryLocationManagement = () => {
           cities={citiesList}
         />
       )}
-      {/* Outlet modal */}
-      {activeTab === "outlets" && (
-        <OutletModal
-          isOpen={itemModal}
-          onClose={() => setItemModal(false)}
-          onSuccess={handleModalSuccess}
-          editingItem={editingItem}
-          cities={citiesList}
-        />
-      )}
       {/* Delete modal — only for states and cities */}
       {(activeTab === "states" || activeTab === "cities") && (
         <DeleteConfirmModal
@@ -1406,18 +1048,6 @@ const DeliveryLocationManagement = () => {
               </p>
             </div>
             <div className="flex items-center gap-3">
-              {(USING_DUMMY_DATA || USING_DUMMY_OUTLETS) && (
-                <div className="bg-amber-50 border border-amber-300 text-amber-700 px-3 py-1.5 rounded-lg text-xs font-medium">
-                  🛠 Dev mode —{" "}
-                  {USING_DUMMY_DATA && (
-                    <code className="font-mono">USING_DUMMY_DATA</code>
-                  )}
-                  {USING_DUMMY_DATA && USING_DUMMY_OUTLETS && " · "}
-                  {USING_DUMMY_OUTLETS && (
-                    <code className="font-mono">USING_DUMMY_OUTLETS</code>
-                  )}
-                </div>
-              )}
               <button
                 onClick={openAdd}
                 className="flex items-center gap-2 px-4 py-2 bg-orange-500 text-white rounded-lg text-sm font-medium hover:bg-orange-600 transition-colors shadow-sm shadow-orange-200"
@@ -1543,18 +1173,6 @@ const DeliveryLocationManagement = () => {
                       onEdit={openEdit}
                       onDelete={openDelete}
                       stateMap={stateMap}
-                    />
-                  );
-                }
-                if (activeTab === "outlets") {
-                  return (
-                    <OutletCard
-                      key={item.id}
-                      item={item}
-                      onEdit={openEdit}
-                      onToggle={handleToggle}
-                      togglingId={togglingId}
-                      cityMap={cityMap}
                     />
                   );
                 }

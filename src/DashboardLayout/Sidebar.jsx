@@ -14,28 +14,34 @@ import {
   FiAward,
   FiPackage,
   FiBell,
+  FiHome,
 } from "react-icons/fi";
-import { MdRestaurant, MdQrCodeScanner } from "react-icons/md";
-import { 
-  Building, 
-  DollarSign, 
-  Tag, 
-  FileText, 
-  UserCheck, 
-  Map, 
+import { MdRestaurant, MdQrCodeScanner, MdBikeScooter } from "react-icons/md";
+import {
+  Building,
+  DollarSign,
+  Tag,
+  FileText,
+  UserCheck,
+  Map,
   MapPin,
-  Store, 
+  Store,
   Receipt,
   Shield,
   TrendingUp,
   Utensils,
-  Badge
+  Badge,
 } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useState } from "react";
 import { useAuth } from "../context/AuthContext";
 
-export default function Sidebar({ isOpen, onToggle, isCollapsed, onCollapseToggle }) {
+export default function Sidebar({
+  isOpen,
+  onToggle,
+  isCollapsed,
+  onCollapseToggle,
+}) {
   const navigate = useNavigate();
   const { logout, user, routePrefix } = useAuth();
 
@@ -69,8 +75,16 @@ export default function Sidebar({ isOpen, onToggle, isCollapsed, onCollapseToggl
       id: "menu",
       label: "Menu Management",
       icon: Utensils,
-      path: user?.role === "store_keeper" ? "/store-keeper/menu" : "/admin/menu",
+      path:
+        user?.role === "store_keeper" ? "/store-keeper/menu" : "/admin/menu",
       roles: ["admin", "store_keeper"],
+    },
+    {
+      id: "outlet-management",
+      label: "Outlet Management",
+      icon: FiHome,
+      path: "/admin/outlet-management",
+      roles: ["admin"],
     },
     {
       id: "food-packaging",
@@ -84,6 +98,13 @@ export default function Sidebar({ isOpen, onToggle, isCollapsed, onCollapseToggl
       label: "Users",
       icon: FiUsers,
       path: "/admin/users",
+      roles: ["admin"],
+    },
+    {
+      id: "rider-management",
+      label: "Rider Management",
+      icon: MdBikeScooter,
+      path: "/admin/rider-management",
       roles: ["admin"],
     },
     {
@@ -211,7 +232,9 @@ export default function Sidebar({ isOpen, onToggle, isCollapsed, onCollapseToggl
         </div>
 
         {/* Navigation Menu */}
-        <nav className={`flex-1 py-4 space-y-2 overflow-y-auto ${isCollapsed ? 'px-2' : 'px-4'}`}>
+        <nav
+          className={`flex-1 py-4 space-y-2 overflow-y-auto ${isCollapsed ? "px-2" : "px-4"}`}
+        >
           {menuItems.map((item) => {
             const Icon = item.icon;
             const isActive = location.pathname.startsWith(item.path);
@@ -220,7 +243,7 @@ export default function Sidebar({ isOpen, onToggle, isCollapsed, onCollapseToggl
               <button
                 key={item.id}
                 onClick={() => handleNavigation(item)}
-                className={`w-full flex items-center gap-3 ${isCollapsed ? 'px-2' : 'px-4'} py-3 rounded-xl transition-colors text-sm font-medium ${
+                className={`w-full flex items-center gap-3 ${isCollapsed ? "px-2" : "px-4"} py-3 rounded-xl transition-colors text-sm font-medium ${
                   isActive
                     ? "bg-orange-50 text-orange-500"
                     : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
@@ -235,10 +258,12 @@ export default function Sidebar({ isOpen, onToggle, isCollapsed, onCollapseToggl
             );
           })}
         </nav>
-        <div className={`${isCollapsed ? 'px-2' : 'px-4'} py-4 border-t border-gray-100`}>
+        <div
+          className={`${isCollapsed ? "px-2" : "px-4"} py-4 border-t border-gray-100`}
+        >
           <button
             onClick={handleLogout}
-            className={`w-full flex items-center gap-3 ${isCollapsed ? 'px-2' : 'px-4'} py-3 rounded-xl text-sm font-medium text-red-600 hover:bg-red-50 transition-colors`}
+            className={`w-full flex items-center gap-3 ${isCollapsed ? "px-2" : "px-4"} py-3 rounded-xl text-sm font-medium text-red-600 hover:bg-red-50 transition-colors`}
           >
             <FiLogOut className="w-5 h-5 flex-shrink-0" />
             {!isCollapsed && <span>Logout</span>}

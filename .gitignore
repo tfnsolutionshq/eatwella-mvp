@@ -6,5 +6,6 @@ dist
 .env.development
 .env.production
 .env.staging
+.vscode
 dist_staging
 dist_production
