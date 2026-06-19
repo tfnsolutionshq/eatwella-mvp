@@ -30,6 +30,7 @@ import CreateOrder from "./Pages/Admin/CreateOrder";
 import Login from "./Pages/Admin/Login";
 import DeliveryLocationManagement from "./Pages/Admin/DeliveryLocationManagement";
 import FoodPackaging from "./Pages/Admin/FoodPackaging";
+import RiderManagement from "./Pages/Admin/RiderManagement";
 import Settings from "./Pages/Admin/Settings";
 import Campaigns from "./Pages/Admin/Campaigns";
 import UserLogin from "./Pages/UserDashboard/Login";
@@ -101,6 +102,7 @@ function AppRoutes() {
             path={`${p}/outlet-management`}
             element={<OutletManagement />}
           />
+          <Route path={`${p}/rider-management`} element={<RiderManagement />} />
           <Route path={`${p}/dashboard`} element={<Dashboard />} />
           <Route path={`${p}/users`} element={<AllUsers />} />
           <Route path={`${p}/users/:userId`} element={<SingleUser />} />
