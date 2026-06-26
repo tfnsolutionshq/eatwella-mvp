@@ -936,7 +936,7 @@ const AssignDeliveryAgentModal = ({ isOpen, onClose, outlet, onAssigned }) => {
     setSaving(true);
     try {
       await api.post(`/admin/outlets/${outlet.id}/assign-delivery-agent`, {
-        user_id: newlySelectedIds,
+        user_ids: newlySelectedIds,
       });
       showToast(
         `${newlySelectedIds.length} delivery agent${newlySelectedIds.length > 1 ? "s" : ""} assigned to ${outlet.name}.`,
