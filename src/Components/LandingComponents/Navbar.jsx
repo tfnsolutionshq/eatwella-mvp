@@ -60,6 +60,8 @@ function CampaignBanner({ campaigns, isLoading }) {
 function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [isMoreDropdownOpen, setIsMoreDropdownOpen] = useState(false);
+  const [isMobileMoreOpen, setIsMobileMoreOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [campaigns, setCampaigns] = useState([]);
   const [isCampaignsLoading, setIsCampaignsLoading] = useState(true);
@@ -132,14 +134,6 @@ function Navbar() {
             Menu
           </NavLink>
           <NavLink
-            to="/careers"
-            className={({ isActive }) =>
-              `text-white font-medium transition-colors hover:text-green-100 inline-flex px-3 py-1 rounded-full ${isActive ? "ring-2 ring-white" : ""}`
-            }
-          >
-            Careers
-          </NavLink>
-          <NavLink
             to="/riders"
             className={({ isActive }) =>
               `text-white font-medium transition-colors hover:text-green-100 inline-flex px-3 py-1 rounded-full ${isActive ? "ring-2 ring-white" : ""}`
@@ -147,14 +141,39 @@ function Navbar() {
           >
             Riders
           </NavLink>
-          <NavLink
-            to="/track-order"
-            className={({ isActive }) =>
-              `text-white font-medium transition-colors hover:text-green-100 inline-flex px-3 py-1 rounded-full ${isActive ? "ring-2 ring-white" : ""}`
-            }
-          >
-            Track Order
-          </NavLink>
+          <div className="relative">
+            <button
+              onClick={() => setIsMoreDropdownOpen(!isMoreDropdownOpen)}
+              className="text-white font-medium transition-colors hover:text-green-100 inline-flex items-center gap-1 px-3 py-1 rounded-full"
+            >
+              More
+              <FiChevronDown
+                className={`w-4 h-4 transition-transform ${isMoreDropdownOpen ? "rotate-180" : ""}`}
+              />
+            </button>
+            {isMoreDropdownOpen && (
+              <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg py-2 z-50">
+                <NavLink
+                  to="/careers"
+                  onClick={() => setIsMoreDropdownOpen(false)}
+                  className={({ isActive }) =>
+                    `block px-4 py-2 text-gray-700 hover:bg-gray-100 transition-colors ${isActive ? "bg-green-50 text-green-700" : ""}`
+                  }
+                >
+                  Careers
+                </NavLink>
+                <NavLink
+                  to="/track-order"
+                  onClick={() => setIsMoreDropdownOpen(false)}
+                  className={({ isActive }) =>
+                    `block px-4 py-2 text-gray-700 hover:bg-gray-100 transition-colors ${isActive ? "bg-green-50 text-green-700" : ""}`
+                  }
+                >
+                  Track Order
+                </NavLink>
+              </div>
+            )}
+          </div>
           <NavLink
             to="/mobile-app"
             className={({ isActive }) =>
@@ -333,15 +352,6 @@ function Navbar() {
                 Menu
               </NavLink>
               <NavLink
-                to="/careers"
-                onClick={() => setIsMenuOpen(false)}
-                className={({ isActive }) =>
-                  `text-gray-800 hover:text-orange-500 font-medium text-lg transition-colors inline-flex px-3 py-1 rounded-full ${isActive ? "ring-2 ring-white" : ""}`
-                }
-              >
-                Careers
-              </NavLink>
-              <NavLink
                 to="/riders"
                 onClick={() => setIsMenuOpen(false)}
                 className={({ isActive }) =>
@@ -350,15 +360,51 @@ function Navbar() {
               >
                 Riders
               </NavLink>
-              <NavLink
-                to="/track-order"
-                onClick={() => setIsMenuOpen(false)}
-                className={({ isActive }) =>
-                  `text-gray-800 hover:text-orange-500 font-medium text-lg transition-colors inline-flex px-3 py-1 rounded-full ${isActive ? "ring-2 ring-white" : ""}`
-                }
-              >
-                Track Order
-              </NavLink>
+              <div className="flex flex-col">
+                <button
+                  onClick={() => setIsMobileMoreOpen(!isMobileMoreOpen)}
+                  className="text-gray-800 hover:text-orange-500 font-medium text-lg transition-colors inline-flex items-center gap-2 px-3 py-1 rounded-full text-left"
+                >
+                  More
+                  <FiChevronDown
+                    className={`w-4 h-4 transition-transform ${isMobileMoreOpen ? "rotate-180" : ""}`}
+                  />
+                </button>
+                <div
+                  className={`overflow-hidden transition-all duration-300 ease-in-out ${
+                    isMobileMoreOpen
+                      ? "max-h-32 opacity-100"
+                      : "max-h-0 opacity-0"
+                  }`}
+                >
+                  <div className="flex flex-col gap-2 pl-4 pt-2">
+                    <NavLink
+                      to="/careers"
+                      onClick={() => {
+                        setIsMenuOpen(false);
+                        setIsMobileMoreOpen(false);
+                      }}
+                      className={({ isActive }) =>
+                        `text-gray-800 hover:text-orange-500 font-medium transition-colors inline-flex px-3 py-1 rounded-full ${isActive ? "ring-2 ring-white" : ""}`
+                      }
+                    >
+                      Careers
+                    </NavLink>
+                    <NavLink
+                      to="/track-order"
+                      onClick={() => {
+                        setIsMenuOpen(false);
+                        setIsMobileMoreOpen(false);
+                      }}
+                      className={({ isActive }) =>
+                        `text-gray-800 hover:text-orange-500 font-medium transition-colors inline-flex px-3 py-1 rounded-full ${isActive ? "ring-2 ring-white" : ""}`
+                      }
+                    >
+                      Track Order
+                    </NavLink>
+                  </div>
+                </div>
+              </div>
               <NavLink
                 to="/mobile-app"
                 onClick={() => setIsMenuOpen(false)}
