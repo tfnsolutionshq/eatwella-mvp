@@ -52,6 +52,7 @@ import TrackOrderPage from "./Pages/TrackOrderPage/TrackOrderPage";
 import VacancyPage from "./Pages/Vacancy/Vacancies";
 import VacancyItemDetails from "./Components/Vacancy/VacancyItemDetails";
 import RidersPage from "./Pages/RidersPage/RidersPage";
+import MobileAppPage from "./Pages/MobileAppPage/MobileAppPage";
 import NotFound from "./Pages/NotFound/NotFound";
 import ScrollToTop from "./Components/ScrollToTop";
 import ScrollToTopButton from "./Components/ScrollToTopButton";
@@ -91,6 +92,7 @@ function AppRoutes() {
           <Route path="/careers" element={<VacancyPage />} />
           <Route path="/careers/:careerId" element={<VacancyItemDetails />} />
           <Route path="/riders" element={<RidersPage />} />
+          <Route path="/mobile-app" element={<MobileAppPage />} />
         </Route>
 
         {/* ── Staff Login (always /admin/login regardless of role) ── */}
