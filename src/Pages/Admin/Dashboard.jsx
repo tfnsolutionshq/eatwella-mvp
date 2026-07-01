@@ -29,7 +29,7 @@ const Dashboard = () => {
         ]);
         setSummary(summaryRes.data);
         setTopMenus(topMenusRes.data);
-        setDailySales(dailySalesRes.data);
+        setDailySales(dailySalesRes.data.data);
       } catch (err) {
         console.error("Failed to fetch dashboard data:", err);
       } finally {
