@@ -27,6 +27,7 @@ const Dashboard = () => {
           api.get("/admin/analytics/top-menus"),
           api.get("/admin/analytics/daily-sales"),
         ]);
+        console.log("daily sales response: ", dailySalesRes);
         setSummary(summaryRes.data);
         setTopMenus(topMenusRes.data);
         setDailySales(dailySalesRes.data.data);
