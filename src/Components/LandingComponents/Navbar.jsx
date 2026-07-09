@@ -141,6 +141,14 @@ function Navbar() {
           >
             Riders
           </NavLink>
+          <NavLink
+            to="/mobile-app"
+            className={({ isActive }) =>
+              `text-white font-medium transition-colors hover:text-green-100 inline-flex px-3 py-1 rounded-full ${isActive ? "ring-2 ring-white" : ""}`
+            }
+          >
+            Mobile App
+          </NavLink>
           <div className="relative">
             <button
               onClick={() => setIsMoreDropdownOpen(!isMoreDropdownOpen)}
@@ -152,7 +160,7 @@ function Navbar() {
               />
             </button>
             {isMoreDropdownOpen && (
-              <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg py-2 z-50">
+              <div className="absolute right-0 mt-2 w-52 bg-white rounded-lg shadow-lg py-2 z-50">
                 <NavLink
                   to="/careers"
                   onClick={() => setIsMoreDropdownOpen(false)}
@@ -171,17 +179,27 @@ function Navbar() {
                 >
                   Track Order
                 </NavLink>
+                <NavLink
+                  to="/terms-and-conditions"
+                  onClick={() => setIsMoreDropdownOpen(false)}
+                  className={({ isActive }) =>
+                    `block px-4 py-2 text-gray-700 hover:bg-gray-100 transition-colors ${isActive ? "bg-green-50 text-green-700" : ""}`
+                  }
+                >
+                  Terms and Conditions
+                </NavLink>
+                <NavLink
+                  to="/privacy-policy"
+                  onClick={() => setIsMoreDropdownOpen(false)}
+                  className={({ isActive }) =>
+                    `block px-4 py-2 text-gray-700 hover:bg-gray-100 transition-colors ${isActive ? "bg-green-50 text-green-700" : ""}`
+                  }
+                >
+                  Privacy Policy
+                </NavLink>
               </div>
             )}
           </div>
-          <NavLink
-            to="/mobile-app"
-            className={({ isActive }) =>
-              `text-white font-medium transition-colors hover:text-green-100 inline-flex px-3 py-1 rounded-full ${isActive ? "ring-2 ring-white" : ""}`
-            }
-          >
-            Mobile App
-          </NavLink>
           {!user && (
             <Link
               to="/account/login"
@@ -371,7 +389,7 @@ function Navbar() {
                   />
                 </button>
                 <div
-                  className={`overflow-hidden transition-all duration-300 ease-in-out ${
+                  className={`overflow-auto transition-all duration-300 ease-in-out ${
                     isMobileMoreOpen
                       ? "max-h-32 opacity-100"
                       : "max-h-0 opacity-0"
@@ -401,6 +419,30 @@ function Navbar() {
                       }
                     >
                       Track Order
+                    </NavLink>
+                    <NavLink
+                      to="/terms-and-conditions"
+                      onClick={() => {
+                        setIsMenuOpen(false);
+                        setIsMobileMoreOpen(false);
+                      }}
+                      className={({ isActive }) =>
+                        `text-gray-800 hover:text-orange-500 font-medium transition-colors inline-flex px-3 py-1 rounded-full ${isActive ? "ring-2 ring-white" : ""}`
+                      }
+                    >
+                      Terms and Conditions
+                    </NavLink>
+                    <NavLink
+                      to="/privacy-policy"
+                      onClick={() => {
+                        setIsMenuOpen(false);
+                        setIsMobileMoreOpen(false);
+                      }}
+                      className={({ isActive }) =>
+                        `text-gray-800 hover:text-orange-500 font-medium transition-colors inline-flex px-3 py-1 rounded-full ${isActive ? "ring-2 ring-white" : ""}`
+                      }
+                    >
+                      Privacy Policy
                     </NavLink>
                   </div>
                 </div>
