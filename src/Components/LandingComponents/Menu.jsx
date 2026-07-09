@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback } from "react";
-import axios from "axios";
 import { useCart } from "../../context/CartContext";
 import { useToast } from "../../context/ToastContext";
 import { Link } from "react-router-dom";
@@ -19,19 +18,75 @@ function Menu() {
     message: "",
     schedule: [],
   });
+  const [outlets, setOutlets] = useState([]);
+  const [selectedOutlet, setSelectedOutlet] = useState(null);
+  const [isLoadingOutlets, setIsLoadingOutlets] = useState(false);
+  const [outletsError, setOutletsError] = useState(null);
+  const [menuError, setMenuError] = useState(null);
+  const [categoriesError, setCategoriesError] = useState(null);
 
-  const { addToCart, loadingItems } = useCart();
+  const { addToCart, loadingItems, clearCart } = useCart();
   const { showToast } = useToast();
+
+  const fetchOutlets = async () => {
+    setIsLoadingOutlets(true);
+    setOutletsError(null);
+    try {
+      const { data } = await api.get("/outlets");
+      setOutlets(data);
+    } catch (err) {
+      console.error("Failed to fetch outlets:", err);
+      setOutletsError(err.message || "Failed to load outlets");
+    } finally {
+      setIsLoadingOutlets(false);
+    }
+  };
+
+  const fetchCategories = async () => {
+    setCategoriesError(null);
+    try {
+      const { data } = await api.get("/categories");
+      setCategories(data.data);
+    } catch (err) {
+      console.error("Failed to fetch categories:", err);
+      setCategoriesError(err.message || "Failed to load categories");
+    }
+  };
+
+  const fetchMenu = useCallback(
+    async (categoryId = "all") => {
+      setIsLoading(true);
+      setMenuError(null);
+      try {
+        const params = new URLSearchParams();
+        if (categoryId !== "all") {
+          params.append("category_id", categoryId);
+        }
+        if (selectedOutlet) {
+          params.append("outlet_id", selectedOutlet);
+        }
+        const url = params.toString()
+          ? `/menus?${params.toString()}`
+          : "/menus";
+        const { data } = await api.get(url);
+        setMenuItems(data.data);
+      } catch (err) {
+        console.error("Failed to fetch menu items:", err);
+        setMenuError(err.message || "Failed to load menu");
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [selectedOutlet],
+  );
 
   const fetchInitialData = async () => {
     setIsLoading(true);
     try {
-      const [categoriesRes, menuRes] = await Promise.all([
-        api.get("/categories"),
-        api.get("/menus"),
-      ]);
-      setCategories(categoriesRes.data.data);
-      setMenuItems(menuRes.data.data);
+      // Fetch categories separately to handle errors individually
+      fetchCategories();
+      // Also fetch initial menu items
+      fetchMenu();
     } catch (err) {
       console.error("Failed to fetch initial data:", err);
     } finally {
@@ -40,28 +95,22 @@ function Menu() {
     }
   };
 
-  const fetchMenuByCategory = useCallback(async (categoryId) => {
-    setIsLoading(true);
-    try {
-      const url =
-        categoryId === "all" ? "/menus" : `/menus?category_id=${categoryId}`;
-      const { data } = await api.get(url);
-      setMenuItems(data.data);
-    } catch (err) {
-      console.error("Failed to fetch menu items:", err);
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
+  const fetchMenuByCategory = useCallback(
+    async (categoryId) => {
+      fetchMenu(categoryId);
+    },
+    [fetchMenu],
+  );
 
   useEffect(() => {
     fetchInitialData();
+    fetchOutlets();
   }, []);
 
   useEffect(() => {
     if (isInitialLoad) return;
-    fetchMenuByCategory(activeTab);
-  }, [activeTab]);
+    fetchMenu(activeTab);
+  }, [activeTab, selectedOutlet, fetchMenu, isInitialLoad]);
 
   const handleAddToCart = async (item) => {
     const { available, message, schedule } =
@@ -89,6 +138,44 @@ function Menu() {
           POCKET
         </h2>
 
+        {/* Outlet Selector */}
+        <div className="mb-8">
+          {isLoadingOutlets ? (
+            <div className="flex items-center gap-2">
+              <div className="h-10 w-48 bg-gray-700 rounded-lg animate-pulse" />
+            </div>
+          ) : outletsError ? (
+            <div className="flex flex-col gap-2">
+              <p className="text-red-400 text-sm">{outletsError}</p>
+              <button
+                onClick={fetchOutlets}
+                className="px-4 py-2 bg-orange-500 text-white rounded-lg text-sm font-medium hover:bg-orange-600 transition-colors w-fit"
+              >
+                Retry
+              </button>
+            </div>
+          ) : (
+            <select
+              value={selectedOutlet || ""}
+              onChange={(e) => {
+                const newOutlet = e.target.value || null;
+                if (newOutlet !== selectedOutlet) {
+                  clearCart();
+                }
+                setSelectedOutlet(newOutlet);
+              }}
+              className="bg-white text-black px-4 py-2 rounded-lg font-medium w-full md:w-64"
+            >
+              <option value="">All Outlets</option>
+              {outlets.map((outlet) => (
+                <option key={outlet.id} value={outlet.id}>
+                  {outlet.name}
+                </option>
+              ))}
+            </select>
+          )}
+        </div>
+
         {/* Category tabs — hidden until fully loaded */}
         <div className="flex gap-3 mb-12 flex-wrap">
           {isLoading ? (
@@ -99,6 +186,16 @@ function Menu() {
                 className="h-8 w-20 bg-gray-700 rounded-full animate-pulse"
               />
             ))
+          ) : categoriesError ? (
+            <div className="flex flex-col gap-2">
+              <p className="text-red-400 text-sm">{categoriesError}</p>
+              <button
+                onClick={fetchCategories}
+                className="px-4 py-2 bg-orange-500 text-white rounded-lg text-sm font-medium hover:bg-orange-600 transition-colors w-fit"
+              >
+                Retry
+              </button>
+            </div>
           ) : (
             <>
               <button
@@ -135,6 +232,18 @@ function Menu() {
           <p className="text-white text-sm font-medium tracking-wide">
             Loading Menu...
           </p>
+        </div>
+      ) : menuError ? (
+        <div className="max-w-5xl mx-auto px-6">
+          <div className="flex flex-col items-center gap-4 py-20">
+            <p className="text-red-400 text-sm">{menuError}</p>
+            <button
+              onClick={() => fetchMenu(activeTab)}
+              className="px-4 py-2 bg-orange-500 text-white rounded-lg text-sm font-medium hover:bg-orange-600 transition-colors"
+            >
+              Retry
+            </button>
+          </div>
         </div>
       ) : menuItems.length > 3 ? (
         <div className="relative mb-8 overflow-hidden w-full">

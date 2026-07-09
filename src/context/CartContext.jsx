@@ -249,12 +249,7 @@ export const CartProvider = ({ children }) => {
 
   const clearCart = async () => {
     try {
-      const itemsToRemove = cart?.items || [];
-      if (itemsToRemove.length > 0) {
-        await Promise.all(
-          itemsToRemove.map((item) => cartApi.delete(`/cart/${item.id}`)),
-        );
-      }
+      await cartApi.delete("/cart");
     } catch (err) {
       console.error("Failed to clear cart from server:", err);
     }
