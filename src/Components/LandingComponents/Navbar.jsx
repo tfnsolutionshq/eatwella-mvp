@@ -389,7 +389,7 @@ function Navbar() {
                   />
                 </button>
                 <div
-                  className={`overflow-hidden transition-all duration-300 ease-in-out ${
+                  className={`overflow-auto transition-all duration-300 ease-in-out ${
                     isMobileMoreOpen
                       ? "max-h-32 opacity-100"
                       : "max-h-0 opacity-0"
@@ -419,6 +419,30 @@ function Navbar() {
                       }
                     >
                       Track Order
+                    </NavLink>
+                    <NavLink
+                      to="/terms-and-conditions"
+                      onClick={() => {
+                        setIsMenuOpen(false);
+                        setIsMobileMoreOpen(false);
+                      }}
+                      className={({ isActive }) =>
+                        `text-gray-800 hover:text-orange-500 font-medium transition-colors inline-flex px-3 py-1 rounded-full ${isActive ? "ring-2 ring-white" : ""}`
+                      }
+                    >
+                      Terms and Conditions
+                    </NavLink>
+                    <NavLink
+                      to="/privacy-policy"
+                      onClick={() => {
+                        setIsMenuOpen(false);
+                        setIsMobileMoreOpen(false);
+                      }}
+                      className={({ isActive }) =>
+                        `text-gray-800 hover:text-orange-500 font-medium transition-colors inline-flex px-3 py-1 rounded-full ${isActive ? "ring-2 ring-white" : ""}`
+                      }
+                    >
+                      Privacy Policy
                     </NavLink>
                   </div>
                 </div>
