@@ -34,6 +34,9 @@ function Menu() {
     try {
       const { data } = await api.get("/outlets");
       setOutlets(data);
+      if (data.length > 0) {
+        setSelectedOutlet(data[0].id);
+      }
     } catch (err) {
       console.error("Failed to fetch outlets:", err);
       setOutletsError(err.message || "Failed to load outlets");
@@ -81,18 +84,8 @@ function Menu() {
   );
 
   const fetchInitialData = async () => {
-    setIsLoading(true);
-    try {
-      // Fetch categories separately to handle errors individually
-      fetchCategories();
-      // Also fetch initial menu items
-      fetchMenu();
-    } catch (err) {
-      console.error("Failed to fetch initial data:", err);
-    } finally {
-      setIsLoading(false);
-      setIsInitialLoad(false);
-    }
+    // Fetch categories separately to handle errors individually
+    fetchCategories();
   };
 
   const fetchMenuByCategory = useCallback(
@@ -108,8 +101,13 @@ function Menu() {
   }, []);
 
   useEffect(() => {
-    if (isInitialLoad) return;
+    // Wait until selectedOutlet is set (after outlets have loaded) before fetching menu
+    if (!selectedOutlet) return;
     fetchMenu(activeTab);
+    // Once we've fetched the menu for the first time, set isInitialLoad to false
+    if (isInitialLoad) {
+      setIsInitialLoad(false);
+    }
   }, [activeTab, selectedOutlet, fetchMenu, isInitialLoad]);
 
   const handleAddToCart = async (item) => {
@@ -155,24 +153,26 @@ function Menu() {
               </button>
             </div>
           ) : (
-            <select
-              value={selectedOutlet || ""}
-              onChange={(e) => {
-                const newOutlet = e.target.value || null;
-                if (newOutlet !== selectedOutlet) {
-                  clearCart();
-                }
-                setSelectedOutlet(newOutlet);
-              }}
-              className="bg-white text-black px-4 py-2 rounded-lg font-medium w-full md:w-64"
-            >
-              <option value="">All Outlets</option>
-              {outlets.map((outlet) => (
-                <option key={outlet.id} value={outlet.id}>
-                  {outlet.name}
-                </option>
-              ))}
-            </select>
+            <>
+              <span className="mr-2">Select An Outlet:</span>
+              <select
+                value={selectedOutlet || ""}
+                onChange={(e) => {
+                  const newOutlet = e.target.value;
+                  if (newOutlet !== selectedOutlet) {
+                    clearCart();
+                  }
+                  setSelectedOutlet(newOutlet);
+                }}
+                className="bg-white text-black px-4 py-2 rounded-lg font-medium w-full md:w-64"
+              >
+                {outlets.map((outlet) => (
+                  <option key={outlet.id} value={outlet.id}>
+                    {outlet.name}
+                  </option>
+                ))}
+              </select>
+            </>
           )}
         </div>
 

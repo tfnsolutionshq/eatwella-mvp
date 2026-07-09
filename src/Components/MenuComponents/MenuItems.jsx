@@ -77,36 +77,13 @@ function MenuItems() {
     }
   };
 
-  // Fetches categories + first page of menu items in parallel on mount
+  // Fetches categories on mount
   const fetchInitialData = async () => {
-    setIsLoading(true);
-    setMenuError(null);
-    setCategoriesError(null);
-    try {
-      // Fetch categories separately to handle errors individually
-      fetchCategories();
-
-      const menuRes = await api.get("/menus?page=1");
-      const pageData = menuRes.data.data ?? [];
-      setMenuItems(pageData);
-      setPagination({
-        current_page: menuRes.data.current_page ?? 1,
-        last_page: menuRes.data.last_page ?? 1,
-        total: menuRes.data.total ?? pageData.length,
-        from: menuRes.data.from ?? (pageData.length ? 1 : 0),
-        to: menuRes.data.to ?? pageData.length,
-        per_page: menuRes.data.per_page ?? 15,
-      });
-    } catch (err) {
-      console.error("Failed to fetch menu items:", err);
-      setMenuError(err.message || "Failed to load menu");
-    } finally {
-      setIsLoading(false);
-      setIsInitialLoad(false);
-    }
+    // Fetch categories separately to handle errors individually
+    fetchCategories();
   };
 
-  // Fetches menu items when tab or page changes (after initial load)
+  // Fetches menu items when tab, page, or outlet changes
   const fetchMenuItems = useCallback(
     async (categoryId = "all", pageNumber = 1) => {
       setIsLoading(true);
@@ -143,17 +120,20 @@ function MenuItems() {
     [selectedOutlet],
   );
 
-  // Runs once on mount — fetches both simultaneously
+  // Runs once on mount — fetches categories and outlets
   useEffect(() => {
     fetchInitialData();
     fetchOutlets();
   }, []);
 
-  // Runs when tab, page, or outlet changes, skipping the very first render
+  // Runs when tab, page, or outlet changes — wait until selectedOutlet is set
   useEffect(() => {
-    if (isInitialLoad) return;
+    if (!selectedOutlet) return;
     fetchMenuItems(activeTab, page);
-  }, [activeTab, page, selectedOutlet]);
+    if (isInitialLoad) {
+      setIsInitialLoad(false);
+    }
+  }, [activeTab, page, selectedOutlet, fetchMenuItems, isInitialLoad]);
 
   // Reset to page 1 when changing outlet (after initial load)
   useEffect(() => {
@@ -245,7 +225,7 @@ function MenuItems() {
               }}
               className="bg-white text-black px-4 py-2 rounded-lg font-medium w-full md:w-64 border border-gray-200"
             >
-              <option value="">All Outlets</option>
+              <option value="">Select an Outlet</option>
               {outlets.map((outlet) => (
                 <option key={outlet.id} value={outlet.id}>
                   {outlet.name}
@@ -304,7 +284,31 @@ function MenuItems() {
         </div>
 
         {/* Spinner for all loading states */}
-        {isLoading ? (
+        {!selectedOutlet ? (
+          <div className="flex flex-col items-center justify-center py-24 gap-6">
+            <svg
+              width="80"
+              height="80"
+              viewBox="0 0 24 24"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                d="M12 2C8.13 2 5 5.13 5 9C5 14.25 12 22 12 22S19 14.25 19 9C19 5.13 15.87 2 12 2ZM12 11.5C10.62 11.5 9.5 10.38 9.5 9S10.62 6.5 12 6.5 14.5 7.62 14.5 9 13.38 11.5 12 11.5Z"
+                fill="#F97316"
+              />
+            </svg>
+            <div className="text-center">
+              <h3 className="text-xl font-semibold text-gray-800 mb-2">
+                Select an Outlet
+              </h3>
+              <p className="text-gray-500 text-sm">
+                Please choose an outlet from the dropdown above to view the
+                menu.
+              </p>
+            </div>
+          </div>
+        ) : isLoading ? (
           <div className="flex flex-col items-center justify-center py-20 gap-4">
             <div className="w-12 h-12 border-4 border-gray-200 border-t-orange-500 rounded-full animate-spin" />
             <p className="text-gray-500 text-sm font-medium tracking-wide">
