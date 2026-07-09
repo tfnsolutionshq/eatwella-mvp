@@ -66,6 +66,18 @@ function Footer() {
             >
               Track Order
             </Link>
+            <Link
+              to="/terms-and-conditions"
+              className="text-white hover:text-orange-500 transition-colors"
+            >
+              Terms and Conditions
+            </Link>
+            <Link
+              to="/privacy-policy"
+              className="text-white hover:text-orange-500 transition-colors"
+            >
+              Privacy Policy
+            </Link>
           </div>
 
           <div className="flex gap-4">
