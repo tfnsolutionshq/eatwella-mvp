@@ -27,8 +27,8 @@ const Dashboard = () => {
           api.get("/admin/analytics/top-menus"),
           api.get("/admin/analytics/daily-sales"),
         ]);
-        setSummary(summaryRes.data);
-        setTopMenus(topMenusRes.data);
+        setSummary(summaryRes.data.data);
+        setTopMenus(topMenusRes.data.data);
         setDailySales(dailySalesRes.data.data);
       } catch (err) {
         console.error("Failed to fetch dashboard data:", err);
