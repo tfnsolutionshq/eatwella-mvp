@@ -14,15 +14,27 @@ import { useSearch } from "../../hooks/useSearch";
 import api from "../../utils/api";
 import { useAuth } from "../../context/AuthContext";
 import { useToast } from "../../context/ToastContext";
+import { useCart } from "../../context/CartContext";
 
 const CreateOrder = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, outlet } = useAuth();
   const { showToast } = useToast();
+  const {
+    cart,
+    addToCart: cartAddToCart,
+    updateCartItem,
+    removeFromCart: cartRemoveFromCart,
+    clearCart,
+    loadingItems,
+    itemPackaging,
+    updateItemPackaging,
+    clearItemPackaging,
+    fetchCart,
+  } = useCart();
   const [menus, setMenus] = useState([]);
   const [categories, setCategories] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState("all");
-  const [cart, setCart] = useState([]);
 
   // Search functionality
   const {
@@ -82,6 +94,7 @@ const CreateOrder = () => {
   const [openUserDropdown, setOpenUserDropdown] = useState(null);
 
   useEffect(() => {
+    console.log("the outlet: ", outlet);
     fetchCategories();
     fetchPackagingOptions();
     fetchMenus("all", 1);
@@ -156,14 +169,8 @@ const CreateOrder = () => {
 
   // Clear packaging when order type changes to dine-in
   useEffect(() => {
-    if (orderType === "dine") {
-      setCart(
-        cart.map((item) => ({
-          ...item,
-          packaging_id: null,
-          packaging: null,
-        })),
-      );
+    if (orderType === "dine" && cart?.items) {
+      cart.items.forEach((item) => clearItemPackaging(item.id));
     }
   }, [orderType]);
 
@@ -336,74 +343,43 @@ const CreateOrder = () => {
 
   // ── Cart helpers ────────────────────────────────────────────────────────────
 
-  const addToCart = (menu) => {
-    const existing = cart.find((item) => item.menu.id === menu.id);
-    if (existing) {
-      setCart(
-        cart.map((item) =>
-          item.menu.id === menu.id
-            ? { ...item, quantity: item.quantity + 1 }
-            : item,
-        ),
-      );
-      showToast(
-        `${menu.name} quantity updated to ${existing.quantity + 1}`,
-        "success",
-      );
-    } else {
-      setCart([
-        ...cart,
-        { menu, quantity: 1, packaging_id: null, packaging: null },
-      ]);
+  const handleAddToCart = async (menu) => {
+    const result = await cartAddToCart(menu.id, 1, outlet?.id);
+    if (result) {
       showToast(`${menu.name} added to cart`, "success");
-    }
-  };
-
-  const updateQuantity = (menuId, quantity) => {
-    if (quantity <= 0) {
-      setCart(cart.filter((item) => item.menu.id !== menuId));
     } else {
-      setCart(
-        cart.map((item) =>
-          item.menu.id === menuId ? { ...item, quantity } : item,
-        ),
-      );
+      showToast("Failed to add to cart", "error");
     }
   };
 
-  const removeFromCart = (menuId) => {
-    setCart(cart.filter((item) => item.menu.id !== menuId));
+  const handleUpdateQuantity = (itemId, newQuantity) => {
+    if (newQuantity <= 0) {
+      cartRemoveFromCart(itemId);
+    } else {
+      updateCartItem(itemId, newQuantity);
+    }
   };
 
-  const selectPackaging = (menuId, packaging) => {
-    setCart(
-      cart.map((item) =>
-        item.menu.id === menuId
-          ? { ...item, packaging_id: packaging.id, packaging }
-          : item,
-      ),
-    );
+  const handleSelectPackaging = (itemId, packaging) => {
+    updateItemPackaging(itemId, packaging);
     setOpenPackagingDropdown(null);
   };
 
-  const clearPackaging = (menuId) => {
-    setCart(
-      cart.map((item) =>
-        item.menu.id === menuId
-          ? { ...item, packaging_id: null, packaging: null }
-          : item,
-      ),
-    );
+  const handleClearPackaging = (itemId) => {
+    clearItemPackaging(itemId);
   };
 
   // ── Totals ──────────────────────────────────────────────────────────────────
 
-  const getItemTotal = (item) =>
-    (Number(item.menu.price) + Number(item.packaging?.price ?? 0)) *
-    item.quantity;
+  const getItemTotal = (item) => {
+    const packaging = itemPackaging[item.id];
+    return (
+      (Number(item.menu.price) + Number(packaging?.price ?? 0)) * item.quantity
+    );
+  };
 
   const calculateTotal = () =>
-    cart.reduce((sum, item) => sum + getItemTotal(item), 0);
+    (cart?.items || []).reduce((sum, item) => sum + getItemTotal(item), 0);
 
   // ── Checkout ────────────────────────────────────────────────────────────────
 
@@ -422,12 +398,16 @@ const CreateOrder = () => {
       return;
     }
 
-    if (cart.length === 0) {
+    const cartItems = cart?.items || [];
+    if (cartItems.length === 0) {
       showToast("Cart is empty", "error");
       return;
     }
 
-    if (orderType !== "dine" && cart.some((item) => !item.packaging_id)) {
+    if (
+      orderType !== "dine" &&
+      cartItems.some((item) => !itemPackaging[item.id])
+    ) {
       showToast("Please select packaging for all items", "error");
       return;
     }
@@ -436,10 +416,10 @@ const CreateOrder = () => {
     try {
       const orderData = {
         order_type: orderType,
-        items: cart.map((item) => ({
-          menu_id: item.menu.id,
+        items: cartItems.map((item) => ({
+          menu_id: item.menu_id,
           quantity: item.quantity,
-          packaging_id: item.packaging_id ?? null,
+          packaging_id: itemPackaging[item.id]?.id ?? null,
         })),
       };
 
@@ -469,6 +449,7 @@ const CreateOrder = () => {
       }
 
       await api.post("/checkout", orderData);
+      await clearCart();
       showToast("Order created successfully!", "success");
 
       const p =
@@ -522,7 +503,7 @@ const CreateOrder = () => {
         {(user.role === "attendant" ||
           user.role === "admin" ||
           user.role === "supervisor") &&
-          cart.length > 0 && (
+          (cart?.items || []).length > 0 && (
             <button
               onClick={() => {
                 const cartSection = document.getElementById("cart-section");
@@ -537,7 +518,10 @@ const CreateOrder = () => {
             >
               <FiShoppingCart className="w-5 h-5" />
               <span className="bg-white text-orange-500 text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
-                {cart.reduce((sum, item) => sum + item.quantity, 0)}
+                {(cart?.items || []).reduce(
+                  (sum, item) => sum + item.quantity,
+                  0,
+                )}
               </span>
             </button>
           )}
@@ -648,13 +632,17 @@ const CreateOrder = () => {
                               {menu.description}
                             </p>
                             <button
-                              onClick={() => addToCart(menu)}
+                              onClick={() => handleAddToCart(menu)}
+                              disabled={
+                                menu.stock_quantity < 1 || loadingItems[menu.id]
+                              }
                               className="w-full px-3 py-1.5 lg:py-2 bg-orange-500 text-white rounded-lg text-xs font-medium hover:bg-orange-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                              disabled={menu.stock_quantity < 1}
                             >
-                              {menu.stock_quantity < 1
-                                ? "Out of Stock"
-                                : "Add To Cart"}
+                              {loadingItems[menu.id]
+                                ? "Adding..."
+                                : menu.stock_quantity < 1
+                                  ? "Out of Stock"
+                                  : "Add To Cart"}
                             </button>
                           </div>
                         </div>
@@ -762,18 +750,18 @@ const CreateOrder = () => {
             >
               <h2 className="text-lg font-bold text-gray-900 mb-3 lg:mb-4 flex items-center gap-2">
                 <FiShoppingCart />
-                Cart ({cart.length})
+                Cart ({(cart?.items || []).length})
               </h2>
 
-              {cart.length === 0 ? (
+              {(cart?.items || []).length === 0 ? (
                 <p className="text-sm text-gray-500 text-center py-6 lg:py-8">
                   Cart is empty
                 </p>
               ) : (
                 <div className="space-y-4">
-                  {cart.map((item) => (
+                  {(cart?.items || []).map((item) => (
                     <div
-                      key={item.menu.id}
+                      key={item.id}
                       className="p-3 bg-gray-50 rounded-xl space-y-3 min-w-0"
                     >
                       {/* Item row */}
@@ -793,7 +781,7 @@ const CreateOrder = () => {
                         <div className="flex items-center gap-1 shrink-0">
                           <button
                             onClick={() =>
-                              updateQuantity(item.menu.id, item.quantity - 1)
+                              handleUpdateQuantity(item.id, item.quantity - 1)
                             }
                             className="p-1.5 hover:bg-gray-200 rounded touch-manipulation"
                           >
@@ -804,14 +792,14 @@ const CreateOrder = () => {
                           </span>
                           <button
                             onClick={() =>
-                              updateQuantity(item.menu.id, item.quantity + 1)
+                              handleUpdateQuantity(item.id, item.quantity + 1)
                             }
                             className="p-1.5 hover:bg-gray-200 rounded touch-manipulation"
                           >
                             <FiPlus className="w-4 h-4" />
                           </button>
                           <button
-                            onClick={() => removeFromCart(item.menu.id)}
+                            onClick={() => cartRemoveFromCart(item.id)}
                             className="p-1.5 hover:bg-red-50 text-red-500 rounded ml-1 touch-manipulation"
                           >
                             <FiTrash2 className="w-4 h-4" />
@@ -826,14 +814,14 @@ const CreateOrder = () => {
                             type="button"
                             onClick={() =>
                               setOpenPackagingDropdown(
-                                openPackagingDropdown === item.menu.id
+                                openPackagingDropdown === item.id
                                   ? null
-                                  : item.menu.id,
+                                  : item.id,
                               )
                             }
                             disabled={loadingPackaging}
                             className={`w-full flex items-center justify-between gap-2 px-3 py-2.5 rounded-lg border text-xs transition-colors focus:outline-none focus:ring-2 focus:ring-orange-300 touch-manipulation ${
-                              item.packaging
+                              itemPackaging[item.id]
                                 ? "border-orange-300 bg-orange-50 text-orange-700"
                                 : "border-gray-200 bg-white text-gray-400 hover:border-gray-300"
                             } disabled:opacity-60 disabled:cursor-not-allowed`}
@@ -841,9 +829,9 @@ const CreateOrder = () => {
                             <span className="truncate">
                               {loadingPackaging
                                 ? "Loading packaging…"
-                                : item.packaging
-                                  ? `${item.packaging.size_name} — ₦${Number(
-                                      item.packaging.price,
+                                : itemPackaging[item.id]
+                                  ? `${itemPackaging[item.id].size_name} — ₦${Number(
+                                      itemPackaging[item.id].price,
                                     ).toLocaleString(undefined, {
                                       minimumFractionDigits: 2,
                                       maximumFractionDigits: 2,
@@ -852,14 +840,14 @@ const CreateOrder = () => {
                             </span>
                             <FiChevronDown
                               className={`w-4 h-4 flex-shrink-0 transition-transform duration-200 ${
-                                openPackagingDropdown === item.menu.id
+                                openPackagingDropdown === item.id
                                   ? "rotate-180"
                                   : ""
                               }`}
                             />
                           </button>
 
-                          {openPackagingDropdown === item.menu.id && (
+                          {openPackagingDropdown === item.id && (
                             <div className="absolute z-50 mt-1 w-full bg-white border border-gray-100 rounded-xl shadow-xl max-h-48 overflow-y-auto left-0 right-0">
                               {packagingOptions.length === 0 ? (
                                 <p className="px-3 py-3 text-xs text-gray-400 text-center">
@@ -871,10 +859,10 @@ const CreateOrder = () => {
                                     key={pkg.id}
                                     type="button"
                                     onClick={() =>
-                                      selectPackaging(item.menu.id, pkg)
+                                      handleSelectPackaging(item.id, pkg)
                                     }
                                     className={`w-full px-3 py-3 text-left flex items-center justify-between hover:bg-orange-50 transition-colors touch-manipulation ${
-                                      item.packaging?.id === pkg.id
+                                      itemPackaging[item.id]?.id === pkg.id
                                         ? "bg-orange-50"
                                         : ""
                                     }`}
@@ -1295,9 +1283,11 @@ const CreateOrder = () => {
                   onClick={handleCheckout}
                   disabled={
                     loading ||
-                    cart.length === 0 ||
+                    (cart?.items || []).length === 0 ||
                     (orderType !== "dine" &&
-                      cart.some((item) => !item.packaging_id))
+                      (cart?.items || []).some(
+                        (item) => !itemPackaging[item.id],
+                      ))
                   }
                   className="w-full px-4 py-3 lg:py-3 bg-orange-500 text-white rounded-xl text-sm font-medium hover:bg-orange-600 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed touch-manipulation"
                 >

@@ -143,7 +143,8 @@ function OrderTypeForm() {
 
   const totalTaxAmount = isExclusiveTax
     ? taxList.reduce(
-        (sum, tax) => sum + (Number(tax.rate) / 100) * baseSubtotalAfterDiscount,
+        (sum, tax) =>
+          sum + (Number(tax.rate) / 100) * baseSubtotalAfterDiscount,
         0,
       )
     : 0;
@@ -164,9 +165,10 @@ function OrderTypeForm() {
     setIsLoadingTax(true);
     try {
       const response = await api.get("/tax-mode");
-      const taxModeValue = response.data.data?.tax_mode ?? response.data.tax_mode;
+      const taxModeValue =
+        response.data.data?.tax_mode ?? response.data.tax_mode;
       setTaxMode(taxModeValue);
-      if (taxModeValue === "exclusive"){
+      if (taxModeValue === "exclusive") {
         const { data } = await api.get("/taxes");
         setTaxList(data.taxes ?? []);
       }
@@ -413,6 +415,8 @@ function OrderTypeForm() {
         }
         payload.delivery_address = formData.deliveryAddress;
       }
+
+      console.log("the payload: ", payload);
 
       const response = await api.post("/checkout", payload);
 
