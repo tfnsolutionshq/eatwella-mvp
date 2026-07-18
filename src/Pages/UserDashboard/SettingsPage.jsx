@@ -50,7 +50,7 @@ function SettingsPage() {
     setLoading(true);
     try {
       await api.delete("/customer/delete-account", {
-        // email: user.email,
+        email: user.email,
         password: deletePassword,
       });
       logout();
