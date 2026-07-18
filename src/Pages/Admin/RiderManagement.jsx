@@ -193,6 +193,8 @@ const RiderManagement = () => {
         const rawData = response?.data;
         const list = Array.isArray(rawData?.data) ? rawData.data : [];
 
+        console.log("Fetched all riders for search:", response);
+
         setRiders(list);
         setAllRiders(list);
         setPagination({
@@ -846,7 +848,7 @@ const RiderManagement = () => {
                 <div className="flex flex-col items-center justify-center py-32 gap-4">
                   <div className="w-12 h-12 border-4 border-gray-200 border-t-orange-500 rounded-full animate-spin" />
                   <p className="text-gray-500 text-sm font-medium tracking-wide">
-                    Loading riders…
+                    Loading Riders…
                   </p>
                 </div>
               ) : (

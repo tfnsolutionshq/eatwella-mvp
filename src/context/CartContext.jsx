@@ -105,12 +105,13 @@ export const CartProvider = ({ children }) => {
     }
   };
 
-  const addToCart = async (menuId, quantity = 1) => {
+  const addToCart = async (menuId, quantity = 1, outletId) => {
     setLoadingItems((prev) => ({ ...prev, [menuId]: true }));
     try {
       const { data, headers } = await cartApi.post("/cart", {
         menu_id: menuId,
         quantity,
+        outlet_id: outletId,
       });
       if (data && data.items) {
         setCart(data);

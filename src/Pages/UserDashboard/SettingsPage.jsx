@@ -1,16 +1,19 @@
 import { useState } from "react";
 import { useAuth } from "../../context/AuthContext";
 import { useNavigate } from "react-router-dom";
-import { ModalWrapper, ErrorBanner } from "../../Components/UserDashboard/shared";
+import {
+  ModalWrapper,
+  ErrorBanner,
+} from "../../Components/UserDashboard/shared";
 import { FiEye, FiEyeOff } from "react-icons/fi";
 import api from "../../utils/api";
 import { useToast } from "../../context/ToastContext";
 
 function SettingsPage() {
-  const { logout } = useAuth();
+  const { logout, user } = useAuth();
   const navigate = useNavigate();
   const { showToast } = useToast();
-  
+
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [passwordData, setPasswordData] = useState({
@@ -22,7 +25,8 @@ function SettingsPage() {
   const [error, setError] = useState("");
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
-  const [showDeletePasswordVisible, setShowDeletePasswordVisible] = useState(false);
+  const [showDeletePasswordVisible, setShowDeletePasswordVisible] =
+    useState(false);
 
   const handleChangePassword = async (e) => {
     e.preventDefault();
@@ -42,16 +46,13 @@ function SettingsPage() {
 
   const handleDeleteAccount = async (e) => {
     e.preventDefault();
-    if (
-      !confirm(
-        "Are you sure you want to delete your account? This action cannot be undone.",
-      )
-    )
-      return;
     setError("");
     setLoading(true);
     try {
-      await api.put("/customer/delete-account", { password: deletePassword });
+      await api.delete("/customer/delete-account", {
+        // email: user.email,
+        password: deletePassword,
+      });
       logout();
       navigate("/");
     } catch (err) {
@@ -108,7 +109,15 @@ function SettingsPage() {
                   </label>
                   <div className="relative">
                     <input
-                      type={key === "current_password" ? (showCurrentPassword ? "text" : "password") : (showNewPassword ? "text" : "password")}
+                      type={
+                        key === "current_password"
+                          ? showCurrentPassword
+                            ? "text"
+                            : "password"
+                          : showNewPassword
+                            ? "text"
+                            : "password"
+                      }
                       value={passwordData[key]}
                       onChange={(e) =>
                         setPasswordData({
@@ -116,16 +125,34 @@ function SettingsPage() {
                           [key]: e.target.value,
                         })
                       }
-                      placeholder={key === "current_password" ? "Enter current password" : "Enter new password"}
+                      placeholder={
+                        key === "current_password"
+                          ? "Enter current password"
+                          : "Enter new password"
+                      }
                       required
                       className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-orange-500 pr-12"
                     />
                     <button
                       type="button"
-                      onClick={() => key === "current_password" ? setShowCurrentPassword(!showCurrentPassword) : setShowNewPassword(!showNewPassword)}
+                      onClick={() =>
+                        key === "current_password"
+                          ? setShowCurrentPassword(!showCurrentPassword)
+                          : setShowNewPassword(!showNewPassword)
+                      }
                       className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
                     >
-                      {key === "current_password" ? (showCurrentPassword ? <FiEyeOff className="w-5 h-5" /> : <FiEye className="w-5 h-5" />) : (showNewPassword ? <FiEyeOff className="w-5 h-5" /> : <FiEye className="w-5 h-5" />)}
+                      {key === "current_password" ? (
+                        showCurrentPassword ? (
+                          <FiEyeOff className="w-5 h-5" />
+                        ) : (
+                          <FiEye className="w-5 h-5" />
+                        )
+                      ) : showNewPassword ? (
+                        <FiEyeOff className="w-5 h-5" />
+                      ) : (
+                        <FiEye className="w-5 h-5" />
+                      )}
                     </button>
                   </div>
                 </div>
@@ -188,10 +215,16 @@ function SettingsPage() {
                   />
                   <button
                     type="button"
-                    onClick={() => setShowDeletePasswordVisible(!showDeletePasswordVisible)}
+                    onClick={() =>
+                      setShowDeletePasswordVisible(!showDeletePasswordVisible)
+                    }
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
                   >
-                    {showDeletePasswordVisible ? <FiEyeOff className="w-5 h-5" /> : <FiEye className="w-5 h-5" />}
+                    {showDeletePasswordVisible ? (
+                      <FiEyeOff className="w-5 h-5" />
+                    ) : (
+                      <FiEye className="w-5 h-5" />
+                    )}
                   </button>
                 </div>
               </div>

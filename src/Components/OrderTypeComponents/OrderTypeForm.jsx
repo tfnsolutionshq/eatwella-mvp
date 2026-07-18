@@ -164,9 +164,11 @@ function OrderTypeForm() {
     setIsLoadingTax(true);
     try {
       const response = await api.get("/tax-mode");
-      if (response.data.data?.tax_mode || response.data.tax_mode === "exclusive"){
-        const response = await api.get("/taxes");
-        setTaxList(response.data.taxes);
+      const taxModeValue = response.data.data?.tax_mode ?? response.data.tax_mode;
+      setTaxMode(taxModeValue);
+      if (taxModeValue === "exclusive"){
+        const { data } = await api.get("/taxes");
+        setTaxList(data.taxes ?? []);
       }
     } catch (err) {
       console.error("Failed to fetch taxes:", err);

@@ -1,6 +1,13 @@
 import { FiX, FiTrash2 } from "react-icons/fi";
 
-const ConfirmDeleteModal = ({ isOpen, onClose, onConfirm, title = "Delete Item", message = "Are you sure you want to delete this item?", isLoading = false }) => {
+const ConfirmDeleteModal = ({
+  isOpen,
+  onClose,
+  onConfirm,
+  title = "Delete Item",
+  message = "Are you sure you want to delete this item?",
+  isLoading = false,
+}) => {
   if (!isOpen) return null;
 
   return (
@@ -23,9 +30,9 @@ const ConfirmDeleteModal = ({ isOpen, onClose, onConfirm, title = "Delete Item",
               <FiX className="w-5 h-5" />
             </button>
           </div>
-          
+
           <p className="text-gray-600 mb-6">{message}</p>
-          
+
           <div className="flex items-center gap-3">
             <button
               onClick={onClose}

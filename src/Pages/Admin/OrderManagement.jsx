@@ -1,35 +1,28 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import DashboardLayout from "../../DashboardLayout/DashboardLayout";
 import OrderDetailsModal from "../../Components/Modals/OrderDetailsModal";
 import DeliveryPhotoModal from "../../Components/Modals/DeliveryPhotoModal";
 import DeliveryPinModal from "../../Components/Modals/DeliveryPinModal";
 import {
-  Filter,
   Eye,
   Clock,
   Check,
   Truck,
   Plus,
   X,
-  User,
   Package,
   Send,
   CreditCard,
   CheckCircle,
-  Play,
   ChefHat,
   PackageCheck,
-  ThumbsUp,
-  CheckSquare,
-  CircleCheck,
   UserPlus,
-  UserCheck,
   XCircle,
-  Ban,
-  XSquare,
   Search,
   DollarSign,
   Flame,
+  ChevronDown,
+  Store,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import api from "../../utils/api";
@@ -50,14 +43,42 @@ const fetchDeliveryAgents = async () => {
 };
 
 const STATUS_CONFIG = {
-  pending:    { label: "Pending",    color: "bg-gray-100 text-gray-600",   icon: Clock },
-  confirmed:  { label: "Confirmed",  color: "bg-blue-100 text-blue-600",   icon: DollarSign },
-  processing: { label: "Processing", color: "bg-purple-100 text-purple-600", icon: Flame },
-  in_kitchen: { label: "In Kitchen", color: "bg-orange-100 text-orange-600", icon: ChefHat },
-  ready:      { label: "Ready",      color: "bg-yellow-100 text-yellow-600", icon: Package },
-  dispatched: { label: "Dispatched", color: "bg-indigo-100 text-indigo-600", icon: Truck },
-  completed:  { label: "Completed",  color: "bg-green-100 text-green-600",  icon: Check },
-  cancelled:  { label: "Cancelled",  color: "bg-red-100 text-red-600",     icon: X },
+  pending: {
+    label: "Pending",
+    color: "bg-gray-100 text-gray-600",
+    icon: Clock,
+  },
+  confirmed: {
+    label: "Confirmed",
+    color: "bg-blue-100 text-blue-600",
+    icon: DollarSign,
+  },
+  processing: {
+    label: "Processing",
+    color: "bg-purple-100 text-purple-600",
+    icon: Flame,
+  },
+  in_kitchen: {
+    label: "In Kitchen",
+    color: "bg-orange-100 text-orange-600",
+    icon: ChefHat,
+  },
+  ready: {
+    label: "Ready",
+    color: "bg-yellow-100 text-yellow-600",
+    icon: Package,
+  },
+  dispatched: {
+    label: "Dispatched",
+    color: "bg-indigo-100 text-indigo-600",
+    icon: Truck,
+  },
+  completed: {
+    label: "Completed",
+    color: "bg-green-100 text-green-600",
+    icon: Check,
+  },
+  cancelled: { label: "Cancelled", color: "bg-red-100 text-red-600", icon: X },
 };
 
 const getStatusColor = (status) =>
@@ -105,6 +126,96 @@ const TABS_BY_ROLE = {
     "ready",
     "completed",
   ],
+};
+
+// ---------------------------------------------------------------------------
+// OutletSelect — single-select with "All Outlets" as default
+// ---------------------------------------------------------------------------
+const OutletSelect = ({ outlets, selectedId, onChange, isLoading }) => {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+
+  useEffect(() => {
+    const handler = (e) => {
+      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  const label = selectedId
+    ? (outlets.find((o) => o.id === selectedId)?.name ?? "Select outlet")
+    : "All Outlets";
+
+  if (isLoading) {
+    return <div className="h-9 w-44 bg-gray-200 rounded-lg animate-pulse" />;
+  }
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="flex items-center gap-2 pl-3 pr-2.5 py-2 bg-white border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-colors shadow-sm min-w-[11rem]"
+      >
+        <Store className="w-4 h-4 text-gray-400 shrink-0" />
+        <span className="flex-1 text-left truncate">{label}</span>
+        <ChevronDown
+          className={`w-4 h-4 text-gray-400 shrink-0 transition-transform ${open ? "rotate-180" : ""}`}
+        />
+      </button>
+
+      {open && (
+        <div className="absolute right-0 top-full mt-1 z-50 bg-white border border-gray-200 rounded-xl shadow-lg w-56 py-1.5 max-h-72 overflow-y-auto">
+          <button
+            onClick={() => {
+              onChange(null);
+              setOpen(false);
+            }}
+            className="w-full flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-gray-50 transition-colors text-left"
+          >
+            <span
+              className={`w-4 h-4 rounded-full border flex items-center justify-center shrink-0 ${
+                !selectedId
+                  ? "bg-orange-500 border-orange-500"
+                  : "border-gray-300"
+              }`}
+            >
+              {!selectedId && <Check className="w-3 h-3 text-white" />}
+            </span>
+            <span className="truncate text-gray-700">All Outlets</span>
+          </button>
+          <div className="mx-3 my-1 border-t border-gray-100" />
+          {outlets.length === 0 && (
+            <p className="px-4 py-3 text-sm text-gray-400">No outlets found.</p>
+          )}
+          {outlets.map((outlet) => {
+            const selected = outlet.id === selectedId;
+            return (
+              <button
+                key={outlet.id}
+                onClick={() => {
+                  onChange(outlet.id);
+                  setOpen(false);
+                }}
+                className="w-full flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-gray-50 transition-colors text-left"
+              >
+                <span
+                  className={`w-4 h-4 rounded-full border flex items-center justify-center shrink-0 ${
+                    selected
+                      ? "bg-orange-500 border-orange-500"
+                      : "border-gray-300"
+                  }`}
+                >
+                  {selected && <Check className="w-3 h-3 text-white" />}
+                </span>
+                <span className="truncate text-gray-700">{outlet.name}</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
 };
 
 // ---------------------------------------------------------------------------
@@ -395,7 +506,7 @@ const SettleOrderModal = ({
 // ---------------------------------------------------------------------------
 const OrderManagement = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, outlet } = useAuth();
   const { showToast } = useToast();
 
   const roleTabs = TABS_BY_ROLE[user.role] ?? [
@@ -405,6 +516,36 @@ const OrderManagement = () => {
   const [activeTab, setActiveTab] = useState(roleTabs[0]);
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearching, setIsSearching] = useState(false);
+
+  // ── Outlet filter (admin only) ─────────────────────────────────────────────
+  const isAdmin = user.role === "admin";
+  const [outlets, setOutlets] = useState([]);
+  const [selectedOutletId, setSelectedOutletId] = useState(null); // null until outlets load
+  const [isOutletsLoading, setIsOutletsLoading] = useState(false);
+
+  useEffect(() => {
+    if (!isAdmin) return;
+    const fetchOutlets = async () => {
+      setIsOutletsLoading(true);
+      try {
+        const { data } = await api.get("/outlets");
+        const list = data?.data ?? data ?? [];
+        const outletList = Array.isArray(list) ? list : [];
+        setOutlets(outletList);
+        // Default to "All Outlets" (null) — user picks from dropdown
+      } catch (err) {
+        console.error("Failed to fetch outlets:", err);
+      } finally {
+        setIsOutletsLoading(false);
+      }
+    };
+    fetchOutlets();
+  }, [isAdmin]);
+
+  const handleOutletChange = (nextId) => {
+    setSelectedOutletId(nextId);
+    setPage(1);
+  };
 
   const [orders, setOrders] = useState([]);
   const [allKitchenOrders, setAllKitchenOrders] = useState([]);
@@ -519,14 +660,8 @@ const OrderManagement = () => {
 
   useEffect(() => {
     fetchOrders();
-  }, [page, activeTab, searchQuery]);
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      fetchOrders(true);
-    }, 30000);
-    return () => clearInterval(interval);
-  }, [page, activeTab, user.role, searchQuery]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page, activeTab, searchQuery, selectedOutletId]);
 
   // ── Data fetching ──────────────────────────────────────────────────────────
 
@@ -567,7 +702,9 @@ const OrderManagement = () => {
           );
 
         // Kitchen only sees orders that were explicitly sent via "Send to Kitchen"
-        const response = await api.get("/kitchen/orders/confirmed");
+        const response = await api.get("/kitchen/orders/confirmed", {
+          params: outlet?.id ? { outlet_id: outlet.id } : undefined,
+        });
         const payload = response?.data;
         const data = payload?.data ?? payload ?? [];
         rawOrders = Array.isArray(data) ? data : [];
@@ -640,12 +777,27 @@ const OrderManagement = () => {
 
       // Build params - always fetch all data for client-side filtering when searching
       const params = { page, per_page: pagination.per_page };
+
+      // Attach outlet filter for admin — always scope to the selected outlet
+      if (isAdmin && selectedOutletId) {
+        params["outlet_ids[]"] = selectedOutletId;
+      }
+
+      // Non-admin roles scope orders to their assigned outlet
+      if (!isAdmin && outlet?.id) {
+        params["outlet_ids[]"] = outlet.id;
+      }
+
       let response;
 
       if (searchQuery.trim()) {
         // When searching, fetch a larger dataset to filter client-side
         setIsSearching(true);
         const searchParams = { ...params, per_page: 100 }; // Fetch more records for search
+        // Preserve outlet filter when searching
+        if (isAdmin && selectedOutletId) {
+          searchParams["outlet_ids[]"] = selectedOutletId;
+        }
 
         if (user.role === "admin") {
           response = await api.get("/admin/orders", { params: searchParams });
@@ -766,6 +918,20 @@ const OrderManagement = () => {
       setIsSearching(false);
     }
   };
+
+  // Keep a ref so the interval always calls fetchOrders with the latest state,
+  // avoiding the stale-closure problem where the interval would ignore
+  // the currently selected outlet.
+  const fetchOrdersRef = useRef(null);
+  fetchOrdersRef.current = fetchOrders;
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetchOrdersRef.current(true);
+    }, 30000);
+    return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const getVisiblePageNumbers = () => {
     const totalPages = pagination.last_page;
@@ -1659,6 +1825,15 @@ const OrderManagement = () => {
               </p>
             </div>
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+              {/* Outlet filter — admin only */}
+              {isAdmin && (
+                <OutletSelect
+                  outlets={outlets}
+                  selectedId={selectedOutletId}
+                  onChange={handleOutletChange}
+                  isLoading={isOutletsLoading}
+                />
+              )}
               {/* Search Input */}
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />

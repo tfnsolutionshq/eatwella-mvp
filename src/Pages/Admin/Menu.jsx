@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import DashboardLayout from "../../DashboardLayout/DashboardLayout";
 import AddCategoryModal from "../../Components/Modals/AddCategoryModal";
 import EditCategoryModal from "../../Components/Modals/EditCategoryModal";
@@ -15,17 +15,108 @@ import {
   FiEye,
   FiEyeOff,
 } from "react-icons/fi";
+import { Check, Store, ChevronDown } from "lucide-react";
 import SearchInput from "../../Components/SearchInput";
 import api from "../../utils/api";
+
+// ---------------------------------------------------------------------------
+// OutletSelect — single-select dropdown, no "All Outlets" option
+// ---------------------------------------------------------------------------
+const OutletSelect = ({ outlets, selectedId, onChange, isLoading }) => {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+
+  useEffect(() => {
+    const handler = (e) => {
+      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  const label = outlets.find((o) => o.id === selectedId)?.name ?? "Select outlet";
+
+  if (isLoading) {
+    return <div className="h-9 w-44 bg-gray-200 rounded-lg animate-pulse" />;
+  }
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="flex items-center gap-2 pl-3 pr-2.5 py-2 bg-white border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-colors shadow-sm min-w-[11rem]"
+      >
+        <Store className="w-4 h-4 text-gray-400 shrink-0" />
+        <span className="flex-1 text-left truncate">{label}</span>
+        <ChevronDown
+          className={`w-4 h-4 text-gray-400 shrink-0 transition-transform ${open ? "rotate-180" : ""}`}
+        />
+      </button>
+
+      {open && (
+        <div className="absolute right-0 top-full mt-1 z-50 bg-white border border-gray-200 rounded-xl shadow-lg w-56 py-1.5 max-h-72 overflow-y-auto">
+          {outlets.length === 0 && (
+            <p className="px-4 py-3 text-sm text-gray-400">No outlets found.</p>
+          )}
+          {outlets.map((outlet) => {
+            const selected = outlet.id === selectedId;
+            return (
+              <button
+                key={outlet.id}
+                onClick={() => {
+                  onChange(outlet.id);
+                  setOpen(false);
+                }}
+                className="w-full flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-gray-50 transition-colors text-left"
+              >
+                <span
+                  className={`w-4 h-4 rounded-full border flex items-center justify-center shrink-0 ${
+                    selected
+                      ? "bg-orange-500 border-orange-500"
+                      : "border-gray-300"
+                  }`}
+                >
+                  {selected && <Check className="w-3 h-3 text-white" />}
+                </span>
+                <span className="truncate text-gray-700">{outlet.name}</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+};
 
 const Menu = () => {
   const { showToast } = useToast();
   const { user } = useAuth();
 
-  // Route prefix: store keepers use the public endpoints
-  const isStoreKeeper = user?.role === "store_keeper";
-  const menuRoute = isStoreKeeper ? "/menus" : "/admin/menus";
-  const categoryRoute = isStoreKeeper ? "/categories" : "/admin/categories";
+  // Route prefix: admins and supervisors use the admin endpoints; all other roles use public endpoints
+  const isAdminOrSupervisor = user?.role === "admin" || user?.role === "supervisor";
+  const isAdmin = user?.role === "admin";
+  const menuRoute = "/menus";
+  const categoryRoute = isAdminOrSupervisor ? "/admin/categories" : "/categories";
+
+  // Outlets — admin picks from a single-select dropdown; other roles use their assigned outlet_id
+  const [outlets, setOutlets] = useState([]);
+  const [selectedOutletId, setSelectedOutletId] = useState(null); // null until outlets load
+  const [isOutletsLoading, setIsOutletsLoading] = useState(false);
+
+  // Builds URL with the selected outlet appended as a query param
+  const withOutlet = (url) => {
+    // Non-admin roles: scope to their own outlet
+    if (!isAdmin) {
+      const outletId = isAdminOrSupervisor ? null : user?.outlet_id;
+      if (!outletId) return url;
+      const sep = url.includes("?") ? "&" : "?";
+      return `${url}${sep}outlet_id=${outletId}`;
+    }
+    // Admin: always filter by the selected outlet
+    if (!selectedOutletId) return url;
+    const sep = url.includes("?") ? "&" : "?";
+    return `${url}${sep}outlet_id=${selectedOutletId}`;
+  };
   const [activeTab, setActiveTab] = useState("all");
   const [categories, setCategories] = useState([]);
   const [menuItems, setMenuItems] = useState([]);
@@ -71,7 +162,7 @@ const Menu = () => {
         setIsSearchLoading(true);
         try {
           const response = await api.get(
-            `${menuRoute}?search=${encodeURIComponent(searchTerm.trim())}`,
+            withOutlet(`${menuRoute}?search=${encodeURIComponent(searchTerm.trim())}`),
           );
           const data = response.data?.data || response.data || [];
           setSearchResults(Array.isArray(data) ? data : []);
@@ -88,6 +179,29 @@ const Menu = () => {
 
     return () => clearTimeout(timerId);
   }, [searchTerm]);
+
+  // ── Fetch outlets for admin dropdown ─────────────────────────────────────
+  useEffect(() => {
+    if (!isAdmin) return;
+    const fetchOutlets = async () => {
+      setIsOutletsLoading(true);
+      try {
+        const { data } = await api.get("/outlets");
+        const list = data?.data ?? data ?? [];
+        const outlets = Array.isArray(list) ? list : [];
+        setOutlets(outlets);
+        // Auto-select the first outlet on mount
+        if (outlets.length > 0) {
+          setSelectedOutletId(outlets[0].id);
+        }
+      } catch (err) {
+        console.error("Failed to fetch outlets:", err);
+      } finally {
+        setIsOutletsLoading(false);
+      }
+    };
+    fetchOutlets();
+  }, [isAdmin]);
 
   // Numbered pagination state (mirrors MenuItems.jsx)
   const [page, setPage] = useState(1);
@@ -106,17 +220,20 @@ const Menu = () => {
   // ── Initial load — categories + first page of menu items in parallel ──────
 
   useEffect(() => {
+    // For admin, wait until an outlet has been selected
+    if (isAdmin && !selectedOutletId) return;
+
     const fetchInitialData = async () => {
       setIsLoading(true);
       try {
         const [categoriesRes, menuRes] = await Promise.all([
           api.get(categoryRoute),
-          api.get(`${menuRoute}?page=1`),
+          api.get(withOutlet(`${menuRoute}?page=1`)),
         ]);
 
         // Full list fetch for modals — needs total from first response
         const allMenuRes = await api.get(
-          `${menuRoute}?per_page=${menuRes.data.total}`,
+          withOutlet(`${menuRoute}?per_page=${menuRes.data.total}`),
         );
 
         setCategories(categoriesRes.data.data);
@@ -140,7 +257,7 @@ const Menu = () => {
       }
     };
     fetchInitialData();
-  }, []);
+  }, [selectedOutletId]);
 
   // ── Tab/page change fetches (skips very first render) ─────────────────────
 
@@ -154,7 +271,7 @@ const Menu = () => {
           params.set("category_id", categoryId);
         }
 
-        const { data } = await api.get(`${menuRoute}?${params.toString()}`);
+        const { data } = await api.get(withOutlet(`${menuRoute}?${params.toString()}`));
 
         const pageData = data.data ?? [];
         setMenuItems(pageData);
@@ -191,38 +308,13 @@ const Menu = () => {
     }
   };
 
-  // const refetchMenuItems = async () => {
-  //   try {
-  //     const firstResponse = await api.get(
-  //       `/admin/menus?page=${pagination.current_page}`,
-  //     );
-  //     const allMenuRes = await api.get(
-  //       `/admin/menus?per_page=${firstResponse.data.total}`,
-  //     );
-  //     const pageData = firstResponse.data.data ?? [];
-  //     setMenuItems(pageData);
-  //     setAllMenuItems(allMenuRes.data.data);
-  //     setPagination({
-  //       current_page:
-  //         firstResponse.data.current_page ?? pagination.current_page,
-  //       last_page: firstResponse.data.last_page ?? 1,
-  //       total: firstResponse.data.total ?? pageData.length,
-  //       from: firstResponse.data.from ?? (pageData.length ? 1 : 0),
-  //       to: firstResponse.data.to ?? pageData.length,
-  //       per_page: firstResponse.data.per_page ?? 15,
-  //     });
-  //   } catch (err) {
-  //     console.error("Failed to fetch menu items:", err);
-  //   }
-  // };
-
   const refetchMenuItems = async () => {
     await fetchMenuItems(activeTab, pagination.current_page);
 
     // Still fetch full list for modals
     try {
       const { data } = await api.get(
-        `${menuRoute}?per_page=${pagination.total}`,
+        withOutlet(`${menuRoute}?per_page=${pagination.total}`),
       );
       setAllMenuItems(data.data);
     } catch (err) {
@@ -230,9 +322,10 @@ const Menu = () => {
     }
   };
 
-  const fetchSingleMenuItem = async (itemId) => {
+  const fetchSingleMenuItem = async (itemId, outletId) => {
     try {
-      const { data } = await api.get(`${menuRoute}/${itemId}`);
+      const { data } = await api.get(`${menuRoute}/${itemId}?outlet_id=${outletId}`);
+      console.log("single menu item: ", data);
       return data;
     } catch (err) {
       console.error("Failed to fetch menu item details: ", err);
@@ -259,9 +352,16 @@ const Menu = () => {
       return;
     }
 
+    const stockRoute =
+      user?.role === "store_keeper"
+        ? `/store-keeper/menus/${item.id}/stock`
+        : user?.role === "supervisor"
+          ? `/supervisor/menus/${item.id}/stock`
+          : `/admin/menus/${item.id}/stock`;
+
     setStockSubmitting((prev) => ({ ...prev, [item.id]: true }));
     try {
-      await api.patch(`/admin${menuRoute}/${item.id}/stock`, {
+      await api.patch(stockRoute, {
         quantity: parseInt(quantity, 10),
         note: note.trim(),
       });
@@ -279,6 +379,15 @@ const Menu = () => {
     } finally {
       setStockSubmitting((prev) => ({ ...prev, [item.id]: false }));
     }
+  };
+
+  // ── Outlet switching (admin only) ────────────────────────────────────────
+
+  const handleOutletChange = (nextId) => {
+    setSelectedOutletId(nextId);
+    setActiveTab("all");
+    setPage(1);
+    setIsInitialLoad(true); // trigger the initial-load gate again
   };
 
   // ── Tab switching ─────────────────────────────────────────────────────────
@@ -434,24 +543,37 @@ const Menu = () => {
             <h1 className="text-2xl font-bold text-gray-900">
               Menu Management
             </h1>
-            {user?.role !== "store_keeper" && (
-              <div className="flex items-center gap-3">
-                <button
-                  onClick={() => setIsAddCategoryOpen(true)}
-                  className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
-                >
-                  <FiFolderPlus className="w-4 h-4" />
-                  Add Category
-                </button>
-                <button
-                  onClick={() => setIsAddMenuItemOpen(true)}
-                  className="flex items-center gap-2 px-4 py-2 bg-orange-500 text-white rounded-lg text-sm font-medium hover:bg-orange-600 transition-colors shadow-sm shadow-orange-200"
-                >
-                  <FiPlus className="w-4 h-4" />
-                  Add Menu Item
-                </button>
-              </div>
-            )}
+
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+              {/* Outlet selector — admin only */}
+              {isAdmin && (
+                <OutletSelect
+                  outlets={outlets}
+                  selectedId={selectedOutletId}
+                  onChange={handleOutletChange}
+                  isLoading={isOutletsLoading}
+                />
+              )}
+
+              {user?.role !== "store_keeper" && (
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={() => setIsAddCategoryOpen(true)}
+                    className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+                  >
+                    <FiFolderPlus className="w-4 h-4" />
+                    Add Category
+                  </button>
+                  <button
+                    onClick={() => setIsAddMenuItemOpen(true)}
+                    className="flex items-center gap-2 px-4 py-2 bg-orange-500 text-white rounded-lg text-sm font-medium hover:bg-orange-600 transition-colors shadow-sm shadow-orange-200"
+                  >
+                    <FiPlus className="w-4 h-4" />
+                    Add Menu Item
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Search Input */}
@@ -684,7 +806,7 @@ const Menu = () => {
                                   setEditingItemLoading(item.id);
                                   try {
                                     const itemDetails =
-                                      await fetchSingleMenuItem(item.id);
+                                      await fetchSingleMenuItem(item.id, selectedOutletId);
                                     if (itemDetails) {
                                       setEditingItem(itemDetails);
                                       setIsEditMenuItemOpen(true);

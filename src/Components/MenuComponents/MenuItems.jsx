@@ -175,7 +175,7 @@ function MenuItems() {
       return;
     }
 
-    const result = await addToCart(item.id, 1);
+    const result = await addToCart(item.id, 1, selectedOutlet);
     if (result) {
       showToast(`${item.name} added to cart!`, "success");
     } else {

@@ -7,6 +7,7 @@ const AuthContext = createContext(null);
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(null);
+  const [outlet, setOutlet] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -19,11 +20,13 @@ export const AuthProvider = ({ children }) => {
     setLoading(false);
   }, []);
 
-  const login = (token, user) => {
+  const login = (token, user, outlet) => {
     setToken(token);
     setUser(user);
+    setOutlet(outlet);
     localStorage.setItem("token", token);
     localStorage.setItem("user", JSON.stringify(user));
+    localStorage.setItem("outlet", JSON.stringify(outlet));
   };
 
   const logout = async () => {
@@ -31,13 +34,14 @@ export const AuthProvider = ({ children }) => {
     setUser(null);
     localStorage.removeItem("token");
     localStorage.removeItem("user");
+    localStorage.removeItem("outlet");
   };
 
   const routePrefix = getPrefixForRole(user?.role);
 
   return (
     <AuthContext.Provider
-      value={{ user, token, login, logout, loading, routePrefix }}
+      value={{ user, token, outlet, login, logout, loading, routePrefix }}
     >
       {children}
     </AuthContext.Provider>

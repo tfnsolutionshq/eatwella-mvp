@@ -110,11 +110,14 @@ const ModalShell = ({
 };
 
 // ── Shared helpers ────────────────────────────────────────────────────────────
-const ErrorBanner = ({ message }) =>
+const ErrorBanner = ({ message, retryFunction }) =>
   message ? (
-    <div className="flex items-center gap-2 px-4 py-3 bg-red-50 border border-red-100 rounded-xl text-sm text-red-600">
-      <FiAlertTriangle className="w-4 h-4 flex-shrink-0" />
+    <div className="flex justify-between items-center gap-2 px-4 py-3 bg-red-50 border border-red-100 rounded-xl text-sm text-red-600">
+      <div className="flex items-center">
+      <FiAlertTriangle className="w-4 h-4 flex-shrink-0 mr-2" />
       {message}
+      </div>
+      <button onClick={retryFunction} className="bg-red-600 rounded-lg text-white py-2 px-3">Retry</button>
     </div>
   ) : null;
 
@@ -157,49 +160,6 @@ const CancelBtn = ({ onClose }) => (
   >
     Cancel
   </button>
-);
-
-// ── Toggle row (reusable) ─────────────────────────────────────────────────────
-const ToggleRow = ({ label, description, value, onChange }) => (
-  <div className="flex items-center justify-between px-4 py-3 bg-gray-50 rounded-xl border border-gray-100">
-    <div>
-      <p className="text-sm font-semibold text-gray-700">{label}</p>
-      {description && (
-        <p className="text-xs text-gray-400 mt-0.5">{description}</p>
-      )}
-    </div>
-    <button
-      type="button"
-      onClick={() => onChange(!value)}
-      className={`relative w-11 h-6 rounded-full transition-colors duration-200 focus:outline-none ${value ? "bg-orange-500" : "bg-gray-300"}`}
-    >
-      <span
-        className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ${value ? "translate-x-5" : "translate-x-0"}`}
-      />
-    </button>
-  </div>
-);
-
-// ── Skeleton Card ─────────────────────────────────────────────────────────────
-const SkeletonCard = () => (
-  <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden animate-pulse">
-    <div className="p-5 border-b border-gray-50">
-      <div className="flex items-center gap-3">
-        <div className="w-10 h-10 bg-gray-100 rounded-xl" />
-        <div className="flex-1 space-y-2">
-          <div className="h-4 bg-gray-100 rounded-lg w-3/4" />
-          <div className="h-3 bg-gray-100 rounded-lg w-1/2" />
-        </div>
-      </div>
-    </div>
-    <div className="p-5 space-y-3">
-      <div className="h-3 bg-gray-100 rounded-lg w-full" />
-      <div className="h-3 bg-gray-100 rounded-lg w-2/3" />
-    </div>
-    <div className="p-4 bg-gray-50 border-t border-gray-100">
-      <div className="h-9 bg-gray-100 rounded-xl" />
-    </div>
-  </div>
 );
 
 // ── Outlet Modal ──────────────────────────────────────────────────────────────
@@ -450,7 +410,24 @@ const AssignSupervisorModal = ({ isOpen, onClose, outlet, onAssigned }) => {
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
-  // Fetch supervisors for a given page; auto-select those already assigned to this outlet
+  // Fetch supervisors assigned to this outlet and record their IDs
+  const fetchAssignedSupervisors = useCallback(async () => {
+    if (!outlet?.id) return;
+    try {
+      const { data } = await api.get(
+        `/admin/outlets/${outlet.id}/users`,
+        { params: { role: "supervisor" } },
+      );
+      const assignedList = Array.isArray(data) ? data : (data.data ?? []);
+      const assignedIds = assignedList.map((sup) => sup.id);
+      setInitialAssignedIds(assignedIds);
+      setSelectedIds(assignedIds);
+    } catch (_) {
+      // non-fatal — assigned state just won't be pre-highlighted
+    }
+  }, [outlet?.id]);
+
+  // Fetch all supervisors (paginated) for the picker list
   const fetchSupervisors = useCallback(
     async (pageNum, search = "") => {
       setLoadingSupervisors(true);
@@ -469,25 +446,6 @@ const AssignSupervisorModal = ({ isOpen, onClose, outlet, onAssigned }) => {
           to: data?.to ?? supervisorList.length,
           per_page: data?.per_page ?? 15,
         });
-
-        // Auto-select supervisors already assigned to this outlet,
-        // merging with any existing manual selections.
-        const alreadyAssigned = supervisorList
-          .filter((sup) => sup.outlet_id === outlet?.id)
-          .map((sup) => sup.id);
-
-        if (alreadyAssigned.length > 0) {
-          setSelectedIds((prev) => [
-            ...prev,
-            ...alreadyAssigned.filter((id) => !prev.includes(id)),
-          ]);
-        }
-
-        // On the first page load, record which IDs were pre-assigned
-        // so we can detect whether the admin has changed anything.
-        if (pageNum === 1) {
-          setInitialAssignedIds(alreadyAssigned);
-        }
       } catch (err) {
         setFetchError(
           err.response?.data?.message || "Failed to load supervisors.",
@@ -496,10 +454,10 @@ const AssignSupervisorModal = ({ isOpen, onClose, outlet, onAssigned }) => {
         setLoadingSupervisors(false);
       }
     },
-    [outlet?.id],
+    [],
   );
 
-  // Reset selections and load page 1 whenever the modal opens
+  // Reset and load both lists whenever the modal opens
   useEffect(() => {
     if (!isOpen) return;
     setSelectedIds([]);
@@ -507,17 +465,18 @@ const AssignSupervisorModal = ({ isOpen, onClose, outlet, onAssigned }) => {
     setPage(1);
     setSearchQuery("");
     setDebouncedSearchQuery("");
+    fetchAssignedSupervisors();
     fetchSupervisors(1, "");
-  }, [isOpen, fetchSupervisors]);
+  }, [isOpen, fetchAssignedSupervisors, fetchSupervisors]);
 
-  // Reload when the user navigates to a different page or search changes
+  // Reload picker when search changes
   useEffect(() => {
     if (!isOpen) return;
     setPage(1);
     fetchSupervisors(1, debouncedSearchQuery);
   }, [debouncedSearchQuery]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Reload when the user navigates to a different page
+  // Reload picker when page changes
   useEffect(() => {
     if (!isOpen) return;
     fetchSupervisors(page, debouncedSearchQuery);
@@ -538,12 +497,11 @@ const AssignSupervisorModal = ({ isOpen, onClose, outlet, onAssigned }) => {
         data: { city_ids: [1] },
       });
       showToast(`${sup.name} removed from ${outlet.name}.`, "success");
-      // Remove from selectedIds and initialAssignedIds locally,
-      // then refetch the current page to get fresh outlet_id values.
+      // Optimistically remove from local state, then re-sync both lists
       setSelectedIds((prev) => prev.filter((x) => x !== sup.id));
       setInitialAssignedIds((prev) => prev.filter((x) => x !== sup.id));
-      fetchSupervisors(page);
-      // Reload the outlets list so the supervisors_count badge updates
+      fetchAssignedSupervisors();
+      fetchSupervisors(page, debouncedSearchQuery);
       onAssigned?.();
     } catch (err) {
       showToast(
@@ -599,13 +557,13 @@ const AssignSupervisorModal = ({ isOpen, onClose, outlet, onAssigned }) => {
     (id) => !initialAssignedIds.includes(id),
   );
 
-  // True when every supervisor on the first page was already assigned to this outlet
-  // AND the admin hasn't deselected any of them.
+  // True when every supervisor in the picker is already assigned to this outlet
+  // AND the admin hasn't added any new selections.
   const allAlreadyAssigned =
     !loadingSupervisors &&
     supervisors.length > 0 &&
-    supervisors.every((sup) => sup.outlet_id === outlet?.id) &&
-    initialAssignedIds.every((id) => selectedIds.includes(id));
+    supervisors.every((sup) => initialAssignedIds.includes(sup.id)) &&
+    newlySelectedIds.length === 0;
 
   return (
     <ModalShell
@@ -653,7 +611,7 @@ const AssignSupervisorModal = ({ isOpen, onClose, outlet, onAssigned }) => {
         </div>
       )}
 
-      <ErrorBanner message={fetchError} />
+      <ErrorBanner message={fetchError} retryFunction={fetchSupervisors} />
 
       {/* Supervisor list */}
       {loadingSupervisors ? (
@@ -668,7 +626,7 @@ const AssignSupervisorModal = ({ isOpen, onClose, outlet, onAssigned }) => {
         <div className="space-y-2 pr-1">
           {supervisors.map((sup) => {
             const selected = selectedIds.includes(sup.id);
-            const alreadyAssigned = sup.outlet_id === outlet?.id;
+            const alreadyAssigned = initialAssignedIds.includes(sup.id);
             const isRemoving = removingId === sup.id;
             return (
               <div
@@ -823,7 +781,24 @@ const AssignDeliveryAgentModal = ({ isOpen, onClose, outlet, onAssigned }) => {
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
-  // Fetch delivery agents for a given page; auto-select those already assigned to this outlet
+  // Fetch delivery agents assigned to this outlet and record their IDs
+  const fetchAssignedDeliveryAgents = useCallback(async () => {
+    if (!outlet?.id) return;
+    try {
+      const { data } = await api.get(
+        `/admin/outlets/${outlet.id}/users`,
+        { params: { role: "delivery_agent" } },
+      );
+      const assignedList = Array.isArray(data) ? data : (data.data ?? []);
+      const assignedIds = assignedList.map((agent) => agent.id);
+      setInitialAssignedIds(assignedIds);
+      setSelectedIds(assignedIds);
+    } catch (_) {
+      // non-fatal
+    }
+  }, [outlet?.id]);
+
+  // Fetch all delivery agents (paginated) for the picker list
   const fetchDeliveryAgents = useCallback(
     async (pageNum, search = "") => {
       setLoadingDeliveryAgents(true);
@@ -842,25 +817,6 @@ const AssignDeliveryAgentModal = ({ isOpen, onClose, outlet, onAssigned }) => {
           to: data?.to ?? deliveryAgentList.length,
           per_page: data?.per_page ?? 15,
         });
-
-        // Auto-select delivery agents already assigned to this outlet,
-        // merging with any existing manual selections.
-        const alreadyAssigned = deliveryAgentList
-          .filter((agent) => agent.outlet_id === outlet?.id)
-          .map((agent) => agent.id);
-
-        if (alreadyAssigned.length > 0) {
-          setSelectedIds((prev) => [
-            ...prev,
-            ...alreadyAssigned.filter((id) => !prev.includes(id)),
-          ]);
-        }
-
-        // On the first page load, record which IDs were pre-assigned
-        // so we can detect whether the admin has changed anything.
-        if (pageNum === 1) {
-          setInitialAssignedIds(alreadyAssigned);
-        }
       } catch (err) {
         setFetchError(
           err.response?.data?.message || "Failed to load delivery agents.",
@@ -869,10 +825,10 @@ const AssignDeliveryAgentModal = ({ isOpen, onClose, outlet, onAssigned }) => {
         setLoadingDeliveryAgents(false);
       }
     },
-    [outlet?.id],
+    [],
   );
 
-  // Reset selections and load page 1 whenever the modal opens
+  // Reset and load both lists whenever the modal opens
   useEffect(() => {
     if (!isOpen) return;
     setSelectedIds([]);
@@ -880,17 +836,18 @@ const AssignDeliveryAgentModal = ({ isOpen, onClose, outlet, onAssigned }) => {
     setPage(1);
     setSearchQuery("");
     setDebouncedSearchQuery("");
+    fetchAssignedDeliveryAgents();
     fetchDeliveryAgents(1, "");
-  }, [isOpen, fetchDeliveryAgents]);
+  }, [isOpen, fetchAssignedDeliveryAgents, fetchDeliveryAgents]);
 
-  // Reload when the user navigates to a different page or search changes
+  // Reload picker when search changes
   useEffect(() => {
     if (!isOpen) return;
     setPage(1);
     fetchDeliveryAgents(1, debouncedSearchQuery);
   }, [debouncedSearchQuery]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Reload when the user navigates to a different page
+  // Reload picker when page changes
   useEffect(() => {
     if (!isOpen) return;
     fetchDeliveryAgents(page, debouncedSearchQuery);
@@ -911,12 +868,11 @@ const AssignDeliveryAgentModal = ({ isOpen, onClose, outlet, onAssigned }) => {
         data: { city_ids: [1] },
       });
       showToast(`${agent.name} removed from ${outlet.name}.`, "success");
-      // Remove from selectedIds and initialAssignedIds locally,
-      // then refetch the current page to get fresh outlet_id values.
+      // Optimistically remove from local state, then re-sync both lists
       setSelectedIds((prev) => prev.filter((x) => x !== agent.id));
       setInitialAssignedIds((prev) => prev.filter((x) => x !== agent.id));
-      fetchDeliveryAgents(page);
-      // Reload the outlets list so the delivery_agents_count badge updates
+      fetchAssignedDeliveryAgents();
+      fetchDeliveryAgents(page, debouncedSearchQuery);
       onAssigned?.();
     } catch (err) {
       showToast(
@@ -972,13 +928,13 @@ const AssignDeliveryAgentModal = ({ isOpen, onClose, outlet, onAssigned }) => {
     (id) => !initialAssignedIds.includes(id),
   );
 
-  // True when every delivery agent on the first page was already assigned to this outlet
-  // AND the admin hasn't deselected any of them.
+  // True when every delivery agent in the picker is already assigned to this outlet
+  // AND the admin hasn't added any new selections.
   const allAlreadyAssigned =
     !loadingDeliveryAgents &&
     deliveryAgents.length > 0 &&
-    deliveryAgents.every((agent) => agent.outlet_id === outlet?.id) &&
-    initialAssignedIds.every((id) => selectedIds.includes(id));
+    deliveryAgents.every((agent) => initialAssignedIds.includes(agent.id)) &&
+    newlySelectedIds.length === 0;
 
   return (
     <ModalShell
@@ -1041,7 +997,7 @@ const AssignDeliveryAgentModal = ({ isOpen, onClose, outlet, onAssigned }) => {
         <div className="space-y-2 pr-1">
           {deliveryAgents.map((agent) => {
             const selected = selectedIds.includes(agent.id);
-            const alreadyAssigned = agent.outlet_id === outlet?.id;
+            const alreadyAssigned = initialAssignedIds.includes(agent.id);
             const isRemoving = removingId === agent.id;
             return (
               <div
@@ -1257,6 +1213,10 @@ const OutletCard = ({
           <span className="text-xs">Supervisors Assigned</span>
           <span className="font-bold">{item.supervisors_count}</span>
         </div>
+        <div className="flex items-center mt-2 justify-between gap-2 text-sm text-gray-600">
+          <span className="text-xs">Delivery Agents Assigned</span>
+          <span className="font-bold">{item.delivery_agents_count ?? 0}</span>
+        </div>
       </div>
 
       <div className="p-4 bg-gray-50 border-t border-gray-100 flex flex-col items-center gap-2">
@@ -1337,7 +1297,38 @@ const OutletManagement = () => {
       } else {
         const { data } = await api.get("/admin/outlets");
         const list = Array.isArray(data) ? data : (data.data ?? []);
-        setOutlets(list);
+
+        // Enrich each outlet with accurate supervisors_count and
+        // delivery_agents_count from the dedicated outlet-users endpoint.
+        const enriched = await Promise.all(
+          list.map(async (outlet) => {
+            try {
+              const [supRes, agentRes] = await Promise.all([
+                api.get(`/admin/outlets/${outlet.id}/users`, {
+                  params: { role: "supervisor" },
+                }),
+                api.get(`/admin/outlets/${outlet.id}/users`, {
+                  params: { role: "delivery_agent" },
+                }),
+              ]);
+              const supList = Array.isArray(supRes.data)
+                ? supRes.data
+                : (supRes.data.data ?? []);
+              const agentList = Array.isArray(agentRes.data)
+                ? agentRes.data
+                : (agentRes.data.data ?? []);
+              return {
+                ...outlet,
+                supervisors_count: supList.length,
+                delivery_agents_count: agentList.length,
+              };
+            } catch (_) {
+              return outlet;
+            }
+          }),
+        );
+
+        setOutlets(enriched);
       }
     } catch (err) {
       setFetchError(err.response?.data?.message || "Failed to load outlets.");

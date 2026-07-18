@@ -152,7 +152,7 @@ const AddStaffModal = ({ isOpen, onClose, onSuccess }) => {
             </select>
           </div>
 
-          {formData.role && formData.role !== "delivery_agent" && (
+          {formData.role && formData.role !== "delivery_agent" && formData.role !== "supervisor" && (
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Outlet
