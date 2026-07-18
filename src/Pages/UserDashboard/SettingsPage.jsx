@@ -48,10 +48,12 @@ function SettingsPage() {
     e.preventDefault();
     setError("");
     setLoading(true);
+    const email = user.email;
+    const password = deletePassword;
     try {
-      await api.delete("/customer/delete-account", {
-        email: user.email,
-        password: deletePassword,
+      const response = await api.delete("/customer/delete-account", {
+        email,
+        password,
       });
       logout();
       navigate("/");

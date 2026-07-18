@@ -1413,6 +1413,21 @@ const OrderManagement = () => {
             icon={PackageCheck}
           />,
         );
+        // Gateway-paid confirmed orders can be completed directly
+        const isGateway =
+          order.payment_type === "gateway" ||
+          order.payment_type?.toLowerCase().includes("paystack");
+        if (isGateway) {
+          buttons.push(
+            <OrangeBtn
+              key="complete-confirmed"
+              label="Mark as Completed"
+              onClick={() => handleNonDeliveryComplete(id)}
+              actionType="completing"
+              icon={CheckCircle}
+            />,
+          );
+        }
       }
       if (status === "in_kitchen") {
         buttons.push(
@@ -1525,6 +1540,21 @@ const OrderManagement = () => {
             icon={PackageCheck}
           />,
         );
+        // Gateway-paid confirmed orders can be completed directly
+        const isGateway =
+          order.payment_type === "gateway" ||
+          order.payment_type?.toLowerCase().includes("paystack");
+        if (isGateway) {
+          buttons.push(
+            <OrangeBtn
+              key="complete-confirmed"
+              label="Mark as Completed"
+              onClick={() => handleNonDeliveryComplete(id)}
+              actionType="completing"
+              icon={CheckCircle}
+            />,
+          );
+        }
       }
       if (status === "in_kitchen") {
         buttons.push(

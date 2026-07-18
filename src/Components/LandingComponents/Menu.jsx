@@ -6,6 +6,7 @@ import { checkWorkingHourAvailability } from "../../utils/checkWorkingHours";
 import WorkingHoursClosedModal from "../Modals/WorkingHoursInfoModal";
 import Marquee from "react-fast-marquee";
 import api from "../../utils/api";
+import { useGeolocation } from "../../hooks/useGeolocation";
 
 function Menu() {
   const [activeTab, setActiveTab] = useState("all");
@@ -27,6 +28,7 @@ function Menu() {
 
   const { addToCart, loadingItems, clearCart } = useCart();
   const { showToast } = useToast();
+  const { getLocation } = useGeolocation();
 
   const fetchOutlets = async () => {
     setIsLoadingOutlets(true);
@@ -35,6 +37,21 @@ function Menu() {
       const { data } = await api.get("/outlets");
       setOutlets(data);
       if (data.length > 0) {
+        getLocation(async ({ latitude, longitude }) => {
+          try {
+            const { data: nearestData } = await api.post("/outlets/nearest", {
+              latitude,
+              longitude,
+            });
+            if (nearestData?.outlet?.id) {
+              setSelectedOutlet(nearestData.outlet.id);
+              return;
+            }
+          } catch (err) {
+            console.error("Failed to fetch nearest outlet:", err);
+          }
+          setSelectedOutlet(data[0].id);
+        });
         setSelectedOutlet(data[0].id);
       }
     } catch (err) {
