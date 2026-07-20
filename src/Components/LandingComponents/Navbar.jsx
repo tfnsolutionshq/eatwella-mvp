@@ -197,6 +197,15 @@ function Navbar() {
                 >
                   Privacy Policy
                 </NavLink>
+                <NavLink
+                  to="/delete-account"
+                  onClick={() => setIsDropdownOpen(false)}
+                  className={({ isActive }) =>
+                    `block px-4 py-2 text-gray-700 hover:bg-gray-100 transition-colors ${isActive ? "bg-green-50 text-green-700" : ""}`
+                  }
+                >
+                  <span>Delete Account</span>
+                </NavLink>
               </div>
             )}
           </div>
@@ -443,6 +452,15 @@ function Navbar() {
                       }
                     >
                       Privacy Policy
+                    </NavLink>
+                    <NavLink
+                      to="/delete-account"
+                      onClick={() => setIsDropdownOpen(false)}
+                      className={({ isActive }) =>
+                        `block px-4 py-2 text-gray-700 hover:bg-gray-100 transition-colors ${isActive ? "bg-green-50 text-green-700" : ""}`
+                      }
+                    >
+                      <span>Delete Account</span>
                     </NavLink>
                   </div>
                 </div>

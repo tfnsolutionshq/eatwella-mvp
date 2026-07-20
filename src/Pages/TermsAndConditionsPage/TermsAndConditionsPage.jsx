@@ -1,4 +1,3 @@
-import React from "react";
 import TermsAndConditionsHeader from "../../Components/TermsAndConditions/TermsAndConditionsHeader";
 import TermsAndConditionsContent from "../../Components/TermsAndConditions/TermsAndConditionsContent";
 import Footer from "../../Components/LandingComponents/Footer";

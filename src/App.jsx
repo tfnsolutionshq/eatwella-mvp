@@ -55,6 +55,7 @@ import RidersPage from "./Pages/RidersPage/RidersPage";
 import MobileAppPage from "./Pages/MobileAppPage/MobileAppPage";
 import PrivacyPolicyPage from "./Pages/PrivacyPolicyPage/PrivacyPolicyPage";
 import TermsAndConditionsPage from "./Pages/TermsAndConditionsPage/TermsAndConditionsPage";
+import UserAccountDeletionPage from "./Pages/UserAccountDeletionPage/UserAccountDeletionPage";
 import NotFound from "./Pages/NotFound/NotFound";
 import ScrollToTop from "./Components/ScrollToTop";
 import ScrollToTopButton from "./Components/ScrollToTopButton";
@@ -96,6 +97,7 @@ function AppRoutes() {
           <Route path="/riders" element={<RidersPage />} />
           <Route path="/mobile-app" element={<MobileAppPage />} />
           <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
+          <Route path="/delete-account" element={<UserAccountDeletionPage />} />
           <Route
             path="/terms-and-conditions"
             element={<TermsAndConditionsPage />}
