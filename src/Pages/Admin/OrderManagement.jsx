@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import DashboardLayout from "../../DashboardLayout/DashboardLayout";
 import OrderDetailsModal from "../../Components/Modals/OrderDetailsModal";
-import DeliveryPhotoModal from "../../Components/Modals/DeliveryPhotoModal";
 import DeliveryPinModal from "../../Components/Modals/DeliveryPinModal";
 import {
   Eye,
@@ -29,18 +28,7 @@ import api from "../../utils/api";
 import { useAuth } from "../../context/AuthContext";
 import { useToast } from "../../context/ToastContext";
 
-const DUMMY_DELIVERY_AGENTS = [
-  { id: 1, name: "Chidi Okafor", email: "chidi.okafor@dispatch.com" },
-  { id: 2, name: "Amaka Eze", email: "amaka.eze@dispatch.com" },
-  { id: 3, name: "Emeka Nwosu", email: "emeka.nwosu@dispatch.com" },
-  { id: 4, name: "Ngozi Adeyemi", email: "ngozi.adeyemi@dispatch.com" },
-  { id: 5, name: "Tunde Obi", email: "tunde.obi@dispatch.com" },
-];
 
-const fetchDeliveryAgents = async () => {
-  const { data } = await api.get("/supervisor/delivery-agents");
-  return data;
-};
 
 const STATUS_CONFIG = {
   pending: {
@@ -116,7 +104,7 @@ const TABS_BY_ROLE = {
   ],
   // Kitchen only sees orders explicitly sent to them via "Send to Kitchen"
   kitchen: ["all", "in_kitchen", "processing"],
-  delivery_agent: ["all", "dispatched", "completed"],
+  delivery_agent: ["all", "available", "active", "completed"],
   attendant: [
     "all",
     "pending",
@@ -225,16 +213,84 @@ const AssignAgentModal = ({
   isOpen,
   onClose,
   onConfirm,
-  agents,
-  isLoading,
   isAssigning,
   order,
 }) => {
   const [selected, setSelected] = useState(null);
+  const [agents, setAgents] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [page, setPage] = useState(1);
+  const [pagination, setPagination] = useState({
+    current_page: 1,
+    last_page: 1,
+    total: 0,
+    per_page: 15,
+  });
 
   useEffect(() => {
-    if (isOpen) setSelected(null);
+    if (isOpen) {
+      setSelected(null);
+      setPage(1);
+      setSearchQuery("");
+      setDebouncedSearch("");
+      fetchAgents(1, "");
+    }
   }, [isOpen, order?.id]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchQuery);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    setPage(1);
+    fetchAgents(1, debouncedSearch);
+  }, [debouncedSearch]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    fetchAgents(page, debouncedSearch);
+  }, [page]);
+
+  const fetchAgents = async (pageNum, search) => {
+    setIsLoading(true);
+    try {
+      const { data } = await api.get("/admin/users", {
+        params: { role: "delivery_agent", page: pageNum, search },
+      });
+      const list = Array.isArray(data?.data) ? data.data : [];
+      setAgents(list);
+      setPagination({
+        current_page: data?.current_page ?? pageNum,
+        last_page: data?.last_page ?? 1,
+        total: data?.total ?? list.length,
+        per_page: data?.per_page ?? 15,
+      });
+    } catch (err) {
+      console.error("Failed to load delivery agents:", err);
+      setAgents([]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const getVisiblePageNumbers = () => {
+    const totalPages = pagination.last_page;
+    const current = pagination.current_page;
+    if (totalPages <= 1) return [];
+    if (totalPages <= 7)
+      return Array.from({ length: totalPages }, (_, i) => i + 1);
+    let start = Math.max(1, current - 2);
+    let end = Math.min(totalPages, current + 2);
+    if (current <= 3) end = Math.min(7, totalPages);
+    else if (current >= totalPages - 2) start = totalPages - 6;
+    return Array.from({ length: end - start + 1 }, (_, i) => start + i);
+  };
 
   if (!isOpen) return null;
 
@@ -244,8 +300,8 @@ const AssignAgentModal = ({
         className="absolute inset-0 bg-black/40 backdrop-blur-sm"
         onClick={onClose}
       />
-      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col max-h-[90vh]">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 shrink-0">
           <div>
             <h2 className="text-lg font-bold text-gray-900">
               Assign Delivery Agent
@@ -264,14 +320,27 @@ const AssignAgentModal = ({
           </button>
         </div>
 
-        <div className="px-6 py-4 max-h-72 overflow-y-auto space-y-2">
+        <div className="px-6 py-4 shrink-0">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search delivery agents..."
+              className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent transition"
+            />
+          </div>
+        </div>
+
+        <div className="px-6 pb-4 overflow-y-auto flex-1 space-y-2 min-h-0">
           {isLoading ? (
-            <p className="text-sm text-gray-400 text-center py-6">
-              Loading agents…
-            </p>
+            <div className="flex items-center justify-center py-10">
+              <div className="w-8 h-8 border-4 border-gray-200 border-t-orange-500 rounded-full animate-spin" />
+            </div>
           ) : agents.length === 0 ? (
             <p className="text-sm text-gray-400 text-center py-6">
-              No delivery agents available.
+              No delivery agents found.
             </p>
           ) : (
             agents.map((agent) => (
@@ -314,7 +383,43 @@ const AssignAgentModal = ({
           )}
         </div>
 
-        <div className="px-6 py-4 border-t border-gray-100 flex gap-3">
+        {pagination.last_page > 1 && (
+          <div className="px-6 pb-4 shrink-0">
+            <div className="flex flex-wrap items-center justify-center gap-1.5">
+              <button
+                disabled={pagination.current_page === 1}
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                className="px-3 py-1.5 border border-gray-200 rounded-lg text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                Prev
+              </button>
+              {getVisiblePageNumbers().map((num) => (
+                <button
+                  key={num}
+                  onClick={() => setPage(num)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
+                    pagination.current_page === num
+                      ? "bg-orange-500 text-white border-orange-500"
+                      : "border-gray-200 text-gray-700 hover:bg-gray-50"
+                  }`}
+                >
+                  {num}
+                </button>
+              ))}
+              <button
+                disabled={pagination.current_page === pagination.last_page}
+                onClick={() =>
+                  setPage((p) => Math.min(pagination.last_page, p + 1))
+                }
+                className="px-3 py-1.5 border border-gray-200 rounded-lg text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        )}
+
+        <div className="px-6 py-4 border-t border-gray-100 flex gap-3 shrink-0">
           <button
             onClick={onClose}
             className="flex-1 px-4 py-2.5 rounded-xl border border-gray-200 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
@@ -583,8 +688,6 @@ const OrderManagement = () => {
   const [sendingToKitchenIds, setSendingToKitchenIds] = useState(new Set());
 
   const [loadingOrderDetails, setLoadingOrderDetails] = useState(null);
-  const [isDeliveryPhotoOpen, setIsDeliveryPhotoOpen] = useState(false);
-  const [pendingStatusUpdate, setPendingStatusUpdate] = useState(null);
 
   const [isPinModalOpen, setIsPinModalOpen] = useState(false);
   const [pinError, setPinError] = useState(null);
@@ -593,8 +696,6 @@ const OrderManagement = () => {
 
   const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
   const [assignTargetOrder, setAssignTargetOrder] = useState(null);
-  const [deliveryAgents, setDeliveryAgents] = useState([]);
-  const [loadingAgents, setLoadingAgents] = useState(false);
   const [isAssigning, setIsAssigning] = useState(false);
 
   const [isSettleModalOpen, setIsSettleModalOpen] = useState(false);
@@ -602,6 +703,17 @@ const OrderManagement = () => {
   const [isSettling, setIsSettling] = useState(false);
 
   const [cancelModal, setCancelModal] = useState({ open: false, order: null });
+
+  const [deliveryCounts, setDeliveryCounts] = useState({
+    all: 0,
+    available: 0,
+    active: 0,
+    completed: 0,
+  });
+
+  // Separate loading state for Accept/Ignore actions (delivery agent)
+  const [acceptingIds, setAcceptingIds] = useState(new Set());
+  const [ignoringIds, setIgnoringIds] = useState(new Set());
 
   // ── Loading-state helpers ──────────────────────────────────────────────────
 
@@ -653,6 +765,24 @@ const OrderManagement = () => {
     setSendingToKitchenIds((prev) => new Set(prev).add(id));
   const clearSendingToKitchen = (id) =>
     setSendingToKitchenIds((prev) => {
+      const next = new Set(prev);
+      next.delete(id);
+      return next;
+    });
+
+  const setAccepting = (id) =>
+    setAcceptingIds((prev) => new Set(prev).add(id));
+  const clearAccepting = (id) =>
+    setAcceptingIds((prev) => {
+      const next = new Set(prev);
+      next.delete(id);
+      return next;
+    });
+
+  const setIgnoring = (id) =>
+    setIgnoringIds((prev) => new Set(prev).add(id));
+  const clearIgnoring = (id) =>
+    setIgnoringIds((prev) => {
       const next = new Set(prev);
       next.delete(id);
       return next;
@@ -783,9 +913,38 @@ const OrderManagement = () => {
         params["outlet_ids[]"] = selectedOutletId;
       }
 
-      // Non-admin roles scope orders to their assigned outlet
-      if (!isAdmin && outlet?.id) {
+      // Non-admin roles scope orders to their assigned outlet (except delivery agents)
+      if (!isAdmin && outlet?.id && user.role !== "delivery_agent") {
         params["outlet_ids[]"] = outlet.id;
+      }
+
+      // Fetch delivery agent counts for tab display (status=all to get full dataset)
+      if (user.role === "delivery_agent") {
+        try {
+          const countParams = {
+            status: "all",
+            per_page: 1000,
+            page: 1,
+          };
+          if (isAdmin && selectedOutletId) {
+            countParams["outlet_ids[]"] = selectedOutletId;
+          }
+          const countRes = await api.get("/delivery-agent/orders", {
+            params: countParams,
+          });
+          const countRaw = countRes?.data;
+          const countData = countRaw?.data ?? countRaw ?? [];
+          const countOrders = Array.isArray(countData) ? countData : [];
+          setDeliveryCounts({
+            all: countRaw?.total ?? countOrders.length,
+            available: countOrders.filter((o) => o.status === "ready").length,
+            active: countRaw?.total ?? countOrders.length,
+            completed: countOrders.filter((o) => o.status === "completed")
+              .length,
+          });
+        } catch (e) {
+          // count fetch errors are non-critical
+        }
       }
 
       let response;
@@ -811,7 +970,7 @@ const OrderManagement = () => {
           });
         } else if (user.role === "delivery_agent") {
           response = await api.get("/delivery-agent/orders", {
-            params: searchParams,
+            params: { ...searchParams, status: activeTab },
           });
         }
 
@@ -851,11 +1010,13 @@ const OrderManagement = () => {
           return false;
         });
 
-        // Apply status tab filtering
+        // Apply status tab filtering (API already filters for delivery_agent)
         const tabFiltered =
-          activeTab === "all"
+          user.role === "delivery_agent"
             ? filteredOrders
-            : filteredOrders.filter((order) => order.status === activeTab);
+            : activeTab === "all"
+              ? filteredOrders
+              : filteredOrders.filter((order) => order.status === activeTab);
 
         // Apply pagination to filtered results
         const total = tabFiltered.length;
@@ -887,7 +1048,9 @@ const OrderManagement = () => {
         } else if (user.role === "supervisor") {
           response = await api.get("/supervisor/orders", { params });
         } else if (user.role === "delivery_agent") {
-          response = await api.get("/delivery-agent/orders", { params });
+          response = await api.get("/delivery-agent/orders", {
+            params: { ...params, status: activeTab },
+          });
         } else if (user.role === "attendant") {
           response = await api.get("/attendant/orders", { params });
         }
@@ -1001,20 +1164,9 @@ const OrderManagement = () => {
 
   // ── Assign agent ───────────────────────────────────────────────────────────
 
-  const openAssignModal = async (order) => {
+  const openAssignModal = (order) => {
     setAssignTargetOrder(order);
     setIsAssignModalOpen(true);
-    if (deliveryAgents.length === 0) {
-      setLoadingAgents(true);
-      try {
-        const agents = await fetchDeliveryAgents();
-        setDeliveryAgents(agents);
-      } catch (err) {
-        console.error("Failed to load delivery agents:", err);
-      } finally {
-        setLoadingAgents(false);
-      }
-    }
   };
 
   const handleAssignAgent = async (agentId) => {
@@ -1081,8 +1233,6 @@ const OrderManagement = () => {
     }
   };
 
-  // ── Complete Order (delivery agent) ────────────────────────────────────────
-
   const handleDeliveryComplete = async (orderId) => {
     setCompleting(orderId);
     try {
@@ -1096,6 +1246,47 @@ const OrderManagement = () => {
       );
     } finally {
       clearCompleting(orderId);
+    }
+  };
+
+  // ── Accept / Ignore Order (delivery agent) ─────────────────────────────────
+
+  const handleAcceptOrder = async (orderId) => {
+    setAccepting(orderId);
+    try {
+      await api.post(`/delivery-agent/orders/${orderId}/accept`);
+      showToast("Order accepted successfully", "success");
+      setOrders((prev) =>
+        prev.map((o) =>
+          o.id === orderId
+            ? { ...o, status: "dispatched", delivery_agent_id: user.id }
+            : o,
+        ),
+      );
+      fetchOrders(true);
+    } catch (err) {
+      showToast(
+        err.response?.data?.message || "Failed to accept order",
+        "error",
+      );
+    } finally {
+      clearAccepting(orderId);
+    }
+  };
+
+  const handleIgnoreOrder = async (orderId) => {
+    setIgnoring(orderId);
+    try {
+      await api.post(`/delivery-agent/orders/${orderId}/ignore`);
+      showToast("Order ignored", "success");
+      fetchOrders(true);
+    } catch (err) {
+      showToast(
+        err.response?.data?.message || "Failed to ignore order",
+        "error",
+      );
+    } finally {
+      clearIgnoring(orderId);
     }
   };
 
@@ -1498,16 +1689,50 @@ const OrderManagement = () => {
 
     // ── Delivery agent ────────────────────────────────────────────────────────
     if (user.role === "delivery_agent") {
-      if (status === "ready" || status === "dispatched")
+      if (status === "ready") {
+        const isAccepting = acceptingIds.has(id);
+        const isIgnoring = ignoringIds.has(id);
         buttons.push(
-          <OrangeBtn
-            key="complete"
-            label="Complete Order"
-            onClick={() => handleDeliveryComplete(id)}
-            actionType="completing"
-            icon={CheckCircle}
-          />,
+          <button
+            key="accept"
+            onClick={() => handleAcceptOrder(id)}
+            disabled={isAccepting || isIgnoring}
+            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-green-500 rounded-xl text-sm font-medium text-white hover:bg-green-600 transition-colors shadow-sm shadow-green-200 disabled:bg-green-500/50 disabled:cursor-not-allowed"
+          >
+            {isAccepting ? (
+              "Accepting..."
+            ) : (
+              <><Check className="w-4 h-4" /> Accept Order</>
+            )}
+          </button>,
+          <button
+            key="ignore"
+            onClick={() => handleIgnoreOrder(id)}
+            disabled={isAccepting || isIgnoring}
+            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-red-500 rounded-xl text-sm font-medium text-white hover:bg-red-600 transition-colors shadow-sm shadow-red-200 disabled:bg-red-500/50 disabled:cursor-not-allowed"
+          >
+            {isIgnoring ? (
+              "Ignoring..."
+            ) : (
+              <><X className="w-4 h-4" /> Ignore Order</>
+            )}
+          </button>,
         );
+      }
+      if (status === "dispatched") {
+        const isAssignedToMe =
+          activeTab === "active" || order.delivery_agent_id === user.id;
+        if (isAssignedToMe)
+          buttons.push(
+            <OrangeBtn
+              key="complete"
+              label="Complete Delivery"
+              onClick={() => openPinModal(id)}
+              actionType="completing"
+              icon={CheckCircle}
+            />,
+          );
+      }
     }
 
     // ── Supervisor ────────────────────────────────────────────────────────────
@@ -1668,20 +1893,22 @@ const OrderManagement = () => {
   // ── Filtered orders ────────────────────────────────────────────────────────
 
   const filteredOrders =
-    activeTab === "all"
-      ? orders.filter((o) => {
-          // For kitchen, delivery agent, and attendant roles, exclude cancelled orders from "All Orders"
-          if (
-            (user.role === "kitchen" ||
-              user.role === "delivery_agent" ||
-              user.role === "attendant") &&
-            o.status === "cancelled"
-          ) {
-            return false;
-          }
-          return true;
-        })
-      : orders.filter((o) => o.status === activeTab);
+    user.role === "delivery_agent"
+      ? orders
+      : activeTab === "all"
+        ? orders.filter((o) => {
+            // For kitchen, delivery agent, and attendant roles, exclude cancelled orders from "All Orders"
+            if (
+              (user.role === "kitchen" ||
+                user.role === "delivery_agent" ||
+                user.role === "attendant") &&
+              o.status === "cancelled"
+            ) {
+              return false;
+            }
+            return true;
+          })
+        : orders.filter((o) => o.status === activeTab);
 
   // ── Render ─────────────────────────────────────────────────────────────────
 
@@ -1694,8 +1921,6 @@ const OrderManagement = () => {
           setAssignTargetOrder(null);
         }}
         onConfirm={handleAssignAgent}
-        agents={deliveryAgents}
-        isLoading={loadingAgents}
         isAssigning={isAssigning}
         order={assignTargetOrder}
       />
@@ -1709,22 +1934,6 @@ const OrderManagement = () => {
         onConfirm={handlePinConfirm}
         isVerifying={isVerifyingPin}
         error={pinError}
-      />
-      <DeliveryPhotoModal
-        isOpen={isDeliveryPhotoOpen}
-        onClose={() => {
-          setIsDeliveryPhotoOpen(false);
-          setPendingStatusUpdate(null);
-        }}
-        onConfirm={(photo) => {
-          confirmStatusUpdate(
-            pendingStatusUpdate.orderId,
-            pendingStatusUpdate.status,
-            photo,
-          );
-          setIsDeliveryPhotoOpen(false);
-          setPendingStatusUpdate(null);
-        }}
       />
       <OrderDetailsModal
         isOpen={isDetailsOpen}
@@ -1928,20 +2137,22 @@ const OrderManagement = () => {
             <div className="flex items-center gap-2 min-w-max">
               {roleTabs.map((tab) => {
                 const count =
-                  tab === "all"
-                    ? orders.filter((o) => {
-                        // For kitchen, delivery agent, and attendant roles, exclude cancelled orders from "All Orders" count
-                        if (
-                          (user.role === "kitchen" ||
-                            user.role === "delivery_agent" ||
-                            user.role === "attendant") &&
-                          o.status === "cancelled"
-                        ) {
-                          return false;
-                        }
-                        return true;
-                      }).length
-                    : orders.filter((o) => o.status === tab).length;
+                  user.role === "delivery_agent"
+                    ? deliveryCounts[tab]
+                    : tab === "all"
+                      ? orders.filter((o) => {
+                          // For kitchen, delivery agent, and attendant roles, exclude cancelled orders from "All Orders" count
+                          if (
+                            (user.role === "kitchen" ||
+                              user.role === "delivery_agent" ||
+                              user.role === "attendant") &&
+                            o.status === "cancelled"
+                          ) {
+                            return false;
+                          }
+                          return true;
+                        }).length
+                      : orders.filter((o) => o.status === tab).length;
                 return (
                   <button
                     key={tab}
@@ -1955,7 +2166,7 @@ const OrderManagement = () => {
                         : "text-gray-600 hover:bg-gray-100"
                     }`}
                   >
-                    {tab === "all" ? "All Orders" : getStatusLabel(tab)}{" "}
+                    {tab === "all" ? "All Orders" : tab === "available" ? "Available Orders" : tab === "active" ? "Active Orders" : getStatusLabel(tab)}{" "}
                     {isLoadingOrders ? (
                       <span className="inline-block w-5 h-3.5 bg-gray-200 rounded animate-pulse align-middle" />
                     ) : (

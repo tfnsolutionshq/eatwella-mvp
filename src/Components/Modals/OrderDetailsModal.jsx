@@ -49,6 +49,10 @@ const OrderDetailsModal = ({ isOpen, onClose, order }) => {
   const deviceType = useDeviceType();
   const paperSize = PAPER_SIZE_MAP[deviceType];
 
+  // useEffect(() => {
+  // console.log("the order's details are: ", order);
+  // }, []);
+
   const handlePrint = useCallback(async () => {
     if (!order) return;
     try {
@@ -114,9 +118,7 @@ const OrderDetailsModal = ({ isOpen, onClose, order }) => {
     }, 0) ?? 0;
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
-    >
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
       <div className="bg-white rounded-2xl w-full max-w-[800px] shadow-xl overflow-hidden max-h-[90vh] flex flex-col">
         {/* Header */}
         <div className="p-6 border-b border-gray-100 flex items-start justify-between">
@@ -151,7 +153,9 @@ const OrderDetailsModal = ({ isOpen, onClose, order }) => {
 
             {order?.restaurant_location && (
               <div>
-                <p className="text-sm text-gray-500 mb-1">Restaurant Location</p>
+                <p className="text-sm text-gray-500 mb-1">
+                  Restaurant Location
+                </p>
                 <p className="text-base font-medium text-gray-900">
                   {order.restaurant_location}
                 </p>
@@ -397,7 +401,9 @@ const OrderDetailsModal = ({ isOpen, onClose, order }) => {
                   )}
                   {(order?.delivery_fee ?? 0) > 0 && (
                     <div className="flex items-center justify-between">
-                      <span className="text-sm text-gray-500">Delivery Fee</span>
+                      <span className="text-sm text-gray-500">
+                        Delivery Fee
+                      </span>
                       <span className="text-sm font-medium text-gray-900">
                         {formatCurrency(order.delivery_fee)}
                       </span>
@@ -407,8 +413,8 @@ const OrderDetailsModal = ({ isOpen, onClose, order }) => {
                     <div className="flex items-center justify-between">
                       <span className="text-sm text-gray-500">Tax Charges</span>
                       <span className="text-sm font-medium text-gray-900">
-                        {formatCurrency(order.tax_details.VAT.amount)}{" "}
-                        ({order.tax_details.VAT.type})
+                        {formatCurrency(order.tax_details.VAT.amount)} (
+                        {order.tax_details.VAT.type})
                       </span>
                     </div>
                   )}
