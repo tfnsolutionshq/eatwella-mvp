@@ -193,8 +193,6 @@ const RiderManagement = () => {
         const rawData = response?.data;
         const list = Array.isArray(rawData?.data) ? rawData.data : [];
 
-        console.log("Fetched all riders for search:", response);
-
         setRiders(list);
         setAllRiders(list);
         setPagination({

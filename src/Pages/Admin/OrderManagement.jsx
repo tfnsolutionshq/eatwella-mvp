@@ -1081,6 +1081,24 @@ const OrderManagement = () => {
     }
   };
 
+  // ── Complete Order (delivery agent) ────────────────────────────────────────
+
+  const handleDeliveryComplete = async (orderId) => {
+    setCompleting(orderId);
+    try {
+      await api.post(`/delivery-agent/orders/${orderId}/complete`);
+      showToast("Order completed successfully", "success");
+      fetchOrders(true);
+    } catch (err) {
+      showToast(
+        err.response?.data?.message || "Failed to complete order",
+        "error",
+      );
+    } finally {
+      clearCompleting(orderId);
+    }
+  };
+
   // ── Cancel Order Confirmation ───────────────────────────────────────────────────
 
   const openCancelModal = (order) => {
@@ -1402,7 +1420,6 @@ const OrderManagement = () => {
         );
       }
       if (status === "confirmed") {
-        // Admin can send to kitchen for items that need preparation
         buttons.push(<SendToKitchenBtn key="send-kitchen" />);
         buttons.push(
           <OrangeBtn
@@ -1413,21 +1430,10 @@ const OrderManagement = () => {
             icon={PackageCheck}
           />,
         );
-        // Gateway-paid confirmed orders can be completed directly
-        const isGateway =
-          order.payment_type === "gateway" ||
-          order.payment_type?.toLowerCase().includes("paystack");
-        if (isGateway) {
+        if (order_type === "delivery")
           buttons.push(
-            <OrangeBtn
-              key="complete-confirmed"
-              label="Mark as Completed"
-              onClick={() => handleNonDeliveryComplete(id)}
-              actionType="completing"
-              icon={CheckCircle}
-            />,
+            <AssignBtn key="assign" onClickFn={() => openAssignModal(order)} />,
           );
-        }
       }
       if (status === "in_kitchen") {
         buttons.push(
@@ -1492,14 +1498,14 @@ const OrderManagement = () => {
 
     // ── Delivery agent ────────────────────────────────────────────────────────
     if (user.role === "delivery_agent") {
-      if (status === "dispatched")
+      if (status === "ready" || status === "dispatched")
         buttons.push(
           <OrangeBtn
             key="complete"
-            label="Complete Delivery"
-            onClick={() => openPinModal(id)}
+            label="Complete Order"
+            onClick={() => handleDeliveryComplete(id)}
             actionType="completing"
-            icon={Truck}
+            icon={CheckCircle}
           />,
         );
     }
@@ -1529,7 +1535,6 @@ const OrderManagement = () => {
         );
       }
       if (status === "confirmed") {
-        // Supervisor can route to kitchen OR mark as ready for counter items
         buttons.push(<SendToKitchenBtn key="send-kitchen" />);
         buttons.push(
           <OrangeBtn
@@ -1540,21 +1545,10 @@ const OrderManagement = () => {
             icon={PackageCheck}
           />,
         );
-        // Gateway-paid confirmed orders can be completed directly
-        const isGateway =
-          order.payment_type === "gateway" ||
-          order.payment_type?.toLowerCase().includes("paystack");
-        if (isGateway) {
+        if (order_type === "delivery")
           buttons.push(
-            <OrangeBtn
-              key="complete-confirmed"
-              label="Mark as Completed"
-              onClick={() => handleNonDeliveryComplete(id)}
-              actionType="completing"
-              icon={CheckCircle}
-            />,
+            <AssignBtn key="assign" onClickFn={() => openAssignModal(order)} />,
           );
-        }
       }
       if (status === "in_kitchen") {
         buttons.push(
@@ -2043,34 +2037,49 @@ const OrderManagement = () => {
                       >
                         {/* Card header */}
                         <div className="p-5 border-b border-gray-50 flex items-start justify-between">
-                          <div>
+                          <div className="min-w-0 flex-1">
                             <span className="font-bold text-gray-900 text-lg">
                               #{order.order_number}
                             </span>
-                            <div className="text-sm text-gray-500 mt-0.5">
-                              {order.customer_email}
-                            </div>
-                            <div className="text-xs text-gray-400 mt-0.5">
-                              {new Date(order.created_at).toLocaleDateString(
-                                "en-US",
-                                {
-                                  month: "short",
-                                  day: "numeric",
-                                  year: "numeric",
-                                },
-                              )}{" "}
-                              at{" "}
-                              {new Date(order.created_at).toLocaleTimeString(
-                                "en-US",
-                                {
-                                  hour: "2-digit",
-                                  minute: "2-digit",
-                                },
-                              )}
-                            </div>
+                            {user.role === "delivery_agent" ? (
+                              <>
+                                <div className="text-sm text-gray-500 mt-1">
+                                  <span className="font-medium">Pickup:</span>{" "}
+                                  {order.restaurant_location ?? "N/A"}
+                                </div>
+                                <div className="text-sm text-gray-500">
+                                  <span className="font-medium">Deliver to:</span>{" "}
+                                  {order.delivery_address ?? "N/A"}
+                                </div>
+                              </>
+                            ) : (
+                              <>
+                                <div className="text-sm text-gray-500 mt-0.5">
+                                  {order.customer_email}
+                                </div>
+                                <div className="text-xs text-gray-400 mt-0.5">
+                                  {new Date(order.created_at).toLocaleDateString(
+                                    "en-US",
+                                    {
+                                      month: "short",
+                                      day: "numeric",
+                                      year: "numeric",
+                                    },
+                                  )}{" "}
+                                  at{" "}
+                                  {new Date(order.created_at).toLocaleTimeString(
+                                    "en-US",
+                                    {
+                                      hour: "2-digit",
+                                      minute: "2-digit",
+                                    },
+                                  )}
+                                </div>
+                              </>
+                            )}
                           </div>
                           <span
-                            className={`px-2.5 py-1 rounded-full text-xs font-medium flex items-center gap-1 ${getStatusColor(order.status)}`}
+                            className={`shrink-0 px-2.5 py-1 rounded-full text-xs font-medium flex items-center gap-1 ${getStatusColor(order.status)}`}
                           >
                             {getStatusIcon(order.status)}
                             {getStatusLabel(order.status)}
@@ -2079,62 +2088,85 @@ const OrderManagement = () => {
 
                         {/* Order items */}
                         <div className="p-5 flex-1">
-                          <div className="space-y-3 mb-6">
-                            {order.order_items?.map((item) => (
-                              <div key={item.id}>
-                                <div className="flex justify-between text-sm">
-                                  <span className="text-gray-600">
-                                    <span className="text-gray-400 mr-2">
-                                      {item.quantity}x
-                                    </span>
-                                    {item.menu?.name}
-                                  </span>
-                                  <span className="font-medium text-gray-900">
-                                    {new Intl.NumberFormat("en-NG", {
-                                      style: "currency",
-                                      currency: "NGN",
-                                      minimumFractionDigits: 0,
-                                    }).format(item.subtotal)}
-                                  </span>
-                                </div>
-                                {item.packaging && (
-                                  <div className="flex justify-between text-xs text-gray-500 mt-1">
-                                    <span>
-                                      Packaging:{" "}
-                                      {item.packaging.size_name
-                                        .charAt(0)
-                                        .toUpperCase() +
-                                        item.packaging.size_name.slice(1)}
-                                    </span>
-                                    <span>
-                                      {new Intl.NumberFormat("en-NG", {
-                                        style: "currency",
-                                        currency: "NGN",
-                                        minimumFractionDigits: 0,
-                                      }).format(item.packaging.price)}
-                                    </span>
-                                  </div>
-                                )}
+                          {user.role === "delivery_agent" ? (
+                            <div className="space-y-3">
+                              <div className="flex justify-between text-sm">
+                                <span className="text-gray-600">Items</span>
+                                <span className="font-medium text-gray-900">
+                                  {order.total_items ?? 0}
+                                </span>
                               </div>
-                            ))}
-                          </div>
-                          <div className="pt-4 border-t border-dashed border-gray-200 flex items-end justify-between">
-                            <span className="font-bold text-gray-900">
-                              Total
-                            </span>
-                            <span className="text-xl font-bold text-orange-500">
-                              {new Intl.NumberFormat("en-NG", {
-                                style: "currency",
-                                currency: "NGN",
-                                minimumFractionDigits: 0,
-                              }).format(Math.ceil(order.final_amount))}
-                            </span>
-                          </div>
+                              <div className="flex justify-between text-sm">
+                                <span className="text-gray-600">
+                                  Delivery Fee
+                                </span>
+                                <span className="font-medium text-gray-900">
+                                  {new Intl.NumberFormat("en-NG", {
+                                    style: "currency",
+                                    currency: "NGN",
+                                    minimumFractionDigits: 0,
+                                  }).format(order.delivery_fee ?? 0)}
+                                </span>
+                              </div>
+                            </div>
+                          ) : (
+                            <>
+                              <div className="space-y-3 mb-6">
+                                {order.order_items?.map((item) => (
+                                  <div key={item.id}>
+                                    <div className="flex justify-between text-sm">
+                                      <span className="text-gray-600">
+                                        <span className="text-gray-400 mr-2">
+                                          {item.quantity}x
+                                        </span>
+                                        {item.menu?.name}
+                                      </span>
+                                      <span className="font-medium text-gray-900">
+                                        {new Intl.NumberFormat("en-NG", {
+                                          style: "currency",
+                                          currency: "NGN",
+                                          minimumFractionDigits: 0,
+                                        }).format(item.subtotal)}
+                                      </span>
+                                    </div>
+                                    {item.packaging && (
+                                      <div className="flex justify-between text-xs text-gray-500 mt-1">
+                                        <span>
+                                          Packaging:{" "}
+                                          {item.packaging.size_name
+                                            .charAt(0)
+                                            .toUpperCase() +
+                                            item.packaging.size_name.slice(1)}
+                                        </span>
+                                        <span>
+                                          {new Intl.NumberFormat("en-NG", {
+                                            style: "currency",
+                                            currency: "NGN",
+                                            minimumFractionDigits: 0,
+                                          }).format(item.packaging.price)}
+                                        </span>
+                                      </div>
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                              <div className="pt-4 border-t border-dashed border-gray-200 flex items-end justify-between">
+                                <span className="font-bold text-gray-900">
+                                  Total
+                                </span>
+                                <span className="text-xl font-bold text-orange-500">
+                                  {new Intl.NumberFormat("en-NG", {
+                                    style: "currency",
+                                    currency: "NGN",
+                                    minimumFractionDigits: 0,
+                                  }).format(Math.ceil(order.final_amount))}
+                                </span>
+                              </div>
+                            </>
+                          )}
                         </div>
 
-                        {/* Card footer
-                            Row 1: "Details" button — always full width on its own line.
-                            Row 2+: Action buttons — each full width, stacked vertically. */}
+                        {/* Card footer */}
                         <div className="p-4 bg-gray-50 border-t border-gray-100 flex flex-col gap-2">
                           {/* Details — own row */}
                           <button
@@ -2152,7 +2184,7 @@ const OrderManagement = () => {
                             )}
                           </button>
 
-                          {/* Action buttons — stacked below Details */}
+                          {/* Action buttons — stacked below */}
                           {actionButtons.length > 0 && (
                             <div className="flex flex-col gap-2">
                               {actionButtons}

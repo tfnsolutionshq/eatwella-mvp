@@ -58,7 +58,7 @@ export const checkWorkingHourAvailability = async () => {
     if (!todaySchedule || !todaySchedule.enabled) {
       return {
         available: false,
-        message: `Sorry, but online ordering is unavailable at the moment. Please call <b>09017777701</b> to make your order or visit our outlet to dine in.`,
+        message: `Sorry, but online ordering is unavailable at the moment. Please call 09017777701 to make your order or visit our outlet to dine in.`,
         schedule,
       };
     }

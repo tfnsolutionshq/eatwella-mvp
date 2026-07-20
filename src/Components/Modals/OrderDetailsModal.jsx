@@ -77,6 +77,13 @@ const OrderDetailsModal = ({ isOpen, onClose, order }) => {
     return phone.replace(/^\+234/, "0");
   };
 
+  const formatCurrency = (amount) =>
+    new Intl.NumberFormat("en-NG", {
+      style: "currency",
+      currency: "NGN",
+      minimumFractionDigits: 0,
+    }).format(amount ?? 0);
+
   // ✅ Early return comes AFTER all hook calls
   if (!isOpen || !order) return null;
 
@@ -95,6 +102,10 @@ const OrderDetailsModal = ({ isOpen, onClose, order }) => {
     return colors[status] || "bg-gray-100 text-gray-600";
   };
 
+  const hasOrderItems = order?.order_items?.length > 0;
+  const hasInvoice = order?.invoice?.invoice_number;
+  const hasDeliveryZone = order?.delivery_zone?.name;
+
   const subtotal =
     order?.order_items?.reduce((sum, item) => {
       if (!item) return sum;
@@ -112,7 +123,7 @@ const OrderDetailsModal = ({ isOpen, onClose, order }) => {
           <div>
             <h2 className="text-xl font-bold text-gray-900">Order Details</h2>
             <p className="text-sm text-gray-500 mt-1">
-              Complete information about this order
+              #{order?.order_number ?? "Order"}
             </p>
           </div>
           <button
@@ -126,24 +137,35 @@ const OrderDetailsModal = ({ isOpen, onClose, order }) => {
         <div className="p-6 space-y-6 overflow-y-auto">
           {/* Order Info */}
           <div className="grid grid-cols-2 gap-6 pb-6 border-b border-gray-100">
-            <div>
-              <p className="text-sm text-gray-500 mb-1">Order Type</p>
-              <p className="text-base font-medium text-gray-900">
-                {order?.order_type === "dine"
-                  ? "Dine-In"
-                  : order?.order_type
-                    ? order.order_type.charAt(0).toUpperCase() +
-                      order.order_type.slice(1)
-                    : "N/A"}
-              </p>
-            </div>
+            {order?.order_type && (
+              <div>
+                <p className="text-sm text-gray-500 mb-1">Order Type</p>
+                <p className="text-base font-medium text-gray-900">
+                  {order.order_type === "dine"
+                    ? "Dine-In"
+                    : order.order_type.charAt(0).toUpperCase() +
+                      order.order_type.slice(1)}
+                </p>
+              </div>
+            )}
 
-            <div>
-              <p className="text-sm text-gray-500 mb-1">Delivery City</p>
-              <p className="text-base font-medium text-gray-900">
-                {order?.delivery_zone?.city?.name ?? "N/A"}
-              </p>
-            </div>
+            {order?.restaurant_location && (
+              <div>
+                <p className="text-sm text-gray-500 mb-1">Restaurant Location</p>
+                <p className="text-base font-medium text-gray-900">
+                  {order.restaurant_location}
+                </p>
+              </div>
+            )}
+
+            {order?.delivery_address && hasDeliveryZone && (
+              <div>
+                <p className="text-sm text-gray-500 mb-1">Delivery City</p>
+                <p className="text-base font-medium text-gray-900">
+                  {order?.delivery_zone?.city?.name ?? "N/A"}
+                </p>
+              </div>
+            )}
 
             <div>
               <p className="text-sm text-gray-500 mb-1">Delivery Address</p>
@@ -152,12 +174,14 @@ const OrderDetailsModal = ({ isOpen, onClose, order }) => {
               </p>
             </div>
 
-            <div>
-              <p className="text-sm text-gray-500 mb-1">Delivery Zone</p>
-              <p className="text-base font-medium text-gray-900">
-                {order?.delivery_zone?.name ?? "N/A"}
-              </p>
-            </div>
+            {hasDeliveryZone && (
+              <div>
+                <p className="text-sm text-gray-500 mb-1">Delivery Zone</p>
+                <p className="text-base font-medium text-gray-900">
+                  {order?.delivery_zone?.name ?? "N/A"}
+                </p>
+              </div>
+            )}
 
             <div>
               <p className="text-sm text-gray-500 mb-1">Order Number</p>
@@ -166,19 +190,23 @@ const OrderDetailsModal = ({ isOpen, onClose, order }) => {
               </p>
             </div>
 
-            <div>
-              <p className="text-sm text-gray-500 mb-1">Customer Name</p>
-              <p className="text-base font-medium text-gray-900">
-                {order?.customer_name ?? "N/A"}
-              </p>
-            </div>
+            {order?.customer_name && (
+              <div>
+                <p className="text-sm text-gray-500 mb-1">Customer Name</p>
+                <p className="text-base font-medium text-gray-900">
+                  {order?.customer_name ?? "N/A"}
+                </p>
+              </div>
+            )}
 
-            <div>
-              <p className="text-sm text-gray-500 mb-1">Customer Phone</p>
-              <p className="text-base font-medium text-gray-900">
-                {formatPhoneNumber(order?.customer_phone)}
-              </p>
-            </div>
+            {order?.customer_phone && (
+              <div>
+                <p className="text-sm text-gray-500 mb-1">Customer Phone</p>
+                <p className="text-base font-medium text-gray-900">
+                  {formatPhoneNumber(order?.customer_phone)}
+                </p>
+              </div>
+            )}
 
             <div>
               <p className="text-sm text-gray-500 mb-1">Status</p>
@@ -193,12 +221,23 @@ const OrderDetailsModal = ({ isOpen, onClose, order }) => {
               </span>
             </div>
 
-            <div>
-              <p className="text-sm text-gray-500 mb-1">Customer Email</p>
-              <p className="text-base font-medium text-gray-900 text-wrap">
-                {order?.customer_email ?? "N/A"}
-              </p>
-            </div>
+            {order?.customer_email && (
+              <div>
+                <p className="text-sm text-gray-500 mb-1">Customer Email</p>
+                <p className="text-base font-medium text-gray-900 text-wrap">
+                  {order?.customer_email ?? "N/A"}
+                </p>
+              </div>
+            )}
+
+            {order.total_items && !hasOrderItems && (
+              <div>
+                <p className="text-sm text-gray-500 mb-1">Total Items</p>
+                <p className="text-base font-medium text-gray-900">
+                  {order.total_items}
+                </p>
+              </div>
+            )}
 
             {order.attendant && (
               <>
@@ -250,173 +289,169 @@ const OrderDetailsModal = ({ isOpen, onClose, order }) => {
             </div>
           </div>
 
-          <div className="pb-6 border-b border-gray-100">
-            <h3 className="text-base font-medium text-gray-900 mb-4">
-              Payment Information
-            </h3>
-            <div className="space-y-3">
-              <div className="flex justify-between">
-                <span className="text-sm text-gray-500">Invoice Number:</span>
-                <span className="text-sm font-medium text-gray-900">
-                  {order?.invoice?.invoice_number ?? "N/A"}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-sm text-gray-500">Payment Method:</span>
-                <span className="text-sm font-medium text-gray-900">
-                  {order?.invoice?.payment_method
-                    ? order.invoice.payment_method.toUpperCase()
-                    : "N/A"}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-sm text-gray-500">Payment Status:</span>
-                <span
-                  className={`px-2.5 py-1 text-xs font-medium rounded-full ${order?.invoice?.payment_status === "paid" ? "bg-green-100 text-green-600" : "bg-orange-100 text-orange-600"}`}
-                >
-                  {order?.invoice?.payment_status
-                    ? order.invoice.payment_status.toUpperCase()
-                    : "N/A"}
-                </span>
+          {hasInvoice && (
+            <div className="pb-6 border-b border-gray-100">
+              <h3 className="text-base font-medium text-gray-900 mb-4">
+                Payment Information
+              </h3>
+              <div className="space-y-3">
+                <div className="flex justify-between">
+                  <span className="text-sm text-gray-500">Invoice Number:</span>
+                  <span className="text-sm font-medium text-gray-900">
+                    {order?.invoice?.invoice_number ?? "N/A"}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-sm text-gray-500">Payment Method:</span>
+                  <span className="text-sm font-medium text-gray-900">
+                    {order?.invoice?.payment_method
+                      ? order.invoice.payment_method.toUpperCase()
+                      : "N/A"}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-sm text-gray-500">Payment Status:</span>
+                  <span
+                    className={`px-2.5 py-1 text-xs font-medium rounded-full ${order?.invoice?.payment_status === "paid" ? "bg-green-100 text-green-600" : "bg-orange-100 text-orange-600"}`}
+                  >
+                    {order?.invoice?.payment_status
+                      ? order.invoice.payment_status.toUpperCase()
+                      : "N/A"}
+                  </span>
+                </div>
               </div>
             </div>
-          </div>
+          )}
 
           <div>
             <h3 className="text-base font-medium text-gray-900 mb-4">
               Order Items
             </h3>
-            <div className="space-y-4 mb-4">
-              {order?.order_items?.map((item) => {
-                if (!item) return null;
-                const imageUrl =
-                  item.menu?.images &&
-                  Array.isArray(item.menu.images) &&
-                  item.menu.images.length > 0
-                    ? item.menu.images[0]
-                    : null;
-                return (
-                  <div key={item.id} className="flex gap-3">
-                    {imageUrl && (
-                      <img
-                        src={imageUrl}
-                        alt={item.menu?.name || "Menu item"}
-                        className="w-16 h-16 rounded-lg object-cover border border-gray-200"
-                        onError={(e) => {
-                          e.target.src = "https://via.placeholder.com/64";
-                        }}
-                      />
-                    )}
-                    <div className="flex-1 flex justify-between items-center">
-                      <div>
-                        <p className="text-sm font-medium text-gray-900">
-                          {item.menu?.name ?? "Unknown Item"}
-                        </p>
-                        <p className="text-xs text-gray-500">
-                          Quantity: {item.quantity ?? 0}
-                        </p>
-                        <p className="text-xs text-gray-500">
-                          {item.packaging?.size_name && item.packaging.price
-                            ? "Packaging Size: " +
-                              item.packaging.size_name
-                                .toUpperCase()
-                                .slice(0, 1)
-                                .concat(item.packaging.size_name.slice(1)) +
-                              " (" +
-                              new Intl.NumberFormat("en-NG", {
-                                style: "currency",
-                                currency: "NGN",
-                                minimumFractionDigits: 0,
-                              }).format(item.packaging.price) +
-                              ")"
-                            : ""}
-                        </p>
+            {hasOrderItems ? (
+              <>
+                <div className="space-y-4 mb-4">
+                  {order?.order_items?.map((item) => {
+                    if (!item) return null;
+                    const imageUrl =
+                      item.menu?.images &&
+                      Array.isArray(item.menu.images) &&
+                      item.menu.images.length > 0
+                        ? item.menu.images[0]
+                        : null;
+                    return (
+                      <div key={item.id} className="flex gap-3">
+                        {imageUrl && (
+                          <img
+                            src={imageUrl}
+                            alt={item.menu?.name || "Menu item"}
+                            className="w-16 h-16 rounded-lg object-cover border border-gray-200"
+                            onError={(e) => {
+                              e.target.src = "https://via.placeholder.com/64";
+                            }}
+                          />
+                        )}
+                        <div className="flex-1 flex justify-between items-center">
+                          <div>
+                            <p className="text-sm font-medium text-gray-900">
+                              {item.menu?.name ?? "Unknown Item"}
+                            </p>
+                            <p className="text-xs text-gray-500">
+                              Quantity: {item.quantity ?? 0}
+                            </p>
+                            <p className="text-xs text-gray-500">
+                              {item.packaging?.size_name && item.packaging.price
+                                ? "Packaging Size: " +
+                                  item.packaging.size_name
+                                    .toUpperCase()
+                                    .slice(0, 1)
+                                    .concat(item.packaging.size_name.slice(1)) +
+                                  " (" +
+                                  formatCurrency(item.packaging.price) +
+                                  ")"
+                                : ""}
+                            </p>
+                          </div>
+                          <span className="text-sm font-medium text-gray-900">
+                            {formatCurrency(item.subtotal ?? 0)}
+                          </span>
+                        </div>
                       </div>
-                      <span className="text-sm font-medium text-gray-900">
-                        {new Intl.NumberFormat("en-NG", {
-                          style: "currency",
-                          currency: "NGN",
-                          minimumFractionDigits: 0,
-                        }).format(item.subtotal ?? 0)}
+                    );
+                  })}
+                </div>
+
+                <div className="space-y-2 pt-4 border-t border-gray-100">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-gray-500">Subtotal</span>
+                    <span className="text-sm font-medium text-gray-900">
+                      {formatCurrency(subtotal)}
+                    </span>
+                  </div>
+                  {(order?.discount_amount ?? 0) > 0 && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-gray-500">Discount</span>
+                      <span className="text-sm font-medium text-green-600">
+                        -{formatCurrency(order.discount_amount)}
                       </span>
                     </div>
+                  )}
+                  {(order?.delivery_fee ?? 0) > 0 && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-gray-500">Delivery Fee</span>
+                      <span className="text-sm font-medium text-gray-900">
+                        {formatCurrency(order.delivery_fee)}
+                      </span>
+                    </div>
+                  )}
+                  {order?.tax_details?.VAT && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-gray-500">Tax Charges</span>
+                      <span className="text-sm font-medium text-gray-900">
+                        {formatCurrency(order.tax_details.VAT.amount)}{" "}
+                        ({order.tax_details.VAT.type})
+                      </span>
+                    </div>
+                  )}
+                  <div className="flex items-center justify-between pt-2 border-t border-gray-100">
+                    <span className="text-lg font-bold text-gray-900">
+                      Total Amount
+                    </span>
+                    <span className="text-xl font-bold text-orange-500">
+                      {formatCurrency(Math.ceil(order?.final_amount ?? 0))}
+                    </span>
                   </div>
-                );
-              })}
-            </div>
-
-            <div className="space-y-2 pt-4 border-t border-gray-100">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-500">Subtotal</span>
-                <span className="text-sm font-medium text-gray-900">
-                  {new Intl.NumberFormat("en-NG", {
-                    style: "currency",
-                    currency: "NGN",
-                    minimumFractionDigits: 0,
-                  }).format(subtotal)}
-                </span>
+                </div>
+              </>
+            ) : (
+              <div className="space-y-3">
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-600">Total Items</span>
+                  <span className="font-medium text-gray-900">
+                    {order?.total_items ?? "N/A"}
+                  </span>
+                </div>
+                {(order?.delivery_fee ?? 0) > 0 && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600">Delivery Fee</span>
+                    <span className="font-medium text-gray-900">
+                      {formatCurrency(order.delivery_fee)}
+                    </span>
+                  </div>
+                )}
               </div>
-              {(order?.discount_amount ?? 0) > 0 && (
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-500">Discount</span>
-                  <span className="text-sm font-medium text-green-600">
-                    -
-                    {new Intl.NumberFormat("en-NG", {
-                      style: "currency",
-                      currency: "NGN",
-                      minimumFractionDigits: 0,
-                    }).format(order.discount_amount)}
-                  </span>
-                </div>
-              )}
-              {(order?.delivery_fee ?? 0) > 0 && (
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-500">Delivery Fee</span>
-                  <span className="text-sm font-medium text-gray-900">
-                    {new Intl.NumberFormat("en-NG", {
-                      style: "currency",
-                      currency: "NGN",
-                      minimumFractionDigits: 0,
-                    }).format(order.delivery_fee)}
-                  </span>
-                </div>
-              )}
-              {order?.tax_details?.VAT && (
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-500">Tax Charges</span>
-                  <span className="text-sm font-medium text-gray-900">
-                    {new Intl.NumberFormat("en-NG", {
-                      style: "currency",
-                      currency: "NGN",
-                      minimumFractionDigits: 0,
-                    }).format(order.tax_details.VAT.amount)}{" "}
-                    ({order.tax_details.VAT.type})
-                  </span>
-                </div>
-              )}
-              <div className="flex items-center justify-between pt-2 border-t border-gray-100">
-                <span className="text-lg font-bold text-gray-900">
-                  Total Amount
-                </span>
-                <span className="text-xl font-bold text-orange-500">
-                  {new Intl.NumberFormat("en-NG", {
-                    style: "currency",
-                    currency: "NGN",
-                    minimumFractionDigits: 0,
-                  }).format(Math.ceil(order?.final_amount ?? 0))}
-                </span>
-              </div>
-            </div>
+            )}
 
-            <div className="pt-4 border-t border-gray-100">
-              <button
-                onClick={handlePrint}
-                className="w-full bg-orange-500 text-white py-3 rounded-lg flex items-center justify-center gap-2 hover:bg-orange-600 transition-colors"
-              >
-                <Download className="w-4 h-4" />
-                <span>Print Receipt</span>
-              </button>
-            </div>
+            {hasOrderItems && (
+              <div className="pt-4 border-t border-gray-100">
+                <button
+                  onClick={handlePrint}
+                  className="w-full bg-orange-500 text-white py-3 rounded-lg flex items-center justify-center gap-2 hover:bg-orange-600 transition-colors"
+                >
+                  <Download className="w-4 h-4" />
+                  <span>Print Receipt</span>
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </div>
