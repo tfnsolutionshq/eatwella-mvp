@@ -33,6 +33,7 @@ import FoodPackaging from "./Pages/Admin/FoodPackaging";
 import RiderManagement from "./Pages/Admin/RiderManagement";
 import Settings from "./Pages/Admin/Settings";
 import Campaigns from "./Pages/Admin/Campaigns";
+import PaymentAccountManagement from "./Pages/Admin/PaymentAccountManagement";
 import UserLogin from "./Pages/UserDashboard/Login";
 import CreateAccount from "./Pages/UserDashboard/CreateAccount";
 import UserDashboard from "./Pages/UserDashboard/Dashboard";
@@ -130,6 +131,10 @@ function AppRoutes() {
           />
           <Route path={`${p}/food-packaging`} element={<FoodPackaging />} />
           <Route path={`${p}/campaigns`} element={<Campaigns />} />
+          <Route
+            path={`${p}/account-management`}
+            element={<PaymentAccountManagement />}
+          />
           <Route path={`${p}/settings`} element={<Settings />} />
         </Route>
 
