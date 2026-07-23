@@ -414,8 +414,8 @@ const DeleteConfirmModal = ({ isOpen, onClose, onSuccess, item }) => {
       <ErrorBanner message={error} />
       <p className="text-sm text-gray-600">
         Are you sure you want to delete{" "}
-        <span className="font-semibold">{item?.label}</span>? This action
-        cannot be undone.
+        <span className="font-semibold">{item?.label}</span>? This action cannot
+        be undone.
       </p>
     </ModalShell>
   );
