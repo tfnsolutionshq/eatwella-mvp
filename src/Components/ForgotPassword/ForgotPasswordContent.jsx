@@ -1,10 +1,12 @@
 import { useState, useRef, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { FiX, FiLock, FiEye, FiEyeOff } from "react-icons/fi";
 import api from "../../utils/api";
 import { useToast } from "../../context/ToastContext";
 
 function ForgotPasswordContent() {
+  const navigate = useNavigate();
+
   const { showToast } = useToast();
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
@@ -159,6 +161,7 @@ function ForgotPasswordContent() {
       setPassword("");
       setPasswordConfirmation("");
       setResetToken("");
+      navigate("/account/login");
     } catch (error) {
       if (error.response) {
         const msg = error.response.data?.message || "Failed to reset password";
@@ -214,7 +217,10 @@ function ForgotPasswordContent() {
               </button>
             </form>
           ) : (
-            <form onSubmit={handleResetPassword} className="space-y-6 text-left">
+            <form
+              onSubmit={handleResetPassword}
+              className="space-y-6 text-left"
+            >
               <div>
                 <label className="block text-xs font-semibold text-gray-600 mb-1 uppercase tracking-wide">
                   New Password
@@ -232,7 +238,11 @@ function ForgotPasswordContent() {
                     onClick={() => setShowNewPassword(!showNewPassword)}
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
                   >
-                    {showNewPassword ? <FiEyeOff className="w-5 h-5" /> : <FiEye className="w-5 h-5" />}
+                    {showNewPassword ? (
+                      <FiEyeOff className="w-5 h-5" />
+                    ) : (
+                      <FiEye className="w-5 h-5" />
+                    )}
                   </button>
                 </div>
               </div>
@@ -254,7 +264,11 @@ function ForgotPasswordContent() {
                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
                   >
-                    {showConfirmPassword ? <FiEyeOff className="w-5 h-5" /> : <FiEye className="w-5 h-5" />}
+                    {showConfirmPassword ? (
+                      <FiEyeOff className="w-5 h-5" />
+                    ) : (
+                      <FiEye className="w-5 h-5" />
+                    )}
                   </button>
                 </div>
               </div>
