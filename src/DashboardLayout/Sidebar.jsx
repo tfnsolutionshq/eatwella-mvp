@@ -31,6 +31,7 @@ import {
   TrendingUp,
   Utensils,
   Badge,
+  PiggyBank,
 } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useState } from "react";
@@ -67,7 +68,7 @@ export default function Sidebar({
     {
       id: "bank-details",
       label: "Bank Details",
-      icon: Building,
+      icon: PiggyBank,
       path: "/admin/bank-details",
       roles: ["delivery_agent"],
     },
@@ -98,6 +99,13 @@ export default function Sidebar({
       label: "Users",
       icon: FiUsers,
       path: "/admin/users",
+      roles: ["admin"],
+    },
+    {
+      id: "account-management",
+      label: "Account Management",
+      icon: PiggyBank,
+      path: "/admin/account-management",
       roles: ["admin"],
     },
     {
@@ -203,7 +211,7 @@ export default function Sidebar({
     <>
       <aside
         className={`${
-          isCollapsed ? "w-20" : "w-64"
+          isCollapsed ? "w-20" : "w-[270px]"
         } bg-white border-r border-gray-100 transition-all duration-300 flex flex-col h-full fixed lg:relative z-30 lg:translate-x-0 ${
           isOpen ? "translate-x-0" : "-translate-x-full"
         }`}

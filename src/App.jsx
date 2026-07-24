@@ -33,8 +33,10 @@ import FoodPackaging from "./Pages/Admin/FoodPackaging";
 import RiderManagement from "./Pages/Admin/RiderManagement";
 import Settings from "./Pages/Admin/Settings";
 import Campaigns from "./Pages/Admin/Campaigns";
+import PaymentAccountManagement from "./Pages/Admin/PaymentAccountManagement";
 import UserLogin from "./Pages/UserDashboard/Login";
 import CreateAccount from "./Pages/UserDashboard/CreateAccount";
+import ForgotPasswordPage from "./Pages/ForgotPasswordPage/ForgotPasswordPage";
 import UserDashboard from "./Pages/UserDashboard/Dashboard";
 import OverviewPage from "./Pages/UserDashboard/OverviewPage";
 import OrdersPage from "./Pages/UserDashboard/OrdersPage";
@@ -84,6 +86,7 @@ function AppRoutes() {
           <Route path="/track-order" element={<TrackOrderPage />} />
           <Route path="/account/create" element={<CreateAccount />} />
           <Route path="/account/login" element={<UserLogin />} />
+          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
           <Route path="/account/dashboard" element={<UserDashboard />}>
             <Route index element={<OverviewPage />} />
             <Route path="overview" element={<OverviewPage />} />
@@ -130,6 +133,10 @@ function AppRoutes() {
           />
           <Route path={`${p}/food-packaging`} element={<FoodPackaging />} />
           <Route path={`${p}/campaigns`} element={<Campaigns />} />
+          <Route
+            path={`${p}/account-management`}
+            element={<PaymentAccountManagement />}
+          />
           <Route path={`${p}/settings`} element={<Settings />} />
         </Route>
 

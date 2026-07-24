@@ -57,9 +57,14 @@ const CreateOrder = () => {
   const [paymentMode, setPaymentMode] = useState("cash");
   const [paymentStatus, setPaymentStatus] = useState("pending");
   const [orderAction, setOrderAction] = useState("send_to_kitchen");
-  const [posService, setPosService] = useState("opay");
+  const [posService, setPosService] = useState("");
   const [bankAccount, setBankAccount] = useState("");
   const [loading, setLoading] = useState(false);
+  const [paymentAccounts, setPaymentAccounts] = useState({
+    pos: [],
+    transfer: [],
+  });
+  const [paymentAccountsLoading, setPaymentAccountsLoading] = useState(false);
   const [menuLoading, setMenuLoading] = useState(false);
 
   // Delivery location state
@@ -94,7 +99,6 @@ const CreateOrder = () => {
   const [openUserDropdown, setOpenUserDropdown] = useState(null);
 
   useEffect(() => {
-    console.log("the outlet: ", outlet);
     fetchCategories();
     fetchPackagingOptions();
     fetchMenus("all", 1);
@@ -173,6 +177,24 @@ const CreateOrder = () => {
       cart.items.forEach((item) => clearItemPackaging(item.id));
     }
   }, [orderType]);
+
+  // Fetch payment accounts when POS or Transfer is selected
+  useEffect(() => {
+    if (paymentMode === "pos" || paymentMode === "transfer") {
+      const fetchPaymentAccounts = async () => {
+        setPaymentAccountsLoading(true);
+        try {
+          const { data } = await api.get("/admin/payment-accounts");
+          setPaymentAccounts(data);
+        } catch (err) {
+          console.error("Failed to fetch payment accounts:", err);
+        } finally {
+          setPaymentAccountsLoading(false);
+        }
+      };
+      fetchPaymentAccounts();
+    }
+  }, [paymentMode]);
 
   const fetchCategories = async () => {
     try {
@@ -1115,13 +1137,24 @@ const CreateOrder = () => {
                         <label className="block text-sm font-medium text-gray-700 mb-2">
                           POS Service
                         </label>
-                        <select
-                          value={posService}
-                          onChange={(e) => setPosService(e.target.value)}
-                          className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2.5 px-4 text-sm text-gray-900 focus:ring-2 focus:ring-orange-100 focus:border-orange-500 outline-none"
-                        >
-                          <option value="OPay">OPay</option>
-                        </select>
+                        {paymentAccountsLoading ? (
+                          <div className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2.5 px-4 text-sm text-gray-400">
+                            Loading POS options...
+                          </div>
+                        ) : (
+                          <select
+                            value={posService}
+                            onChange={(e) => setPosService(e.target.value)}
+                            className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2.5 px-4 text-sm text-gray-900 focus:ring-2 focus:ring-orange-100 focus:border-orange-500 outline-none"
+                          >
+                            <option value="">Select POS</option>
+                            {paymentAccounts.pos.filter((a) => a.is_active).map((account) => (
+                              <option key={account.id} value={account.id}>
+                                {account.label} - {account.account_number}
+                              </option>
+                            ))}
+                          </select>
+                        )}
                       </div>
                     )}
 
@@ -1130,14 +1163,24 @@ const CreateOrder = () => {
                         <label className="block text-sm font-medium text-gray-700 mb-2">
                           Bank Account
                         </label>
-                        <select
-                          value={bankAccount}
-                          onChange={(e) => setBankAccount(e.target.value)}
-                          className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2.5 px-4 text-sm text-gray-900 focus:ring-2 focus:ring-orange-100 focus:border-orange-500 outline-none"
-                        >
-                          <option value="OPayFirst">OPay - 6550510874</option>
-                          <option value="OPaySecond">OPay - 6425460090</option>
-                        </select>
+                        {paymentAccountsLoading ? (
+                          <div className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2.5 px-4 text-sm text-gray-400">
+                            Loading transfer options...
+                          </div>
+                        ) : (
+                          <select
+                            value={bankAccount}
+                            onChange={(e) => setBankAccount(e.target.value)}
+                            className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2.5 px-4 text-sm text-gray-900 focus:ring-2 focus:ring-orange-100 focus:border-orange-500 outline-none"
+                          >
+                            <option value="">Select Account</option>
+                            {paymentAccounts.transfer.filter((a) => a.is_active).map((account) => (
+                              <option key={account.id} value={account.id}>
+                                {account.label} - {account.account_number}
+                              </option>
+                            ))}
+                          </select>
+                        )}
                       </div>
                     )}
 

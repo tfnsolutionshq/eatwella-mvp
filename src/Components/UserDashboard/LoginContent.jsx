@@ -1,8 +1,7 @@
-import React, { useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useState } from "react";
+import { useLocation, useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { useCart } from "../../context/CartContext";
-import axios from "axios";
 import api from "../../utils/api";
 
 function LoginContent() {
@@ -22,13 +21,16 @@ function LoginContent() {
     e.preventDefault();
     setErrors([]);
     if (!phoneOrEmail || !password) {
-      setErrors(prevErrors => [...prevErrors, "Please fill in both fields"]);
+      setErrors((prevErrors) => [...prevErrors, "Please fill in both fields"]);
       return;
     }
 
     try {
       setLoading(true);
-      const response = await api.post("/customer/login", { login: phoneOrEmail, password });
+      const response = await api.post("/customer/login", {
+        login: phoneOrEmail,
+        password,
+      });
       const data = response.data;
       if (data?.token && data?.user) {
         login(data.token, data.user);
@@ -37,17 +39,26 @@ function LoginContent() {
       navigate("/account/dashboard", { replace: true });
     } catch (error) {
       if (error.response) {
-        if (error.response.data?.errors){
-          error.response.data?.errors?.login.map(loginError => {
-            setErrors(prevErrors => [...prevErrors, loginError]);
-          })
-        } else{
-          setErrors(prevErrors => [...prevErrors, error.response.data?.message || "Failed to login"]);
+        if (error.response.data?.errors) {
+          error.response.data?.errors?.login.map((loginError) => {
+            setErrors((prevErrors) => [...prevErrors, loginError]);
+          });
+        } else {
+          setErrors((prevErrors) => [
+            ...prevErrors,
+            error.response.data?.message || "Failed to login",
+          ]);
         }
       } else if (error.request) {
-        setErrors(prevErrors => [...prevErrors, "Network error. Please try again."]);
+        setErrors((prevErrors) => [
+          ...prevErrors,
+          "Network error. Please try again.",
+        ]);
       } else {
-        setErrors(prevErrors => [...prevErrors, "An unexpected error occurred"]);
+        setErrors((prevErrors) => [
+          ...prevErrors,
+          "An unexpected error occurred",
+        ]);
       }
     } finally {
       setLoading(false);
@@ -92,6 +103,15 @@ function LoginContent() {
                   {showPassword ? "Hide" : "Show"}
                 </button>
               </div>
+            </div>
+
+            <div>
+              <Link
+                to="/forgot-password"
+                className="text-sm text-orange-500 underline flex justify-end"
+              >
+                Forgot Password?
+              </Link>
             </div>
 
             {errors.length > 0 && (
